@@ -412,21 +412,6 @@ const ensureSalesTable = () => {
   db.exec('CREATE UNIQUE INDEX IF NOT EXISTS uniq_sales_order_number ON sales(order_number);');
 };
 
-const ensurePasswordResetsTable = () => {
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS password_resets (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL,
-      code_hash TEXT NOT NULL,
-      expires_at INTEGER NOT NULL,
-      used INTEGER DEFAULT 0,
-      created_at INTEGER DEFAULT (strftime('%s','now')),
-      FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-    );
-  `);
-  db.exec('CREATE INDEX IF NOT EXISTS idx_password_resets_user ON password_resets(user_id);');
-};
-
 const ensureAceiteTermosTable = () => {
   db.exec(`
     CREATE TABLE IF NOT EXISTS aceite_termos (
@@ -445,26 +430,10 @@ const ensureAceiteTermosTable = () => {
   db.exec('CREATE INDEX IF NOT EXISTS idx_aceite_termos_user ON aceite_termos(user_id);');
 };
 
-const ensureTokensVerificacaoTable = () => {
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS tokens_verificacao (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL,
-      token TEXT NOT NULL,
-      expira_em INTEGER NOT NULL,
-      usado INTEGER DEFAULT 0,
-      FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-    );
-  `);
-  db.exec('CREATE INDEX IF NOT EXISTS idx_tokens_verificacao_user ON tokens_verificacao(user_id);');
-};
-
 ensureUsersTable();
 ensureInfluenciadorasTable();
 ensureSalesTable();
-ensurePasswordResetsTable();
 ensureAceiteTermosTable();
-ensureTokensVerificacaoTable();
 
 db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_influenciadoras_instagram ON influenciadoras(instagram);');
 db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_influenciadoras_cpf ON influenciadoras(cpf) WHERE cpf IS NOT NULL;');
