@@ -298,7 +298,7 @@ const listInfluencerSummaryStmt = db.prepare(`
 `);
 
 const insertContentScriptStmt = db.prepare(
-  'INSERT INTO content_scripts (titulo, descricao, created_by) VALUES (?, ?, ?)' 
+  'INSERT INTO content_scripts (titulo, descricao, created_by) VALUES (?, ?, ?)'
 );
 const listContentScriptsStmt = db.prepare(
   'SELECT id, titulo, descricao, created_at, updated_at FROM content_scripts ORDER BY datetime(created_at) DESC, id DESC'
@@ -306,6 +306,8 @@ const listContentScriptsStmt = db.prepare(
 const findContentScriptByIdStmt = db.prepare(
   'SELECT id, titulo, descricao, created_at, updated_at FROM content_scripts WHERE id = ?'
 );
+const listContentScriptsForMigrationStmt = db.prepare('SELECT id, descricao FROM content_scripts');
+const updateContentScriptDescriptionStmt = db.prepare('UPDATE content_scripts SET descricao = ? WHERE id = ?');
 
 const MASTER_DEFAULT_EMAIL = process.env.MASTER_EMAIL || 'master@example.com';
 const MASTER_DEFAULT_PASSWORD = process.env.MASTER_PASSWORD || 'master123';
@@ -330,6 +332,34 @@ const ensureMasterUser = () => {
 };
 
 ensureMasterUser();
+
+const migrateContentScriptsToHtml = () => {
+  const rows = listContentScriptsForMigrationStmt.all();
+  let updatedCount = 0;
+
+  rows.forEach((row) => {
+    const current = trimString(row?.descricao) || '';
+    if (!current) {
+      return;
+    }
+
+    if (HTML_CONTENT_PATTERN.test(current)) {
+      return;
+    }
+
+    const html = convertPlainTextToHtml(current);
+    if (html && html !== current) {
+      updateContentScriptDescriptionStmt.run(html, row.id);
+      updatedCount += 1;
+    }
+  });
+
+  if (updatedCount > 0) {
+    console.log(`Atualizados ${updatedCount} roteiros para o formato HTML padrao.`);
+  }
+};
+
+migrateContentScriptsToHtml();
 
 const normalizeDigits = (value) => (value || '').replace(/\D/g, '');
 
@@ -426,6 +456,81 @@ const aceiteRouter = createAceiteRouter({ authenticate });
 app.use('/api', aceiteRouter);
 
 const trimString = (value) => (typeof value === 'string' ? value.trim() : value);
+
+const escapeHtml = (value = '') =>
+  String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+const convertPlainTextBlockToHtml = (block = '') => {
+  if (!block) return '';
+  const normalizedBlock = block.replace(/\r\n/g, '\n');
+  const lines = normalizedBlock.split('\n');
+  const trimmedLines = lines.map((line) => line.trim()).filter((line) => line.length > 0);
+  if (!trimmedLines.length) {
+    return '';
+  }
+
+  const bulletPattern = /^\s*(?:[-*•])\s+/;
+  const numberedPattern = /^\s*\d{1,3}[.)-]\s+/;
+
+  if (trimmedLines.every((line) => numberedPattern.test(line))) {
+    const items = trimmedLines.map((line) => {
+      const content = line.replace(numberedPattern, '').trim();
+      return `<li>${escapeHtml(content)}</li>`;
+    });
+    return `<ol>${items.join('')}</ol>`;
+  }
+
+  if (trimmedLines.every((line) => bulletPattern.test(line))) {
+    const items = trimmedLines.map((line) => {
+      const content = line.replace(bulletPattern, '').trim();
+      return `<li>${escapeHtml(content)}</li>`;
+    });
+    return `<ul>${items.join('')}</ul>`;
+  }
+
+  const paragraphLines = lines.map((line) => escapeHtml(line.trimEnd()));
+  return `<p>${paragraphLines.join('<br />')}</p>`;
+};
+
+const convertPlainTextToHtml = (value = '') => {
+  const trimmed = trimString(value) || '';
+  if (!trimmed) {
+    return '';
+  }
+
+  const normalized = trimmed.replace(/\r\n/g, '\n');
+  const blocks = normalized
+    .split(/\n{2,}/)
+    .map((block) => block.trim())
+    .filter((block) => block.length > 0);
+
+  if (!blocks.length) {
+    return `<p>${escapeHtml(normalized)}</p>`;
+  }
+
+  return blocks
+    .map((block) => convertPlainTextBlockToHtml(block))
+    .filter((html) => html && html.trim().length > 0)
+    .join('');
+};
+
+const HTML_CONTENT_PATTERN = /<\s*(?:p|ul|ol|li|br|strong|em|b|i|u|a|blockquote|code|pre|h[1-6])\b[^>]*>/i;
+
+const normalizeScriptDescription = (value = '') => {
+  const trimmed = trimString(value) || '';
+  if (!trimmed) {
+    return '';
+  }
+  if (HTML_CONTENT_PATTERN.test(trimmed)) {
+    return trimmed;
+  }
+  return convertPlainTextToHtml(trimmed);
+};
 
 const truthyBooleanValues = new Set(['1', 'true', 'on', 'yes', 'sim', 'y', 's', 'dispensa', 'dispensado', 'dispensada']);
 const falsyBooleanValues = new Set(['0', 'false', 'off', 'no', 'nao', 'não', 'n']);
@@ -1886,7 +1991,8 @@ app.post('/scripts', authenticate, authorizeMaster, (req, res) => {
   }
 
   const titulo = rawTitle.slice(0, 180);
-  const descricao = rawDescription.length > 6000 ? rawDescription.slice(0, 6000) : rawDescription;
+  const truncatedDescription = rawDescription.length > 6000 ? rawDescription.slice(0, 6000) : rawDescription;
+  const descricao = normalizeScriptDescription(truncatedDescription);
 
   try {
     const result = insertContentScriptStmt.run(titulo, descricao, req.auth?.user?.id || null);

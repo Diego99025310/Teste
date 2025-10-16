@@ -165,6 +165,171 @@
     return String(value).trim();
   };
 
+  const escapeHtml = (value = '') =>
+    String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+
+  const convertPlainTextBlockToHtml = (block = '') => {
+    if (!block) return '';
+    const normalizedBlock = block.replace(/\r\n/g, '\n');
+    const lines = normalizedBlock.split('\n');
+    const trimmedLines = lines.map((line) => line.trim()).filter((line) => line.length > 0);
+    if (!trimmedLines.length) return '';
+
+    const bulletPattern = /^\s*(?:[-*•])\s+/;
+    const numberedPattern = /^\s*\d{1,3}[.)-]\s+/;
+
+    if (trimmedLines.every((line) => numberedPattern.test(line))) {
+      const items = trimmedLines.map((line) => {
+        const content = line.replace(numberedPattern, '').trim();
+        return `<li>${escapeHtml(content)}</li>`;
+      });
+      return `<ol>${items.join('')}</ol>`;
+    }
+
+    if (trimmedLines.every((line) => bulletPattern.test(line))) {
+      const items = trimmedLines.map((line) => {
+        const content = line.replace(bulletPattern, '').trim();
+        return `<li>${escapeHtml(content)}</li>`;
+      });
+      return `<ul>${items.join('')}</ul>`;
+    }
+
+    const paragraphLines = lines.map((line) => escapeHtml(line.trimEnd()));
+    return `<p>${paragraphLines.join('<br />')}</p>`;
+  };
+
+  const convertPlainTextToHtml = (value = '') => {
+    const trimmed = toTrimmedString(value);
+    if (!trimmed) return '';
+
+    const normalized = trimmed.replace(/\r\n/g, '\n');
+    const blocks = normalized
+      .split(/\n{2,}/)
+      .map((block) => block.trim())
+      .filter((block) => block.length > 0);
+
+    if (!blocks.length) {
+      return `<p>${escapeHtml(normalized)}</p>`;
+    }
+
+    return blocks
+      .map((block) => convertPlainTextBlockToHtml(block))
+      .filter((html) => html && html.trim().length > 0)
+      .join('');
+  };
+
+  const sanitizeRichTextHtml = (input = '') => {
+    if (!input) return '';
+    const template = document.createElement('template');
+    template.innerHTML = input;
+
+    const allowedTags = new Set([
+      'p',
+      'br',
+      'strong',
+      'b',
+      'em',
+      'i',
+      'u',
+      'ul',
+      'ol',
+      'li',
+      'a',
+      'blockquote',
+      'code',
+      'pre',
+      'span',
+      'h1',
+      'h2',
+      'h3',
+      'h4',
+      'h5',
+      'h6'
+    ]);
+
+    const allowedAttributes = {
+      a: new Set(['href', 'title', 'target', 'rel'])
+    };
+
+    const nodes = [];
+    const walker = document.createTreeWalker(template.content, NodeFilter.SHOW_ELEMENT, null);
+    while (walker.nextNode()) {
+      nodes.push(walker.currentNode);
+    }
+
+    const isSafeUrl = (value = '') => /^(https?:|mailto:)/i.test(String(value).trim());
+
+    nodes.forEach((node) => {
+      const tagName = node.tagName.toLowerCase();
+
+      if (!allowedTags.has(tagName)) {
+        const fragment = document.createDocumentFragment();
+        while (node.firstChild) {
+          fragment.appendChild(node.firstChild);
+        }
+        node.replaceWith(fragment);
+        return;
+      }
+
+      Array.from(node.attributes).forEach((attr) => {
+        const name = attr.name.toLowerCase();
+        const allowedForTag = allowedAttributes[tagName] || new Set();
+        const isAllowed = allowedForTag.has(name);
+
+        if (!isAllowed) {
+          node.removeAttribute(attr.name);
+          return;
+        }
+
+        if (tagName === 'a' && name === 'href') {
+          const hrefValue = attr.value.trim();
+          if (!isSafeUrl(hrefValue)) {
+            node.removeAttribute(attr.name);
+            return;
+          }
+        }
+      });
+
+      if (tagName === 'a') {
+        if (!node.hasAttribute('href')) {
+          node.removeAttribute('target');
+          node.removeAttribute('rel');
+          return;
+        }
+
+        const target = node.getAttribute('target');
+        if (!target || !['_blank', '_self'].includes(target.trim())) {
+          node.setAttribute('target', '_blank');
+        }
+        node.setAttribute('rel', 'noopener noreferrer');
+      }
+    });
+
+    return template.innerHTML;
+  };
+
+  const RICH_TEXT_HTML_PATTERN = /<\s*(?:p|ul|ol|li|br|strong|em|b|i|u|a|blockquote|code|pre|h[1-6])\b[^>]*>/i;
+
+  const prepareScriptHtml = (value = '') => {
+    const trimmed = toTrimmedString(value);
+    if (!trimmed) return '';
+    if (RICH_TEXT_HTML_PATTERN.test(trimmed)) {
+      return sanitizeRichTextHtml(trimmed);
+    }
+    return sanitizeRichTextHtml(convertPlainTextToHtml(trimmed));
+  };
+
+  const setRichTextContent = (element, value = '') => {
+    if (!element) return;
+    const html = prepareScriptHtml(value);
+    element.innerHTML = html;
+  };
+
   const stripDiacritics = (value = '') => {
     const stringValue = String(value ?? '');
     if (typeof stringValue.normalize === 'function') {
@@ -2678,8 +2843,9 @@
         titleEl.textContent = rawTitle || 'Roteiro sem título';
         item.appendChild(titleEl);
 
-        const descriptionEl = document.createElement('p');
-        descriptionEl.textContent = script?.descricao ?? script?.description ?? '';
+        const descriptionEl = document.createElement('div');
+        descriptionEl.className = 'script-management-description rich-text';
+        setRichTextContent(descriptionEl, script?.descricao ?? script?.description ?? '');
         item.appendChild(descriptionEl);
 
         const createdAt = script?.created_at ?? script?.createdAt ?? null;
@@ -3006,9 +3172,10 @@
         content.className = 'script-content';
         content.hidden = true;
 
-        const descriptionParagraph = document.createElement('p');
-        descriptionParagraph.textContent = script?.descricao ?? script?.description ?? '';
-        content.appendChild(descriptionParagraph);
+        const descriptionWrapper = document.createElement('div');
+        descriptionWrapper.className = 'script-body rich-text';
+        setRichTextContent(descriptionWrapper, script?.descricao ?? script?.description ?? '');
+        content.appendChild(descriptionWrapper);
 
         const createdAt = script?.created_at ?? script?.createdAt ?? null;
         const updatedAt = script?.updated_at ?? script?.updatedAt ?? null;
