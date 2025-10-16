@@ -324,6 +324,71 @@ button.secondary-button:focus {
   display: flex;
   justify-content: flex-end;
   gap: 16px;
+  flex-wrap: wrap;
+}
+
+.form-actions button {
+  min-width: 160px;
+}
+
+.rich-text {
+  display: grid;
+  gap: 12px;
+  font-size: 0.96rem;
+  line-height: 1.7;
+  color: var(--text-secondary);
+  word-break: break-word;
+}
+
+.rich-text p {
+  margin: 0;
+}
+
+.rich-text ul,
+.rich-text ol {
+  margin: 0;
+  padding-left: 1.25rem;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.rich-text li {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.rich-text strong,
+.rich-text b {
+  color: var(--pink-strong);
+}
+
+.rich-text a {
+  color: var(--pink-strong);
+  text-decoration: underline;
+  word-break: break-word;
+}
+
+.rich-text a:hover,
+.rich-text a:focus {
+  color: var(--pink-medium);
+  outline: none;
+}
+
+.rich-text code {
+  font-family: 'Fira Code', 'SFMono-Regular', Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  background: rgba(228, 68, 122, 0.12);
+  padding: 0 6px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+
+.rich-text pre {
+  margin: 0;
+  padding: 0.85rem;
+  border-radius: 12px;
+  background: rgba(228, 68, 122, 0.1);
+  overflow-x: auto;
+  font-family: 'Fira Code', 'SFMono-Regular', Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
 }
 
 .script-management-list {
@@ -347,10 +412,8 @@ button.secondary-button:focus {
   color: var(--pink-strong);
 }
 
-.script-management-item p {
-  margin: 0;
+.script-management-item .rich-text {
   color: var(--text-secondary);
-  line-height: 1.6;
 }
 
 .script-management-item .script-meta {
@@ -396,6 +459,30 @@ table tbody tr {
 
 table tbody tr + tr {
   border-top: 1px solid rgba(228, 68, 122, 0.16);
+}
+
+@media (max-width: 720px) {
+  header {
+    text-align: left;
+    gap: 18px;
+  }
+
+  header button {
+    width: 100%;
+    justify-self: stretch;
+  }
+
+  .form-actions {
+    justify-content: stretch;
+  }
+
+  .form-actions button {
+    width: 100%;
+  }
+
+  .script-management-item {
+    padding: clamp(16px, 6vw, 24px);
+  }
 }
 
 table tbody tr:hover {
