@@ -25,7 +25,6 @@ const MASTER_PASSWORD = process.env.MASTER_PASSWORD || 'master123';
 const resetDb = () => {
   db.exec('DELETE FROM sales;');
   db.exec('DELETE FROM aceite_termos;');
-  db.exec('DELETE FROM tokens_verificacao;');
   db.exec('DELETE FROM influenciadoras;');
   db.prepare('DELETE FROM users WHERE email != ?').run(MASTER_EMAIL);
 };

@@ -3293,46 +3293,6 @@
     initialize();
   };
 
-  const initChangePasswordPage = () => {
-    if (!ensureAuth()) return;
-    attachLogoutButtons();
-
-    enforceTermAcceptance().then((allowed) => {
-      if (!allowed) return;
-
-      const form = document.getElementById('changePasswordForm');
-      const messageEl = document.getElementById('changePasswordMessage');
-      addRealtimeValidation(form);
-
-      form?.addEventListener('submit', (event) => {
-        event.preventDefault();
-        setMessage(messageEl, 'Funcionalidade de alteracao de senha ainda nao esta disponivel.', 'info');
-      });
-    });
-  };
-
-  const initResetPasswordPage = () => {
-    attachLogoutButtons();
-    const requestForm = document.getElementById('resetRequestForm');
-    const confirmForm = document.getElementById('resetConfirmForm');
-    const requestMessage = document.getElementById('resetRequestMessage');
-    const confirmMessage = document.getElementById('resetConfirmMessage');
-
-    addRealtimeValidation(requestForm);
-    addRealtimeValidation(confirmForm);
-
-    requestForm?.addEventListener('submit', (event) => {
-      event.preventDefault();
-      setMessage(requestMessage, 'Funcionalidade de recuperacao ainda nao esta disponivel.', 'info');
-    });
-
-    confirmForm?.addEventListener('submit', (event) => {
-      event.preventDefault();
-      setMessage(confirmMessage, 'Funcionalidade de recuperacao ainda nao esta disponivel.', 'info');
-    });
-
-  };
-
   const bootstrap = () => {
     const page = document.body?.dataset.page || '';
     const initializers = {
@@ -3343,9 +3303,7 @@
       'master-list': initMasterListPage,
       'master-sales': initMasterSalesPage,
       influencer: initInfluencerPage,
-      'aceite-termos': initTermAcceptancePage,
-      'change-password': initChangePasswordPage,
-      'reset-password': initResetPasswordPage
+      'aceite-termos': initTermAcceptancePage
     };
     const initializer = initializers[page];
     if (initializer) {
