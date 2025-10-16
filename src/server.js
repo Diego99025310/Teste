@@ -297,6 +297,16 @@ const listInfluencerSummaryStmt = db.prepare(`
   ORDER BY LOWER(i.nome)
 `);
 
+const insertContentScriptStmt = db.prepare(
+  'INSERT INTO content_scripts (titulo, descricao, created_by) VALUES (?, ?, ?)' 
+);
+const listContentScriptsStmt = db.prepare(
+  'SELECT id, titulo, descricao, created_at, updated_at FROM content_scripts ORDER BY datetime(created_at) DESC, id DESC'
+);
+const findContentScriptByIdStmt = db.prepare(
+  'SELECT id, titulo, descricao, created_at, updated_at FROM content_scripts WHERE id = ?'
+);
+
 const MASTER_DEFAULT_EMAIL = process.env.MASTER_EMAIL || 'master@example.com';
 const MASTER_DEFAULT_PASSWORD = process.env.MASTER_PASSWORD || 'master123';
 
@@ -1850,6 +1860,41 @@ app.post('/sales/import/confirm', authenticate, authorizeMaster, (req, res) => {
     }
     console.error('Erro ao importar vendas:', error);
     return res.status(500).json({ error: 'Nao foi possivel concluir a importacao.' });
+  }
+});
+
+app.get('/scripts', authenticate, verificarAceite, (req, res) => {
+  try {
+    const rows = listContentScriptsStmt.all();
+    return res.status(200).json(rows);
+  } catch (error) {
+    console.error('Erro ao listar roteiros:', error);
+    return res.status(500).json({ error: 'Nao foi possivel carregar os roteiros.' });
+  }
+});
+
+app.post('/scripts', authenticate, authorizeMaster, (req, res) => {
+  const rawTitle = trimString(req.body?.titulo ?? req.body?.title);
+  const rawDescription = trimString(req.body?.descricao ?? req.body?.description);
+
+  if (!rawTitle || rawTitle.length < 3) {
+    return res.status(400).json({ error: 'Informe um titulo com pelo menos 3 caracteres.' });
+  }
+
+  if (!rawDescription || rawDescription.length < 10) {
+    return res.status(400).json({ error: 'Informe uma descricao com pelo menos 10 caracteres.' });
+  }
+
+  const titulo = rawTitle.slice(0, 180);
+  const descricao = rawDescription.length > 6000 ? rawDescription.slice(0, 6000) : rawDescription;
+
+  try {
+    const result = insertContentScriptStmt.run(titulo, descricao, req.auth?.user?.id || null);
+    const script = findContentScriptByIdStmt.get(result.lastInsertRowid);
+    return res.status(201).json(script);
+  } catch (error) {
+    console.error('Erro ao cadastrar roteiro:', error);
+    return res.status(500).json({ error: 'Nao foi possivel cadastrar o roteiro.' });
   }
 });
 

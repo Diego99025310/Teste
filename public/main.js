@@ -160,6 +160,11 @@
 
   const digitOnly = (value = '') => value.replace(/\D/g, '');
 
+  const toTrimmedString = (value) => {
+    if (value == null) return '';
+    return String(value).trim();
+  };
+
   const stripDiacritics = (value = '') => {
     const stringValue = String(value ?? '');
     if (typeof stringValue.normalize === 'function') {
@@ -602,11 +607,24 @@
 
   const setMessage = (element, message = '', type = 'info') => {
     if (!element) return;
-    element.textContent = message;
+    const text = message == null ? '' : String(message);
+    element.textContent = text;
     if (type) {
       element.dataset.type = type;
     } else {
       delete element.dataset.type;
+    }
+    const hasContent = text.trim().length > 0;
+    const shouldAutoHide =
+      element.dataset.autoHide === 'true' ||
+      element.hasAttribute('data-auto-hide') ||
+      element.hasAttribute('hidden');
+    if (shouldAutoHide) {
+      if (hasContent) {
+        element.removeAttribute('hidden');
+      } else {
+        element.setAttribute('hidden', '');
+      }
     }
   };
 
@@ -1010,6 +1028,14 @@
     const data = await apiFetch('/influenciadoras/consulta');
     return Array.isArray(data) ? data : [];
   };
+
+  const fetchScripts = async () => {
+    const data = await apiFetch('/scripts');
+    return Array.isArray(data) ? data : [];
+  };
+
+  const createScript = async ({ title, description }) =>
+    apiFetch('/scripts', { method: 'POST', body: { title, description } });
 
   const formatAccount = (instagram) => {
     if (!instagram) return '-';
@@ -2625,6 +2651,115 @@
   };
 
 
+  const initMasterScriptsPage = () => {
+    if (!ensureAuth('master')) return;
+    attachLogoutButtons();
+
+    const form = document.getElementById('scriptForm');
+    const formMessageEl = document.getElementById('scriptFormMessage');
+    const listMessageEl = document.getElementById('scriptListMessage');
+    const listContainer = document.getElementById('scriptList');
+
+    const renderScriptManagementList = (scripts) => {
+      if (!listContainer) return;
+      listContainer.innerHTML = '';
+      if (!Array.isArray(scripts) || scripts.length === 0) {
+        return;
+      }
+
+      const fragment = document.createDocumentFragment();
+
+      scripts.forEach((script) => {
+        const item = document.createElement('article');
+        item.className = 'script-management-item';
+
+        const titleEl = document.createElement('h3');
+        const rawTitle = toTrimmedString(script?.titulo ?? script?.title ?? '');
+        titleEl.textContent = rawTitle || 'Roteiro sem título';
+        item.appendChild(titleEl);
+
+        const descriptionEl = document.createElement('p');
+        descriptionEl.textContent = script?.descricao ?? script?.description ?? '';
+        item.appendChild(descriptionEl);
+
+        const createdAt = script?.created_at ?? script?.createdAt ?? null;
+        const updatedAt = script?.updated_at ?? script?.updatedAt ?? null;
+        const hasDifferentDates = createdAt && updatedAt && createdAt !== updatedAt;
+        const referenceDate = hasDifferentDates ? updatedAt : updatedAt || createdAt;
+
+        if (referenceDate) {
+          const meta = document.createElement('span');
+          meta.className = 'script-meta';
+          const label = hasDifferentDates ? 'Atualizado em' : 'Criado em';
+          meta.textContent = `${label} ${formatDateTimeDetailed(referenceDate)}`;
+          item.appendChild(meta);
+        }
+
+        fragment.appendChild(item);
+      });
+
+      listContainer.appendChild(fragment);
+    };
+
+    const loadScriptsList = async ({ showStatus = true } = {}) => {
+      if (showStatus) {
+        setMessage(listMessageEl, 'Carregando roteiros...', 'info');
+      } else {
+        setMessage(listMessageEl, '', '');
+      }
+      try {
+        const scripts = await fetchScripts();
+        renderScriptManagementList(scripts);
+        if (!Array.isArray(scripts) || scripts.length === 0) {
+          setMessage(listMessageEl, 'Nenhum roteiro cadastrado até o momento.', 'info');
+        } else {
+          setMessage(listMessageEl, '', '');
+        }
+      } catch (error) {
+        renderScriptManagementList([]);
+        setMessage(listMessageEl, error.message || 'Nao foi possivel carregar os roteiros.', 'error');
+      }
+    };
+
+    form?.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      if (!form) return;
+
+      const titleInput = form.elements.title || form.elements.titulo;
+      const descriptionInput = form.elements.description || form.elements.descricao;
+
+      const title = toTrimmedString(titleInput?.value || '');
+      const description = toTrimmedString(descriptionInput?.value || '');
+
+      if (!title || title.length < 3) {
+        setMessage(formMessageEl, 'Informe um título com pelo menos 3 caracteres.', 'error');
+        titleInput?.focus();
+        return;
+      }
+
+      if (!description || description.length < 10) {
+        setMessage(formMessageEl, 'Informe uma descrição com pelo menos 10 caracteres.', 'error');
+        descriptionInput?.focus();
+        return;
+      }
+
+      setMessage(formMessageEl, 'Salvando roteiro...', 'info');
+
+      try {
+        await createScript({ title, description });
+        setMessage(formMessageEl, 'Roteiro cadastrado com sucesso!', 'success');
+        form.reset();
+        titleInput?.focus();
+        await loadScriptsList({ showStatus: false });
+      } catch (error) {
+        setMessage(formMessageEl, error.message || 'Nao foi possivel cadastrar o roteiro.', 'error');
+      }
+    });
+
+    loadScriptsList();
+  };
+
+
   const renderInfluencerDetails = (container, data) => {
     if (!container) return;
     container.innerHTML = '';
@@ -2720,21 +2855,20 @@
     const fragment = document.createDocumentFragment();
 
     items.forEach(({ key, label, value }) => {
-      const item = document.createElement('div');
+      const item = document.createElement('dl');
       item.className = 'info-item';
       if (key) {
         item.dataset.field = key;
       }
 
-      const labelEl = document.createElement('span');
-      labelEl.className = 'info-label';
+      const labelEl = document.createElement('dt');
       labelEl.textContent = `${label}:`;
       item.appendChild(labelEl);
 
       let valueEl = null;
       if (key === 'link' && value && typeof value === 'object' && value.url) {
-        const wrapper = document.createElement('div');
-        wrapper.className = 'info-value detail-actions';
+        const wrapper = document.createElement('dd');
+        wrapper.className = 'detail-actions info-value';
 
         const linkEl = createValueElement(value);
         if (linkEl) {
@@ -2768,10 +2902,21 @@
         valueEl = wrapper;
       } else {
         valueEl = createValueElement(value);
+        if (valueEl) {
+          const dd = document.createElement('dd');
+          dd.className = 'info-value';
+          dd.appendChild(valueEl);
+          valueEl = dd;
+        }
       }
 
       if (valueEl) {
         item.appendChild(valueEl);
+      } else {
+        const dd = document.createElement('dd');
+        dd.className = 'info-value';
+        dd.textContent = '-';
+        item.appendChild(dd);
       }
 
       fragment.appendChild(item);
@@ -2806,8 +2951,181 @@
     const viewContractBtn = document.getElementById('viewSignedContractButton');
     const downloadContractBtn = document.getElementById('downloadSignedContractButton');
 
+    const mainDashboardSection = document.getElementById('mainDashboard');
+    const sectionNodes = Array.from(document.querySelectorAll('.influencer-section'));
+    const dashboardOptions = document.querySelectorAll('.dashboard-option');
+    const backButtons = document.querySelectorAll('.btn-back');
+    const scriptsListEl = document.getElementById('influencerScriptsList');
+    const scriptsMessageEl = document.getElementById('influencerScriptsMessage');
+
+    const sectionsMap = sectionNodes.reduce((acc, section) => {
+      if (section?.id) {
+        acc[section.id] = section;
+      }
+      return acc;
+    }, {});
+
+    let scriptsLoaded = false;
+    let scriptsLoading = false;
+
     let currentContractRecord = null;
     let contractWaived = false;
+
+    const renderScriptsList = (rows) => {
+      if (!scriptsListEl) return;
+      scriptsListEl.innerHTML = '';
+      if (!Array.isArray(rows) || rows.length === 0) {
+        return;
+      }
+
+      const fragment = document.createDocumentFragment();
+
+      rows.forEach((script, index) => {
+        const item = document.createElement('article');
+        item.className = 'script-item';
+
+        const headerButton = document.createElement('button');
+        headerButton.type = 'button';
+        headerButton.className = 'script-header';
+        headerButton.setAttribute('aria-expanded', 'false');
+
+        const titleSpan = document.createElement('span');
+        titleSpan.className = 'script-title';
+        const rawTitle = toTrimmedString(script?.titulo ?? script?.title ?? '');
+        titleSpan.textContent = rawTitle || `Roteiro ${index + 1}`;
+
+        const iconSpan = document.createElement('span');
+        iconSpan.className = 'script-icon';
+        iconSpan.setAttribute('aria-hidden', 'true');
+        iconSpan.textContent = '+';
+
+        headerButton.appendChild(titleSpan);
+        headerButton.appendChild(iconSpan);
+
+        const content = document.createElement('div');
+        content.className = 'script-content';
+        content.hidden = true;
+
+        const descriptionParagraph = document.createElement('p');
+        descriptionParagraph.textContent = script?.descricao ?? script?.description ?? '';
+        content.appendChild(descriptionParagraph);
+
+        const createdAt = script?.created_at ?? script?.createdAt ?? null;
+        const updatedAt = script?.updated_at ?? script?.updatedAt ?? null;
+        const hasDifferentDates = createdAt && updatedAt && createdAt !== updatedAt;
+        const referenceDate = hasDifferentDates ? updatedAt : updatedAt || createdAt;
+
+        if (referenceDate) {
+          const meta = document.createElement('span');
+          meta.className = 'script-meta';
+          const label = hasDifferentDates ? 'Atualizado em' : 'Criado em';
+          meta.textContent = `${label} ${formatDateTimeDetailed(referenceDate)}`;
+          content.appendChild(meta);
+        }
+
+        const contentId = `script-content-${script?.id ?? index}`;
+        content.id = contentId;
+        headerButton.setAttribute('aria-controls', contentId);
+
+        headerButton.addEventListener('click', () => {
+          const isOpen = item.classList.contains('open');
+          scriptsListEl.querySelectorAll('.script-item.open').forEach((openItem) => {
+            if (openItem === item) return;
+            openItem.classList.remove('open');
+            const openButton = openItem.querySelector('.script-header');
+            const openContent = openItem.querySelector('.script-content');
+            const openIcon = openItem.querySelector('.script-icon');
+            openButton?.setAttribute('aria-expanded', 'false');
+            if (openContent) openContent.hidden = true;
+            if (openIcon) openIcon.textContent = '+';
+          });
+
+          if (isOpen) {
+            item.classList.remove('open');
+            headerButton.setAttribute('aria-expanded', 'false');
+            content.hidden = true;
+            iconSpan.textContent = '+';
+          } else {
+            item.classList.add('open');
+            headerButton.setAttribute('aria-expanded', 'true');
+            content.hidden = false;
+            iconSpan.textContent = '–';
+          }
+        });
+
+        item.appendChild(headerButton);
+        item.appendChild(content);
+        fragment.appendChild(item);
+      });
+
+      scriptsListEl.appendChild(fragment);
+    };
+
+    const loadScripts = async ({ force = false } = {}) => {
+      if (!scriptsListEl || scriptsLoading) return;
+      if (scriptsLoaded && !force) return;
+      scriptsLoading = true;
+      setMessage(scriptsMessageEl, 'Carregando roteiros...', 'info');
+      try {
+        const scripts = await fetchScripts();
+        renderScriptsList(scripts);
+        if (!Array.isArray(scripts) || scripts.length === 0) {
+          setMessage(
+            scriptsMessageEl,
+            'Nenhum roteiro disponível por enquanto. Assim que houver novidades você verá tudo aqui. 💗',
+            'info'
+          );
+        } else {
+          setMessage(scriptsMessageEl, '', '');
+        }
+        scriptsLoaded = true;
+      } catch (error) {
+        setMessage(
+          scriptsMessageEl,
+          error.message || 'Nao foi possivel carregar os roteiros. Tente novamente em instantes.',
+          'error'
+        );
+      } finally {
+        scriptsLoading = false;
+      }
+    };
+
+    const showSection = (sectionId = '') => {
+      const targetId = sectionId && sectionsMap[sectionId] ? sectionId : '';
+
+      if (mainDashboardSection) {
+        if (!targetId) {
+          mainDashboardSection.removeAttribute('hidden');
+          mainDashboardSection.classList.add('active');
+        } else {
+          mainDashboardSection.setAttribute('hidden', '');
+          mainDashboardSection.classList.remove('active');
+        }
+      }
+
+      sectionNodes.forEach((section) => {
+        if (!section) return;
+        const isTarget = section.id === targetId;
+        section.hidden = !isTarget;
+        section.classList.toggle('active', isTarget);
+      });
+
+      if (!targetId) {
+        return;
+      }
+
+      if (targetId === 'scriptsSection' && !scriptsLoaded && !scriptsLoading) {
+        loadScripts();
+      }
+
+      const targetSection = sectionsMap[targetId];
+      if (targetSection) {
+        targetSection.classList.add('active');
+        window.requestAnimationFrame(() => {
+          targetSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+      }
+    };
 
     const setContractButtonsEnabled = (enabled) => {
       if (viewContractBtn) {
@@ -2815,10 +3133,42 @@
         else viewContractBtn.setAttribute('disabled', '');
       }
       if (downloadContractBtn) {
-        if (enabled) downloadContractBtn.removeAttribute('disabled');
-        else downloadContractBtn.setAttribute('disabled', '');
+        if (enabled) {
+          downloadContractBtn.removeAttribute('disabled');
+          downloadContractBtn.removeAttribute('hidden');
+        } else {
+          downloadContractBtn.setAttribute('disabled', '');
+          downloadContractBtn.setAttribute('hidden', '');
+        }
       }
     };
+
+    dashboardOptions.forEach((option) => {
+      option.addEventListener('click', () => {
+        const targetSection = option.dataset.section;
+        if (targetSection) {
+          showSection(targetSection);
+        }
+      });
+    });
+
+    backButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        const targetSection = button.dataset.target;
+        if (targetSection && targetSection !== 'main') {
+          showSection(targetSection);
+        } else {
+          showSection('');
+        }
+        if (mainDashboardSection) {
+          window.requestAnimationFrame(() => {
+            mainDashboardSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          });
+        }
+      });
+    });
+
+    showSection('');
 
     const applyContractWaiverState = () => {
       if (!contractWaived) {
@@ -2850,15 +3200,14 @@
 
       const fragment = document.createDocumentFragment();
       items.forEach((item) => {
-        const wrapper = document.createElement('div');
-        wrapper.className = 'info-item';
+        const row = document.createElement('dl');
+        row.className = 'info-item';
 
-        const labelEl = document.createElement('span');
-        labelEl.className = 'info-label';
-        labelEl.textContent = item.label;
-        wrapper.appendChild(labelEl);
+        const labelEl = document.createElement('dt');
+        labelEl.textContent = `${item.label}:`;
+        row.appendChild(labelEl);
 
-        const valueEl = document.createElement('span');
+        const valueEl = document.createElement('dd');
         valueEl.className = 'info-value';
         if (item.type === 'code') {
           const codeEl = document.createElement('code');
@@ -2867,8 +3216,8 @@
         } else {
           valueEl.textContent = item.value ?? '-';
         }
-        wrapper.appendChild(valueEl);
-        fragment.appendChild(wrapper);
+        row.appendChild(valueEl);
+        fragment.appendChild(row);
       });
 
       contractInfoEl.appendChild(fragment);
@@ -2959,20 +3308,20 @@
       const fragment = document.createDocumentFragment();
 
       const ordersMetric = document.createElement('div');
-      ordersMetric.className = 'sales-summary-metric';
-      const ordersLabel = document.createElement('span');
+      ordersMetric.className = 'metric-card';
+      const ordersLabel = document.createElement('h4');
       ordersLabel.textContent = 'Quantidade de vendas';
-      const ordersValue = document.createElement('strong');
+      const ordersValue = document.createElement('p');
       ordersValue.textContent = formatInteger(totalOrders);
       ordersMetric.appendChild(ordersLabel);
       ordersMetric.appendChild(ordersValue);
       fragment.appendChild(ordersMetric);
 
       const commissionMetric = document.createElement('div');
-      commissionMetric.className = 'sales-summary-metric';
-      const commissionLabel = document.createElement('span');
+      commissionMetric.className = 'metric-card';
+      const commissionLabel = document.createElement('h4');
       commissionLabel.textContent = 'Total de comissão';
-      const commissionValueEl = document.createElement('strong');
+      const commissionValueEl = document.createElement('p');
       commissionValueEl.textContent = formatCurrency(totalCommission);
       commissionMetric.appendChild(commissionLabel);
       commissionMetric.appendChild(commissionValueEl);
@@ -3302,6 +3651,7 @@
       'master-consult': initMasterConsultPage,
       'master-list': initMasterListPage,
       'master-sales': initMasterSalesPage,
+      'master-scripts': initMasterScriptsPage,
       influencer: initInfluencerPage,
       'aceite-termos': initTermAcceptancePage
     };
