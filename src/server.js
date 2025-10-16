@@ -68,6 +68,83 @@ const parseCurrency = (value, fieldLabel) => {
   return { value: roundCurrency(num) };
 };
 
+const trimString = (value) => (typeof value === 'string' ? value.trim() : value);
+
+const escapeHtml = (value = '') =>
+  String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+const convertPlainTextBlockToHtml = (block = '') => {
+  if (!block) return '';
+  const normalizedBlock = block.replace(/\r\n/g, '\n');
+  const lines = normalizedBlock.split('\n');
+  const trimmedLines = lines.map((line) => line.trim()).filter((line) => line.length > 0);
+  if (!trimmedLines.length) {
+    return '';
+  }
+
+  const bulletPattern = /^\s*(?:[-*•])\s+/;
+  const numberedPattern = /^\s*\d{1,3}[.)-]\s+/;
+
+  if (trimmedLines.every((line) => numberedPattern.test(line))) {
+    const items = trimmedLines.map((line) => {
+      const content = line.replace(numberedPattern, '').trim();
+      return `<li>${escapeHtml(content)}</li>`;
+    });
+    return `<ol>${items.join('')}</ol>`;
+  }
+
+  if (trimmedLines.every((line) => bulletPattern.test(line))) {
+    const items = trimmedLines.map((line) => {
+      const content = line.replace(bulletPattern, '').trim();
+      return `<li>${escapeHtml(content)}</li>`;
+    });
+    return `<ul>${items.join('')}</ul>`;
+  }
+
+  const paragraphLines = lines.map((line) => escapeHtml(line.trimEnd()));
+  return `<p>${paragraphLines.join('<br />')}</p>`;
+};
+
+const convertPlainTextToHtml = (value = '') => {
+  const trimmed = trimString(value) || '';
+  if (!trimmed) {
+    return '';
+  }
+
+  const normalized = trimmed.replace(/\r\n/g, '\n');
+  const blocks = normalized
+    .split(/\n{2,}/)
+    .map((block) => block.trim())
+    .filter((block) => block.length > 0);
+
+  if (!blocks.length) {
+    return `<p>${escapeHtml(normalized)}</p>`;
+  }
+
+  return blocks
+    .map((block) => convertPlainTextBlockToHtml(block))
+    .filter((html) => html && html.trim().length > 0)
+    .join('');
+};
+
+const HTML_CONTENT_PATTERN = /<\s*(?:p|ul|ol|li|br|strong|em|b|i|u|a|blockquote|code|pre|h[1-6])\b[^>]*>/i;
+
+const normalizeScriptDescription = (value = '') => {
+  const trimmed = trimString(value) || '';
+  if (!trimmed) {
+    return '';
+  }
+  if (HTML_CONTENT_PATTERN.test(trimmed)) {
+    return trimmed;
+  }
+  return convertPlainTextToHtml(trimmed);
+};
+
 const isValidDate = (value) => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value.trim());
 
 const findUserByEmailStmt = db.prepare(
@@ -454,83 +531,6 @@ const authorizeMaster = (req, res, next) => {
 
 const aceiteRouter = createAceiteRouter({ authenticate });
 app.use('/api', aceiteRouter);
-
-const trimString = (value) => (typeof value === 'string' ? value.trim() : value);
-
-const escapeHtml = (value = '') =>
-  String(value)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-
-const convertPlainTextBlockToHtml = (block = '') => {
-  if (!block) return '';
-  const normalizedBlock = block.replace(/\r\n/g, '\n');
-  const lines = normalizedBlock.split('\n');
-  const trimmedLines = lines.map((line) => line.trim()).filter((line) => line.length > 0);
-  if (!trimmedLines.length) {
-    return '';
-  }
-
-  const bulletPattern = /^\s*(?:[-*•])\s+/;
-  const numberedPattern = /^\s*\d{1,3}[.)-]\s+/;
-
-  if (trimmedLines.every((line) => numberedPattern.test(line))) {
-    const items = trimmedLines.map((line) => {
-      const content = line.replace(numberedPattern, '').trim();
-      return `<li>${escapeHtml(content)}</li>`;
-    });
-    return `<ol>${items.join('')}</ol>`;
-  }
-
-  if (trimmedLines.every((line) => bulletPattern.test(line))) {
-    const items = trimmedLines.map((line) => {
-      const content = line.replace(bulletPattern, '').trim();
-      return `<li>${escapeHtml(content)}</li>`;
-    });
-    return `<ul>${items.join('')}</ul>`;
-  }
-
-  const paragraphLines = lines.map((line) => escapeHtml(line.trimEnd()));
-  return `<p>${paragraphLines.join('<br />')}</p>`;
-};
-
-const convertPlainTextToHtml = (value = '') => {
-  const trimmed = trimString(value) || '';
-  if (!trimmed) {
-    return '';
-  }
-
-  const normalized = trimmed.replace(/\r\n/g, '\n');
-  const blocks = normalized
-    .split(/\n{2,}/)
-    .map((block) => block.trim())
-    .filter((block) => block.length > 0);
-
-  if (!blocks.length) {
-    return `<p>${escapeHtml(normalized)}</p>`;
-  }
-
-  return blocks
-    .map((block) => convertPlainTextBlockToHtml(block))
-    .filter((html) => html && html.trim().length > 0)
-    .join('');
-};
-
-const HTML_CONTENT_PATTERN = /<\s*(?:p|ul|ol|li|br|strong|em|b|i|u|a|blockquote|code|pre|h[1-6])\b[^>]*>/i;
-
-const normalizeScriptDescription = (value = '') => {
-  const trimmed = trimString(value) || '';
-  if (!trimmed) {
-    return '';
-  }
-  if (HTML_CONTENT_PATTERN.test(trimmed)) {
-    return trimmed;
-  }
-  return convertPlainTextToHtml(trimmed);
-};
 
 const truthyBooleanValues = new Set(['1', 'true', 'on', 'yes', 'sim', 'y', 's', 'dispensa', 'dispensado', 'dispensada']);
 const falsyBooleanValues = new Set(['0', 'false', 'off', 'no', 'nao', 'não', 'n']);
