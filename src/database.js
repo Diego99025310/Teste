@@ -430,10 +430,48 @@ const ensureAceiteTermosTable = () => {
   db.exec('CREATE INDEX IF NOT EXISTS idx_aceite_termos_user ON aceite_termos(user_id);');
 };
 
+const createContentScriptsTable = (tableName = 'content_scripts') => `
+  CREATE TABLE ${tableName} (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    titulo TEXT NOT NULL,
+    descricao TEXT NOT NULL,
+    created_by INTEGER,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE SET NULL
+  );
+`;
+
+const ensureContentScriptsTable = () => {
+  let tableInfo = db.prepare('PRAGMA table_info(content_scripts)').all();
+  if (!tableInfo.length) {
+    db.exec(createContentScriptsTable());
+    tableInfo = db.prepare('PRAGMA table_info(content_scripts)').all();
+  }
+
+  const hasColumn = (name) => tableInfo.some((column) => column.name === name);
+
+  const ensureColumn = (name, definition) => {
+    if (!hasColumn(name)) {
+      db.exec(`ALTER TABLE content_scripts ADD COLUMN ${definition};`);
+      tableInfo = db.prepare('PRAGMA table_info(content_scripts)').all();
+    }
+  };
+
+  ensureColumn('titulo', 'titulo TEXT NOT NULL DEFAULT ""');
+  ensureColumn('descricao', 'descricao TEXT NOT NULL DEFAULT ""');
+  ensureColumn('created_by', 'created_by INTEGER');
+  ensureColumn('created_at', 'created_at DATETIME DEFAULT CURRENT_TIMESTAMP');
+  ensureColumn('updated_at', 'updated_at DATETIME DEFAULT CURRENT_TIMESTAMP');
+
+  db.exec('CREATE INDEX IF NOT EXISTS idx_content_scripts_created_at ON content_scripts(created_at DESC);');
+};
+
 ensureUsersTable();
 ensureInfluenciadorasTable();
 ensureSalesTable();
 ensureAceiteTermosTable();
+ensureContentScriptsTable();
 
 db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_influenciadoras_instagram ON influenciadoras(instagram);');
 db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_influenciadoras_cpf ON influenciadoras(cpf) WHERE cpf IS NOT NULL;');

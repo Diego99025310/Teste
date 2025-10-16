@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Roteiros | Painel Master HidraPink</title>
+    <link rel="stylesheet" href="style.css" />
+    <script defer src="main.js"></script>
+  </head>
+  <body data-page="master-scripts">
+    <div class="container">
+      <header>
+        <div>
+          <h1>Roteiros de Conteúdo</h1>
+          <p>Cadastre orientações para inspirar as influenciadoras da HidraPink.</p>
+        </div>
+        <button type="button" data-action="logout">Sair</button>
+      </header>
+
+      <section class="card">
+        <h2>Cadastrar novo roteiro</h2>
+        <p class="note">
+          Informe um título e uma descrição com o passo a passo ou dicas que deseja compartilhar.
+        </p>
+        <form id="scriptForm">
+          <label>
+            <span class="section-title">Título</span>
+            <input type="text" name="title" placeholder="Ex.: Rotina pós-treino" required maxlength="180" />
+          </label>
+
+          <label>
+            <span class="section-title">Descrição</span>
+            <textarea
+              name="description"
+              rows="6"
+              placeholder="Explique o formato do conteúdo, orientações de gravação, legendas sugeridas e outros detalhes."
+              required
+              maxlength="6000"
+            ></textarea>
+          </label>
+
+          <div class="form-actions">
+            <button type="submit">Salvar roteiro</button>
+          </div>
+        </form>
+        <div id="scriptFormMessage" class="message" aria-live="polite" hidden></div>
+      </section>
+
+      <section class="card">
+        <h2>Roteiros cadastrados</h2>
+        <div id="scriptListMessage" class="message" aria-live="polite" hidden></div>
+        <div id="scriptList" class="script-management-list" aria-live="polite"></div>
+      </section>
+    </div>
+  </body>
+</html>

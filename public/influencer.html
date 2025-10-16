@@ -4,7 +4,6 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Painel Influenciadora | HidraPink</title>
-    <link rel="stylesheet" href="style.css" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -13,18 +12,15 @@
     />
     <style>
       :root {
-        color-scheme: light;
         font-family: 'Outfit', sans-serif;
         --color-primary: #e4447a;
         --color-secondary: #f07999;
         --color-soft: #fbd3db;
-        --color-text: #333333;
-        --color-surface: rgba(255, 255, 255, 0.82);
-        --color-surface-strong: rgba(255, 255, 255, 0.94);
-        --shadow-soft: 0 1.5rem 3rem rgba(228, 68, 122, 0.16);
-        --shadow-hero: 0 2rem 4rem rgba(228, 68, 122, 0.22);
+        --color-text: #333;
         --radius-lg: 1.5rem;
-        --transition: 180ms ease;
+        --shadow-soft: 0 1rem 2rem rgba(228, 68, 122, 0.15);
+        --shadow-hero: 0 2rem 4rem rgba(228, 68, 122, 0.25);
+        --transition: 0.25s ease;
       }
 
       * {
@@ -33,15 +29,15 @@
 
       body {
         margin: 0;
-        font-family: inherit;
-        background: linear-gradient(160deg, var(--color-soft) 0%, #ffffff 100%);
+        background: linear-gradient(160deg, var(--color-soft) 0%, #fff 100%);
         color: var(--color-text);
+        display: flex;
+        justify-content: center;
+        padding: clamp(1.5rem, 5vw, 2.5rem);
       }
 
       body[data-page='influencer'] {
-        display: flex;
-        justify-content: center;
-        padding: clamp(1.5rem, 5vw, 3rem) clamp(1rem, 6vw, 4rem);
+        font-family: inherit;
       }
 
       h1,
@@ -52,164 +48,150 @@
         line-height: 1.2;
       }
 
-      h1 {
-        font-size: clamp(1.8rem, 5vw, 3rem);
-      }
-
-      h2 {
-        font-size: clamp(1.5rem, 4vw, 2.25rem);
-      }
-
-      h3 {
-        font-size: clamp(1.25rem, 3vw, 1.75rem);
-      }
-
-      p {
-        margin: 0;
-        font-size: clamp(1rem, 2vw, 1.125rem);
-        line-height: 1.6;
-      }
-
+      p,
       small {
-        font-size: clamp(0.875rem, 1.5vw, 1rem);
+        margin: 0;
         line-height: 1.6;
       }
 
-      img {
-        display: block;
-        max-width: 100%;
-        height: auto;
-      }
-
-      body[data-page='influencer'] .container {
+      .container {
         width: min(100%, 78rem);
-        display: grid;
-        gap: clamp(1.5rem, 4vw, 2.75rem);
-      }
-
-      .influencer-hero {
-        position: relative;
-        overflow: hidden;
-        display: grid;
-        gap: clamp(1rem, 3vw, 1.5rem);
-        padding: clamp(2rem, 6vw, 3.5rem);
-        border-radius: var(--radius-lg);
-        background: radial-gradient(circle at 10% 10%, rgba(255, 255, 255, 0.8), transparent 65%),
-          linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
-        color: #ffffff;
-        box-shadow: var(--shadow-hero);
-        justify-items: center;
-        text-align: center;
-      }
-
-      .influencer-hero::after {
-        content: '';
-        position: absolute;
-        inset: 0;
-        background: radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.4), transparent 55%),
-          radial-gradient(circle at 20% 80%, rgba(255, 255, 255, 0.3), transparent 60%);
-        pointer-events: none;
-      }
-
-      .influencer-hero > * {
-        position: relative;
-        z-index: 1;
-      }
-
-      .hero-content {
-        display: grid;
-        gap: clamp(0.5rem, 2vw, 1rem);
-        width: min(100%, 42rem);
-        margin-inline: auto;
-      }
-
-      .hero-eyebrow {
-        font-size: clamp(0.875rem, 2vw, 1rem);
-        font-weight: 600;
-        letter-spacing: 0.18em;
-        text-transform: uppercase;
-        opacity: 0.85;
-      }
-
-      .dashboard-grid.influencer-layout {
         display: grid;
         gap: clamp(1.5rem, 4vw, 2.5rem);
       }
 
-      .card {
-        display: grid;
-        gap: clamp(1rem, 3vw, 1.75rem);
-        padding: clamp(1.5rem, 5vw, 2.5rem);
+      /* HERO */
+      .hero {
+        background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
         border-radius: var(--radius-lg);
-        background: var(--color-surface);
-        backdrop-filter: saturate(115%) blur(18px);
+        color: #fff;
+        text-align: center;
+        padding: clamp(2.5rem, 6vw, 3.5rem) clamp(2rem, 5vw, 3rem);
+        box-shadow: var(--shadow-hero);
+        display: grid;
+        gap: 0.75rem;
+      }
+
+      .hero p {
+        font-size: clamp(0.95rem, 2.4vw, 1.1rem);
+        opacity: 0.85;
+      }
+
+      .hero h1 {
+        font-size: clamp(2rem, 5vw, 2.9rem);
+      }
+
+      /* CARD BASE */
+      .card {
+        background: #fff;
+        border-radius: var(--radius-lg);
         box-shadow: var(--shadow-soft);
+        padding: clamp(1.5rem, 4vw, 2.5rem);
+        display: grid;
+        gap: clamp(1.25rem, 3vw, 1.75rem);
       }
 
       .card-headline {
-        display: grid;
-        gap: clamp(0.5rem, 2vw, 0.75rem);
         text-align: center;
+        display: grid;
+        gap: 0.5rem;
+      }
+
+      .card-headline h2 {
+        color: var(--color-primary);
+        font-size: clamp(1.6rem, 4vw, 2.1rem);
       }
 
       .card-headline p {
-        color: rgba(51, 51, 51, 0.72);
+        color: rgba(51, 51, 51, 0.7);
+        font-size: clamp(0.95rem, 2vw, 1rem);
       }
 
+      /* SEUS DADOS */
       .info-grid {
         display: grid;
-        gap: clamp(1rem, 4vw, 1.5rem);
+        gap: 1rem;
       }
 
-      .info-grid dl {
+      .info-item {
         margin: 0;
         display: grid;
-        gap: 0.35rem;
-        padding: clamp(1rem, 3vw, 1.5rem);
-        border-radius: 1rem;
-        background: var(--color-surface-strong);
-        border: 0.08rem solid rgba(228, 68, 122, 0.22);
-        box-shadow: 0 1rem 2.5rem rgba(228, 68, 122, 0.12);
+        grid-template-columns: minmax(0, 8rem) 1fr;
+        gap: 0.5rem 1rem;
+        align-items: center;
       }
 
-      .info-grid dt {
-        font-size: clamp(0.875rem, 2vw, 1rem);
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: rgba(51, 51, 51, 0.6);
-      }
-
-      .info-grid dd {
-        margin: 0;
-        font-size: clamp(1rem, 2.5vw, 1.25rem);
+      .info-item dt {
         font-weight: 600;
+        color: rgba(51, 51, 51, 0.7);
+      }
+
+      .info-item dd {
+        margin: 0;
+        color: var(--color-primary);
+        font-weight: 600;
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+
+      .detail-link {
+        color: inherit;
+        text-decoration: none;
+        word-break: break-word;
+      }
+
+      .copy-button {
+        border: none;
+        background: var(--color-soft);
+        color: var(--color-primary);
+        font-weight: 600;
+        border-radius: 999px;
+        padding: 0.4rem 1rem;
+        cursor: pointer;
+        transition: background var(--transition), color var(--transition), transform var(--transition);
+      }
+
+      .copy-button:hover,
+      .copy-button:focus-visible {
+        background: var(--color-primary);
+        color: #fff;
+        transform: translateY(-1px);
+        outline: none;
+      }
+
+      .copy-button.copied {
+        background: rgba(52, 211, 153, 0.18);
+        color: #0f5132;
+      }
+
+      .copy-button.error {
+        background: rgba(248, 113, 113, 0.2);
+        color: #7f1d1d;
       }
 
       .card-actions {
-        display: grid;
-        gap: clamp(0.75rem, 3vw, 1rem);
+        display: flex;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-top: 0.5rem;
       }
 
-      .card-actions button,
-      .card-actions .button-logout {
-        display: inline-flex;
-        justify-content: center;
-        align-items: center;
-        min-height: 2.75rem;
-        padding: clamp(0.75rem, 2.5vw, 1rem) clamp(1.5rem, 4vw, 2rem);
-        border-radius: 999px;
+      .card-actions button {
         border: none;
-        font-size: clamp(1rem, 2vw, 1.125rem);
         font-weight: 600;
-        letter-spacing: 0.02em;
+        padding: 0.85rem 1.75rem;
+        border-radius: 999px;
         cursor: pointer;
-        transition: transform var(--transition), box-shadow var(--transition), opacity var(--transition);
+        transition: transform var(--transition), box-shadow var(--transition);
       }
 
       #viewSignedContractButton {
-        background: #ffffff;
+        background: linear-gradient(145deg, #fff, #ffeef4);
         color: var(--color-primary);
-        box-shadow: 0 1.2rem 2.8rem rgba(228, 68, 122, 0.18);
+        box-shadow: 0 1rem 2.5rem rgba(228, 68, 122, 0.15);
       }
 
       #viewSignedContractButton:disabled {
@@ -219,56 +201,135 @@
       }
 
       .button-logout {
-        background: var(--color-primary);
-        color: #ffffff;
-        box-shadow: 0 1.2rem 2.8rem rgba(228, 68, 122, 0.28);
+        background: linear-gradient(145deg, var(--color-primary), var(--color-secondary));
+        color: #fff;
+        box-shadow: 0 1rem 2.5rem rgba(228, 68, 122, 0.15);
       }
 
       .card-actions button:not(:disabled):hover,
       .card-actions button:not(:disabled):focus-visible {
-        transform: translateY(-0.12rem);
+        transform: translateY(-2px);
+        outline: none;
       }
 
       .message {
-        padding: clamp(0.75rem, 2.5vw, 1rem) clamp(1rem, 3vw, 1.5rem);
-        border-radius: 0.85rem;
+        padding: 0.85rem 1.25rem;
+        border-radius: 999px;
         background: rgba(251, 211, 219, 0.7);
-        border: 0.08rem solid rgba(228, 68, 122, 0.25);
-        font-size: clamp(1rem, 2vw, 1.1rem);
-      }
-
-      .sales-summary-inline {
-        display: grid;
-        gap: clamp(0.75rem, 3vw, 1.25rem);
-        grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
-      }
-
-      .sales-summary-inline .metric {
-        display: grid;
-        gap: 0.35rem;
-        padding: clamp(1rem, 3vw, 1.5rem);
-        border-radius: 1rem;
-        background: var(--color-surface-strong);
-        border: 0.08rem solid rgba(228, 68, 122, 0.16);
+        border: 1px solid rgba(228, 68, 122, 0.25);
+        font-size: 0.95rem;
+        color: rgba(51, 51, 51, 0.75);
         text-align: center;
-        box-shadow: 0 1rem 2.5rem rgba(228, 68, 122, 0.1);
+      }
+
+      /* DASHBOARD OPÇÕES */
+      .dashboard-options {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+        gap: clamp(1.5rem, 4vw, 2rem);
+      }
+
+      .dashboard-option {
+        border: none;
+        background: linear-gradient(180deg, #fff, #fff6f8);
+        border-radius: 1.25rem;
+        border: 1px solid rgba(228, 68, 122, 0.15);
+        box-shadow: 0 1rem 2rem rgba(228, 68, 122, 0.15);
+        text-align: center;
+        padding: clamp(1.75rem, 4vw, 2.25rem);
+        transition: transform var(--transition), box-shadow var(--transition);
+        cursor: pointer;
+        display: grid;
+        gap: 0.65rem;
+        font-family: inherit;
+      }
+
+      .dashboard-option:hover,
+      .dashboard-option:focus-visible {
+        transform: translateY(-6px);
+        box-shadow: 0 1.5rem 2.5rem rgba(228, 68, 122, 0.25);
+        outline: none;
+      }
+
+      .dashboard-option h3 {
+        margin: 0;
+        color: var(--color-primary);
+        font-size: 1.3rem;
+      }
+
+      .dashboard-option p {
+        margin: 0;
+        opacity: 0.7;
+      }
+
+      /* TELAS SECUNDÁRIAS */
+      .section {
+        display: none;
+        animation: fadeIn 0.4s ease;
+      }
+
+      .section.active {
+        display: block;
+      }
+
+      .section-actions {
+        display: flex;
+        justify-content: flex-start;
+      }
+
+      .btn-back {
+        border: none;
+        background: var(--color-primary);
+        color: #fff;
+        padding: 0.75rem 1.5rem;
+        border-radius: 999px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: transform var(--transition), background var(--transition);
+      }
+
+      .btn-back:hover,
+      .btn-back:focus-visible {
+        background: var(--color-secondary);
+        transform: translateY(-2px);
+        outline: none;
+      }
+
+      /* PERFORMANCE */
+      .performance-summary {
+        display: grid;
+        gap: 1.5rem;
+        grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+      }
+
+      .metric-card {
+        background: linear-gradient(145deg, rgba(255, 255, 255, 0.9), #fff5f8);
+        border: 1px solid rgba(228, 68, 122, 0.2);
+        border-radius: 1rem;
+        padding: 1.5rem;
+        box-shadow: 0 1rem 2rem rgba(228, 68, 122, 0.1);
+      }
+
+      .metric-card h4 {
+        margin: 0;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--color-secondary);
+      }
+
+      .metric-card p {
+        margin: 0.25rem 0 0;
+        font-size: 1.6rem;
+        font-weight: 700;
+        color: var(--color-primary);
       }
 
       .table-wrapper {
         width: 100%;
         overflow-x: auto;
         border-radius: 1.25rem;
-        border: 0.08rem solid rgba(228, 68, 122, 0.18);
-        background: var(--color-surface-strong);
-      }
-
-      .table-wrapper::-webkit-scrollbar {
-        height: 0.5rem;
-      }
-
-      .table-wrapper::-webkit-scrollbar-thumb {
-        background: rgba(228, 68, 122, 0.4);
-        border-radius: 999px;
+        border: 1px solid rgba(228, 68, 122, 0.2);
       }
 
       table {
@@ -280,8 +341,8 @@
       th,
       td {
         text-align: left;
-        padding: clamp(0.75rem, 2.5vw, 1rem);
-        font-size: clamp(1rem, 2vw, 1.1rem);
+        padding: 0.85rem 1rem;
+        font-size: 1rem;
       }
 
       thead {
@@ -296,54 +357,107 @@
         background: rgba(240, 121, 153, 0.15);
       }
 
-      @media (min-width: 480px) {
-        body[data-page='influencer'] {
-          padding-inline: clamp(1.5rem, 6vw, 4.5rem);
+      td.empty {
+        text-align: center;
+        color: rgba(51, 51, 51, 0.6);
+      }
+
+      /* ROTEIROS */
+      .scripts-list {
+        display: grid;
+        gap: 1.25rem;
+      }
+
+      .script-item {
+        border: 1px solid rgba(228, 68, 122, 0.18);
+        border-radius: 1rem;
+        box-shadow: 0 0.5rem 1.5rem rgba(228, 68, 122, 0.1);
+        overflow: hidden;
+        transition: all 0.3s ease;
+        background: #fff;
+      }
+
+      .script-header {
+        cursor: pointer;
+        padding: 1.25rem 1.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+      }
+
+      .script-title {
+        font-size: 1rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--color-primary);
+      }
+
+      .script-icon {
+        font-size: 1.25rem;
+        color: var(--color-primary);
+        transition: transform 0.3s ease;
+      }
+
+      .script-item.open .script-icon {
+        transform: rotate(45deg);
+      }
+
+      .script-content {
+        max-height: 0;
+        overflow: hidden;
+        padding: 0 1.5rem;
+        transition: max-height 0.35s ease, padding 0.35s ease;
+      }
+
+      .script-item.open .script-content {
+        max-height: 400px;
+        padding: 1rem 1.5rem 1.5rem;
+      }
+
+      .script-content p {
+        font-size: 1rem;
+        color: rgba(51, 51, 51, 0.82);
+      }
+
+      .script-meta {
+        color: rgba(51, 51, 51, 0.55);
+        font-size: 0.85rem;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @media (max-width: 640px) {
+        body {
+          padding: clamp(1rem, 6vw, 1.5rem);
         }
 
-        .info-grid {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
+        .info-item {
+          grid-template-columns: 1fr;
+          gap: 0.35rem;
         }
 
         .card-actions {
-          grid-auto-flow: column;
-          justify-content: start;
-          align-items: center;
-        }
-      }
-
-      @media (min-width: 768px) {
-        .card-headline {
-          text-align: left;
+          flex-direction: column;
+          align-items: stretch;
         }
 
-        .dashboard-grid.influencer-layout {
-          grid-template-columns: repeat(1, minmax(0, 1fr));
-        }
-      }
-
-      @media (min-width: 1024px) {
-        body[data-page='influencer'] {
-          padding: clamp(2.5rem, 5vw, 4rem) clamp(3rem, 7vw, 5rem);
+        .card-actions button {
+          width: 100%;
         }
 
-        .dashboard-grid.influencer-layout {
-          grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
-          align-items: start;
-        }
-
-        .card-actions {
-          justify-content: space-between;
-        }
-      }
-
-      @media (min-width: 1440px) {
-        body[data-page='influencer'] {
-          padding: clamp(3rem, 6vw, 5rem) clamp(4rem, 7vw, 6rem);
-        }
-
-        .dashboard-grid.influencer-layout {
-          gap: clamp(2rem, 3vw, 3rem);
+        .script-header {
+          flex-direction: column;
+          align-items: flex-start;
         }
       }
     </style>
@@ -351,50 +465,97 @@
   </head>
   <body data-page="influencer">
     <div class="container" id="influencerPage">
-      <header class="page-hero influencer-hero">
-        <div class="hero-content">
-          <p class="hero-eyebrow">Painel da Influenciadora</p>
-          <h1>Bem vinda, Pinklover.</h1>
-        </div>
+      <header class="hero">
+        <p>Painel da Influenciadora</p>
+        <h1 id="influencerGreeting">Bem-vinda, Pinklover 💗</h1>
       </header>
 
-      <main class="dashboard-grid influencer-layout">
-        <section class="card influencer-details-card" aria-labelledby="influencer-info-title">
-          <div class="card-headline">
-            <h2 id="influencer-info-title">Seus dados</h2>
-          </div>
-          <div id="influencerDetails" class="info-grid" aria-live="polite"></div>
-          <div class="card-actions influencer-contract-actions">
-            <button type="button" id="viewSignedContractButton" disabled>Visualizar contrato assinado</button>
-            <div id="influencerContractMessage" class="message" aria-live="polite" hidden></div>
-            <button type="button" class="button-logout" data-action="logout">Sair</button>
-          </div>
-        </section>
+      <section class="card" aria-labelledby="influencer-info-title">
+        <div class="card-headline">
+          <h2 id="influencer-info-title">Seus dados</h2>
+        </div>
+        <div id="influencerDetails" class="info-grid" aria-live="polite"></div>
+        <p id="influencerContractMessage" class="message" hidden data-auto-hide="true"></p>
+        <div class="card-actions">
+          <button type="button" id="viewSignedContractButton" disabled>
+            Visualizar contrato assinado
+          </button>
+          <button type="button" class="button-logout" data-action="logout">Sair</button>
+        </div>
+      </section>
 
+      <section class="card" id="mainDashboard" aria-labelledby="influencer-dashboard-title">
+        <div class="card-headline">
+          <h2 id="influencer-dashboard-title">Seu painel</h2>
+          <p>Escolha o que deseja visualizar:</p>
+        </div>
 
+        <div class="dashboard-options">
+          <button class="dashboard-option" type="button" data-section="performanceSection">
+            <div aria-hidden="true" style="font-size: 2rem">📊</div>
+            <h3>Desempenho</h3>
+            <p>Acompanhe seus pedidos, vendas e comissões.</p>
+          </button>
 
-        <section class="card influencer-history-card" aria-labelledby="influencer-sales-title">
-          <div class="card-headline">
-            <h2 id="influencer-sales-title">Acompanhe seu desempenho.</h2>
-            <p>Visualize os resultados das suas campanhas, pedidos e comissões em cada ciclo.</p>
-          </div>
-          <div id="influencerSalesMessage" class="message" aria-live="polite"></div>
-          <div id="influencerSalesSummary" class="sales-summary-inline" aria-live="polite"></div>
-          <div class="table-wrapper">
-            <table id="influencerSalesTable">
-              <thead>
-                <tr>
-                  <th>Número do pedido</th>
-                  <th>Data</th>
-                  <th>Valor líquido</th>
-                  <th>Comissão</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
-          </div>
-        </section>
-      </main>
+          <button class="dashboard-option" type="button" data-section="scriptsSection">
+            <div aria-hidden="true" style="font-size: 2rem">🎥</div>
+            <h3>Roteiros</h3>
+            <p>Ideias e orientações para criar conteúdos incríveis.</p>
+          </button>
+        </div>
+      </section>
+
+      <section
+        id="performanceSection"
+        class="card section influencer-section"
+        aria-labelledby="performance-title"
+        hidden
+      >
+        <div class="card-headline">
+          <h2 id="performance-title">📊 Desempenho</h2>
+          <p>Visualize os resultados das suas campanhas e comissões.</p>
+        </div>
+
+        <div class="performance-summary" id="influencerSalesSummary" aria-live="polite"></div>
+        <p id="influencerSalesMessage" class="message" hidden data-auto-hide="true"></p>
+
+        <div class="table-wrapper">
+          <table id="influencerSalesTable">
+            <thead>
+              <tr>
+                <th>Número do pedido</th>
+                <th>Data</th>
+                <th>Valor líquido</th>
+                <th>Comissão</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+        <div class="section-actions">
+          <button class="btn-back" type="button" data-target="main">← Voltar</button>
+        </div>
+      </section>
+
+      <section
+        id="scriptsSection"
+        class="card section influencer-section"
+        aria-labelledby="scripts-title"
+        hidden
+      >
+        <div class="card-headline">
+          <h2 id="scripts-title">🎥 Roteiros de Conteúdo</h2>
+          <p>Ideias e orientações preparadas especialmente para você.</p>
+        </div>
+
+        <p id="influencerScriptsMessage" class="message" hidden data-auto-hide="true"></p>
+        <div id="influencerScriptsList" class="scripts-list" aria-live="polite"></div>
+
+        <div class="section-actions">
+          <button class="btn-back" type="button" data-target="main">← Voltar</button>
+        </div>
+      </section>
     </div>
   </body>
 </html>
