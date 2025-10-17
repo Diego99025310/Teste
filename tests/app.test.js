@@ -359,7 +359,7 @@ test('dispensa de contrato permite acesso sem aceite', async () => {
   assert.ok(!pendingAcceptance.body.dispensado);
 });
 
-test('fluxo completo de ciclo mensal com agendamento, submissao e fechamento', async () => {
+test('fluxo completo de ciclo mensal com agendamento, validacao e fechamento', async () => {
   resetDb();
 
   const masterToken = await authenticateMaster();
@@ -407,43 +407,27 @@ test('fluxo completo de ciclo mensal com agendamento, submissao e fechamento', a
 
   assert.strictEqual(planCreate.status, 201);
   assert.strictEqual(planCreate.body.plans.length, dates.length);
-  const plans = planCreate.body.plans;
-
-  for (let index = 0; index < 3; index += 1) {
-    const plan = plans[index];
-    const response = await request(app)
-      .post('/influencer/submissions')
-      .set('Authorization', `Bearer ${influencerToken}`)
-      .send({
-        planId: plan.id,
-        proofUrl: `https://example.com/comprovante-${index + 1}.jpg`
-      });
-    assert.strictEqual(response.status, 202);
-  }
-
-  for (let index = 3; index < plans.length; index += 1) {
-    const plan = plans[index];
-    const response = await request(app)
-      .post('/influencer/submissions')
-      .set('Authorization', `Bearer ${influencerToken}`)
-      .send({ planId: plan.id, autoDetected: true });
-    assert.strictEqual(response.status, 200);
-  }
-
   const pendingValidations = await request(app)
     .get('/master/validations')
     .set('Authorization', `Bearer ${masterToken}`);
 
   assert.strictEqual(pendingValidations.status, 200);
-  assert.strictEqual(pendingValidations.body.pending.length, 3);
+  assert.strictEqual(pendingValidations.body.pending.length, dates.length);
 
-  for (const submission of pendingValidations.body.pending) {
+  for (const item of pendingValidations.body.pending) {
     const approve = await request(app)
-      .post(`/master/validations/${submission.id}/approve`)
+      .post(`/master/validations/${item.id}/approve`)
       .set('Authorization', `Bearer ${masterToken}`)
       .send();
     assert.strictEqual(approve.status, 200);
   }
+
+  const remainingValidations = await request(app)
+    .get('/master/validations')
+    .set('Authorization', `Bearer ${masterToken}`);
+
+  assert.strictEqual(remainingValidations.status, 200);
+  assert.strictEqual(remainingValidations.body.pending.length, 0);
 
   const dashboard = await request(app)
     .get('/influencer/dashboard')
@@ -452,6 +436,7 @@ test('fluxo completo de ciclo mensal com agendamento, submissao e fechamento', a
   assert.strictEqual(dashboard.status, 200);
   assert.strictEqual(dashboard.body.progress.validatedDays, 5);
   assert.strictEqual(dashboard.body.progress.multiplier, 1.25);
+  assert.strictEqual(dashboard.body.progress.pendingValidations, 0);
 
   const saleResponse = await request(app)
     .post('/sales')

@@ -430,16 +430,8 @@ const markMissedPlansStmt = db.prepare(
       SET status = 'missed', updated_at = CURRENT_TIMESTAMP
     WHERE cycle_id = ?
       AND influencer_id = ?
-      AND status != 'validated'
-      AND scheduled_date <= ?
-      AND id NOT IN (
-        SELECT COALESCE(plan_id, 0)
-          FROM story_submissions
-         WHERE cycle_id = ?
-           AND influencer_id = ?
-           AND status = 'approved'
-           AND plan_id IS NOT NULL
-      )`
+      AND status = 'scheduled'
+      AND scheduled_date <= ?`
 );
 const listPlansByInfluencerStmt = db.prepare(
   `SELECT p.id,
@@ -507,148 +499,51 @@ const findPlanByDateStmt = db.prepare(
 const countPlansByInfluencerStmt = db.prepare(
   'SELECT COUNT(*) AS total FROM influencer_plans WHERE cycle_id = ? AND influencer_id = ?'
 );
-
-const insertStorySubmissionStmt = db.prepare(
-  `INSERT INTO story_submissions (
-      cycle_id,
-      influencer_id,
-      plan_id,
-      scheduled_date,
-      status,
-      validation_type,
-      auto_detected,
-      proof_url,
-      proof_notes,
-      submitted_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
+const countValidatedPlansStmt = db.prepare(
+  "SELECT COUNT(*) AS total FROM influencer_plans WHERE cycle_id = ? AND influencer_id = ? AND status = 'validated'"
 );
-const updateStorySubmissionStmt = db.prepare(
-  `UPDATE story_submissions
-      SET status = ?,
-          validation_type = ?,
-          auto_detected = ?,
-          proof_url = ?,
-          proof_notes = ?,
-          submitted_at = CURRENT_TIMESTAMP
-    WHERE id = ?`
-);
-const autoApproveSubmissionStmt = db.prepare(
-  `UPDATE story_submissions
-      SET status = 'approved',
-          validation_type = 'auto',
-          auto_detected = 1,
-          proof_url = COALESCE(?, proof_url),
-          proof_notes = COALESCE(?, proof_notes),
-          submitted_at = CURRENT_TIMESTAMP,
-          validated_at = CURRENT_TIMESTAMP,
-          validated_by = NULL,
-          rejection_reason = NULL
-    WHERE id = ?`
-);
-const approveStorySubmissionStmt = db.prepare(
-  `UPDATE story_submissions
-      SET status = 'approved',
-          validation_type = COALESCE(validation_type, 'manual'),
-          validated_at = CURRENT_TIMESTAMP,
-          validated_by = ?,
-          auto_detected = CASE WHEN auto_detected IS NULL THEN 0 ELSE auto_detected END,
-          rejection_reason = NULL
-    WHERE id = ?`
-);
-const rejectStorySubmissionStmt = db.prepare(
-  `UPDATE story_submissions
-      SET status = 'rejected',
-          validated_at = CURRENT_TIMESTAMP,
-          validated_by = ?,
-          rejection_reason = ?,
-          validation_type = 'manual'
-    WHERE id = ?`
-);
-const findSubmissionByPlanStmt = db.prepare(
-  `SELECT id,
-          cycle_id,
-          influencer_id,
-          plan_id,
-          scheduled_date,
-          status,
-          validation_type,
-          auto_detected,
-          proof_url,
-          proof_notes,
-          submitted_at,
-          validated_at,
-          validated_by,
-          rejection_reason
-     FROM story_submissions
-    WHERE plan_id = ?`
-);
-const findSubmissionByIdStmt = db.prepare(
-  `SELECT s.id,
-          s.cycle_id,
-          s.influencer_id,
-          s.plan_id,
-          s.scheduled_date,
-          s.status,
-          s.validation_type,
-          s.auto_detected,
-          s.proof_url,
-          s.proof_notes,
-          s.submitted_at,
-          s.validated_at,
-          s.validated_by,
-          s.rejection_reason,
-          i.nome AS influencer_name
-     FROM story_submissions s
-     JOIN influenciadoras i ON i.id = s.influencer_id
-    WHERE s.id = ?`
-);
-const listSubmissionsByInfluencerStmt = db.prepare(
-  `SELECT s.id,
-          s.cycle_id,
-          s.plan_id,
-          s.influencer_id,
-          s.scheduled_date,
-          s.status,
-          s.validation_type,
-          s.auto_detected,
-          s.proof_url,
-          s.proof_notes,
-          s.submitted_at,
-          s.validated_at,
-          s.validated_by,
-          s.rejection_reason
-     FROM story_submissions s
-    WHERE s.cycle_id = ?
-      AND s.influencer_id = ?
-    ORDER BY s.scheduled_date ASC, s.id ASC`
-);
-const listPendingSubmissionsStmt = db.prepare(
-  `SELECT s.id,
-          s.cycle_id,
-          s.plan_id,
-          s.influencer_id,
-          s.scheduled_date,
-          s.status,
-          s.validation_type,
-          s.proof_url,
-          s.proof_notes,
-          s.submitted_at,
+const listPendingPlanValidationsStmt = db.prepare(
+  `SELECT p.id,
+          p.cycle_id,
+          p.influencer_id,
+          p.scheduled_date,
+          p.status,
           i.nome AS influencer_name,
-          i.instagram
-     FROM story_submissions s
-     JOIN influenciadoras i ON i.id = s.influencer_id
-    WHERE s.status = 'pending'
-    ORDER BY s.submitted_at ASC`
+          i.instagram,
+          s.titulo AS script_title
+     FROM influencer_plans p
+     JOIN influenciadoras i ON i.id = p.influencer_id
+     LEFT JOIN content_scripts s ON s.id = p.content_script_id
+    WHERE p.cycle_id = ?
+      AND p.status = 'scheduled'
+    ORDER BY p.scheduled_date ASC, LOWER(i.nome)`
 );
-const countValidatedSubmissionsStmt = db.prepare(
-  "SELECT COUNT(*) AS total FROM story_submissions WHERE cycle_id = ? AND influencer_id = ? AND status = 'approved'"
+const findPlanWithInfluencerStmt = db.prepare(
+  `SELECT p.id,
+          p.cycle_id,
+          p.influencer_id,
+          p.scheduled_date,
+          p.status,
+          p.content_script_id,
+          p.notes,
+          p.created_at,
+          p.updated_at,
+          i.nome AS influencer_name,
+          i.instagram,
+          s.titulo AS script_title
+     FROM influencer_plans p
+     JOIN influenciadoras i ON i.id = p.influencer_id
+     LEFT JOIN content_scripts s ON s.id = p.content_script_id
+    WHERE p.id = ?`
 );
-const listApprovedSubmissionsWithProofsStmt = db.prepare(
-  `SELECT scheduled_date, proof_url, proof_notes, validation_type, auto_detected
-     FROM story_submissions
+const listValidatedPlansStmt = db.prepare(
+  `SELECT scheduled_date,
+          content_script_id,
+          notes
+     FROM influencer_plans
     WHERE cycle_id = ?
       AND influencer_id = ?
-      AND status = 'approved'
+      AND status = 'validated'
     ORDER BY scheduled_date`
 );
 
@@ -2795,149 +2690,6 @@ app.put('/influencer/plan/:id', authenticate, verificarAceite, (req, res) => {
   return res.status(200).json(updated);
 });
 
-app.get('/influencer/submissions', authenticate, verificarAceite, (req, res) => {
-  const cycle = getCycleByIdOrCurrent(req.query?.cycleId ?? req.query?.cycle_id);
-  const { influencer, status, message } = resolveInfluencerForRequest(
-    req,
-    req.query?.influencerId ?? req.query?.influencer_id
-  );
-  if (!influencer) {
-    return res.status(status).json({ error: message });
-  }
-
-  const submissions = listSubmissionsByInfluencerStmt.all(cycle.id, influencer.id);
-  return res.status(200).json({ cycle, submissions });
-});
-
-app.post('/influencer/submissions', authenticate, verificarAceite, (req, res) => {
-  const baseCycle = ensureMonthlyCycle();
-  const { influencer, status, message } = resolveInfluencerForRequest(
-    req,
-    req.body?.influencerId ?? req.body?.influencer_id
-  );
-  if (!influencer) {
-    return res.status(status).json({ error: message });
-  }
-
-  const planId = req.body?.planId ?? req.body?.plan_id;
-  const dateParam = req.body?.date ?? req.body?.scheduled_date ?? req.body?.scheduledDate;
-
-  let plan = null;
-  if (planId != null) {
-    const numericPlanId = Number(planId);
-    if (!Number.isInteger(numericPlanId) || numericPlanId <= 0) {
-      return res.status(400).json({ error: 'ID do agendamento invalido.' });
-    }
-    plan = findPlanByIdStmt.get(numericPlanId);
-  } else if (dateParam) {
-    if (!isValidDate(dateParam)) {
-      return res.status(400).json({ error: 'Informe uma data valida (YYYY-MM-DD).' });
-    }
-    const normalized = dateParam.trim();
-    plan = findPlanByDateStmt.get(baseCycle.id, influencer.id, normalized);
-  }
-
-  if (!plan || plan.influencer_id !== influencer.id) {
-    return res.status(404).json({ error: 'Agendamento nao encontrado para o dia informado.' });
-  }
-
-  if (plan.status === 'validated') {
-    return res.status(409).json({ error: 'Stories ja validado para este dia.' });
-  }
-
-  const autoDetectedRaw = req.body?.autoDetected ?? req.body?.auto_detected ?? req.body?.automatico;
-  const autoDetected = normalizeBooleanInput(autoDetectedRaw) === true;
-  const proofUrl = trimString(
-    req.body?.proofUrl ?? req.body?.proof_url ?? req.body?.link ?? req.body?.comprovante ?? ''
-  );
-  const proofNotes = trimString(req.body?.proofNotes ?? req.body?.proof_notes ?? req.body?.observacao ?? '');
-
-  let submission = findSubmissionByPlanStmt.get(plan.id);
-
-  try {
-    if (!submission) {
-      const statusValue = autoDetected ? 'approved' : 'pending';
-      const validationType = autoDetected ? 'auto' : 'manual';
-      insertStorySubmissionStmt.run(
-        plan.cycle_id,
-        influencer.id,
-        plan.id,
-        plan.scheduled_date,
-        statusValue,
-        validationType,
-        autoDetected ? 1 : 0,
-        proofUrl || null,
-        proofNotes || null
-      );
-      submission = findSubmissionByPlanStmt.get(plan.id);
-      updateInfluencerPlanStatusStmt.run(autoDetected ? 'validated' : 'posted', plan.id);
-    } else if (autoDetected) {
-      if (submission.status === 'approved') {
-        updateInfluencerPlanStatusStmt.run('validated', plan.id);
-      } else {
-        autoApproveSubmissionStmt.run(proofUrl || null, proofNotes || null, submission.id);
-        updateInfluencerPlanStatusStmt.run('validated', plan.id);
-      }
-      submission = findSubmissionByPlanStmt.get(plan.id);
-    } else {
-      if (submission.status === 'approved') {
-        return res.status(409).json({ error: 'Stories ja aprovado para este dia.' });
-      }
-      updateStorySubmissionStmt.run('pending', 'manual', 0, proofUrl || null, proofNotes || null, submission.id);
-      updateInfluencerPlanStatusStmt.run('posted', plan.id);
-      submission = findSubmissionByPlanStmt.get(plan.id);
-    }
-
-    touchCycleStmt.run(plan.cycle_id);
-  } catch (error) {
-    console.error('Erro ao registrar submissao de story:', error);
-    return res.status(500).json({ error: 'Nao foi possivel registrar a submissao.' });
-  }
-
-  const statusCode = autoDetected ? 200 : 202;
-  return res.status(statusCode).json(submission);
-});
-
-app.put('/influencer/submissions/:id', authenticate, verificarAceite, (req, res) => {
-  const submissionId = Number(req.params.id);
-  if (!Number.isInteger(submissionId) || submissionId <= 0) {
-    return res.status(400).json({ error: 'ID invalido.' });
-  }
-
-  const submission = findSubmissionByIdStmt.get(submissionId);
-  if (!submission) {
-    return res.status(404).json({ error: 'Submissao nao encontrada.' });
-  }
-
-  const { influencer, status, message } = resolveInfluencerForRequest(req, submission.influencer_id);
-  if (!influencer) {
-    return res.status(status).json({ error: message });
-  }
-
-  if (submission.status === 'approved') {
-    return res.status(409).json({ error: 'Submissao ja aprovada.' });
-  }
-
-  const proofUrl = trimString(
-    req.body?.proofUrl ?? req.body?.proof_url ?? req.body?.link ?? req.body?.comprovante ?? ''
-  );
-  const proofNotes = trimString(req.body?.proofNotes ?? req.body?.proof_notes ?? req.body?.observacao ?? '');
-
-  try {
-    updateStorySubmissionStmt.run('pending', 'manual', 0, proofUrl || null, proofNotes || null, submission.id);
-    if (submission.plan_id) {
-      updateInfluencerPlanStatusStmt.run('posted', submission.plan_id);
-    }
-    touchCycleStmt.run(submission.cycle_id);
-  } catch (error) {
-    console.error('Erro ao atualizar submissao de story:', error);
-    return res.status(500).json({ error: 'Nao foi possivel atualizar a submissao.' });
-  }
-
-  const updated = findSubmissionByIdStmt.get(submission.id);
-  return res.status(200).json(updated);
-});
-
 app.get('/influencer/dashboard', authenticate, verificarAceite, (req, res) => {
   const cycle = getCycleByIdOrCurrent(req.query?.cycleId ?? req.query?.cycle_id);
   const { influencer, status, message } = resolveInfluencerForRequest(
@@ -2949,11 +2701,10 @@ app.get('/influencer/dashboard', authenticate, verificarAceite, (req, res) => {
   }
 
   const plans = listPlansByInfluencerStmt.all(cycle.id, influencer.id);
-  const submissions = listSubmissionsByInfluencerStmt.all(cycle.id, influencer.id);
-  const validatedDaysRow = countValidatedSubmissionsStmt.get(cycle.id, influencer.id) || { total: 0 };
+  const validatedDaysRow = countValidatedPlansStmt.get(cycle.id, influencer.id) || { total: 0 };
   const validatedDays = Number(validatedDaysRow.total) || 0;
   const plannedDays = plans.length;
-  const pendingStories = submissions.filter((submission) => submission.status === 'pending').length;
+  const pendingValidations = plans.filter((plan) => plan.status === 'scheduled').length;
   const todayIso = new Date().toISOString().slice(0, 10);
   const alerts = plans
     .filter((plan) => plan.status !== 'validated' && plan.scheduled_date < todayIso)
@@ -2977,11 +2728,10 @@ app.get('/influencer/dashboard', authenticate, verificarAceite, (req, res) => {
       vendas_valor: influencer.vendas_valor
     },
     plans,
-    submissions,
     progress: {
       plannedDays,
       validatedDays,
-      pendingStories,
+      pendingValidations,
       multiplier: commission.multiplier,
       multiplierLabel: commission.label,
       estimatedCommission: commission.total
@@ -3008,81 +2758,69 @@ app.get('/influencer/history', authenticate, verificarAceite, (req, res) => {
 
 app.get('/master/validations', authenticate, authorizeMaster, (req, res) => {
   const cycle = getCycleByIdOrCurrent(req.query?.cycleId ?? req.query?.cycle_id);
-  const pending = listPendingSubmissionsStmt
-    .all()
-    .filter((row) => row.cycle_id === cycle.id);
+  const pending = listPendingPlanValidationsStmt.all(cycle.id);
   return res.status(200).json({ cycle, pending });
 });
 
 app.post('/master/validations/:id/approve', authenticate, authorizeMaster, (req, res) => {
-  const submissionId = Number(req.params.id);
-  if (!Number.isInteger(submissionId) || submissionId <= 0) {
+  const planId = Number(req.params.id);
+  if (!Number.isInteger(planId) || planId <= 0) {
     return res.status(400).json({ error: 'ID invalido.' });
   }
 
-  const submission = findSubmissionByIdStmt.get(submissionId);
-  if (!submission) {
-    return res.status(404).json({ error: 'Submissao nao encontrada.' });
+  const plan = findPlanWithInfluencerStmt.get(planId);
+  if (!plan) {
+    return res.status(404).json({ error: 'Agendamento nao encontrado.' });
   }
 
-  if (submission.status === 'approved') {
-    return res.status(409).json({ error: 'Submissao ja aprovada.' });
+  if (plan.status === 'validated') {
+    return res.status(409).json({ error: 'Este dia ja foi validado.' });
   }
 
   try {
-    approveStorySubmissionStmt.run(req.auth.user.id, submission.id);
-    if (submission.plan_id) {
-      updateInfluencerPlanStatusStmt.run('validated', submission.plan_id);
-    }
-    touchCycleStmt.run(submission.cycle_id);
+    updateInfluencerPlanStatusStmt.run('validated', plan.id);
+    touchCycleStmt.run(plan.cycle_id);
   } catch (error) {
-    console.error('Erro ao aprovar submissao:', error);
+    console.error('Erro ao validar agendamento:', error);
     return res.status(500).json({ error: 'Nao foi possivel aprovar o story.' });
   }
 
-  const updated = findSubmissionByIdStmt.get(submission.id);
+  const updated = findPlanWithInfluencerStmt.get(plan.id);
   return res.status(200).json(updated);
 });
 
 app.post('/master/validations/:id/reject', authenticate, authorizeMaster, (req, res) => {
-  const submissionId = Number(req.params.id);
-  if (!Number.isInteger(submissionId) || submissionId <= 0) {
+  const planId = Number(req.params.id);
+  if (!Number.isInteger(planId) || planId <= 0) {
     return res.status(400).json({ error: 'ID invalido.' });
   }
 
-  const submission = findSubmissionByIdStmt.get(submissionId);
-  if (!submission) {
-    return res.status(404).json({ error: 'Submissao nao encontrada.' });
+  const plan = findPlanWithInfluencerStmt.get(planId);
+  if (!plan) {
+    return res.status(404).json({ error: 'Agendamento nao encontrado.' });
   }
 
-  const reason = trimString(req.body?.reason ?? req.body?.motivo ?? req.body?.justificativa ?? '');
-
   try {
-    rejectStorySubmissionStmt.run(req.auth.user.id, submission.id, reason || null);
-    if (submission.plan_id) {
-      updateInfluencerPlanStatusStmt.run('scheduled', submission.plan_id);
-    }
-    touchCycleStmt.run(submission.cycle_id);
+    updateInfluencerPlanStatusStmt.run('scheduled', plan.id);
+    touchCycleStmt.run(plan.cycle_id);
   } catch (error) {
-    console.error('Erro ao rejeitar submissao:', error);
+    console.error('Erro ao reabrir agendamento:', error);
     return res.status(500).json({ error: 'Nao foi possivel rejeitar o story.' });
   }
 
-  const updated = findSubmissionByIdStmt.get(submission.id);
+  const updated = findPlanWithInfluencerStmt.get(plan.id);
   return res.status(200).json(updated);
 });
 
 app.get('/master/dashboard', authenticate, authorizeMaster, (req, res) => {
   const cycle = getCycleByIdOrCurrent(req.query?.cycleId ?? req.query?.cycle_id);
   const plans = listPlansForCycleStmt.all(cycle.id);
-  const pending = listPendingSubmissionsStmt
-    .all()
-    .filter((row) => row.cycle_id === cycle.id);
+  const pending = listPendingPlanValidationsStmt.all(cycle.id);
   const influencers = listInfluencersStmt.all();
   const todayIso = new Date().toISOString().slice(0, 10);
 
   const influencersSummary = influencers.map((row) => {
-    const validatedRow = countValidatedSubmissionsStmt.get(cycle.id, row.id) || { total: 0 };
+    const validatedRow = countValidatedPlansStmt.get(cycle.id, row.id) || { total: 0 };
     const plannedRow = countPlansByInfluencerStmt.get(cycle.id, row.id) || { total: 0 };
     return {
       id: row.id,
@@ -3135,15 +2873,15 @@ app.post('/master/cycles/:id/close', authenticate, authorizeMaster, (req, res) =
   try {
     influencers.forEach((influencer) => {
       if (!influencer) return;
-      const validatedRow = countValidatedSubmissionsStmt.get(cycle.id, influencer.id) || { total: 0 };
+      const validatedRow = countValidatedPlansStmt.get(cycle.id, influencer.id) || { total: 0 };
       const plannedRow = countPlansByInfluencerStmt.get(cycle.id, influencer.id) || { total: 0 };
       const validatedDays = Number(validatedRow.total) || 0;
       const plannedDays = Number(plannedRow.total) || 0;
 
       const salesSummary = salesSummaryStmt.get(influencer.id) || { total_commission: 0 };
       const commissionSummary = summarizeCommission(salesSummary.total_commission || 0, validatedDays);
-      const proofRows = listApprovedSubmissionsWithProofsStmt.all(cycle.id, influencer.id) || [];
-      const validationSummary = proofRows.length ? JSON.stringify(proofRows) : null;
+      const validatedPlans = listValidatedPlansStmt.all(cycle.id, influencer.id) || [];
+      const validationSummary = validatedPlans.length ? JSON.stringify(validatedPlans) : null;
 
       insertMonthlyCommissionStmt.run({
         cycle_id: cycle.id,
@@ -3158,7 +2896,7 @@ app.post('/master/cycles/:id/close', authenticate, authorizeMaster, (req, res) =
       });
 
       if (plannedDays > 0) {
-        markMissedPlansStmt.run(cycle.id, influencer.id, cycleEnd, cycle.id, influencer.id);
+        markMissedPlansStmt.run(cycle.id, influencer.id, cycleEnd);
       }
 
       summaries.push({

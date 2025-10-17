@@ -79,6 +79,14 @@
         transform: translateY(-1px);
         box-shadow: 0 10px 20px rgba(228, 68, 122, 0.25);
       }
+      .button-secondary {
+        background: rgba(228, 68, 122, 0.12);
+        color: #c72b60;
+      }
+      .button-secondary:hover {
+        box-shadow: none;
+        transform: none;
+      }
       textarea,
       input,
       select {
@@ -105,6 +113,41 @@
         padding: 0.75rem 1rem;
         border-radius: 12px;
       }
+      .planner-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        align-items: center;
+        margin-bottom: 0.75rem;
+      }
+      .chip-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+      }
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        background: rgba(228, 68, 122, 0.16);
+        color: #c72b60;
+        border-radius: 999px;
+        padding: 0.35rem 0.8rem;
+        font-size: 0.9rem;
+      }
+      .chip button {
+        background: transparent;
+        border: none;
+        color: #c72b60;
+        font-size: 1rem;
+        cursor: pointer;
+        padding: 0;
+        line-height: 1;
+      }
+      .chip button:hover {
+        color: #e4447a;
+      }
       .muted {
         color: #6b7280;
         font-size: 0.9rem;
@@ -117,7 +160,7 @@
   <body>
     <header>
       <h1>Painel Pinklovers – Influenciadora</h1>
-      <p>Acompanhe seu ciclo mensal, organize stories e envie comprovantes.</p>
+      <p>Acompanhe seu ciclo mensal, organize as datas de stories e monitore as validações.</p>
     </header>
     <main>
       <section id="status">
@@ -140,6 +183,10 @@
             <div id="cycle-validated" class="muted">–</div>
           </div>
           <div>
+            <strong>Dias aguardando validação:</strong>
+            <div id="cycle-pending" class="muted">–</div>
+          </div>
+          <div>
             <strong>Comissão estimada:</strong>
             <div id="cycle-commission" class="muted">–</div>
           </div>
@@ -149,9 +196,18 @@
 
       <section>
         <h2>Agenda do Mês</h2>
-        <p class="muted">Informe as datas (YYYY-MM-DD) separadas por linha para agendar seus stories.</p>
+        <p class="muted">
+          Escolha cada data em que pretende postar stories neste ciclo. Você pode adicionar várias datas antes de salvar.
+        </p>
         <form id="plan-form">
-          <textarea id="plan-days" rows="4" placeholder="2024-08-01&#10;2024-08-05"></textarea>
+          <div class="planner-actions">
+            <label style="flex: 1 1 220px">
+              Selecionar dia
+              <input id="plan-date" type="date" />
+            </label>
+            <button type="button" id="add-day" class="button-secondary">Adicionar dia</button>
+          </div>
+          <div id="selected-days" class="chip-list muted">Nenhuma data selecionada.</div>
           <button type="submit">Salvar agenda</button>
           <span id="plan-feedback" class="muted"></span>
         </form>
@@ -168,43 +224,6 @@
           </tbody>
         </table>
       </section>
-
-      <section>
-        <h2>Enviar Story</h2>
-        <form id="submission-form" class="grid">
-          <label>
-            Selecionar dia agendado
-            <select id="submission-plan"></select>
-          </label>
-          <label>
-            Link ou comprovante (opcional em validação automática)
-            <input id="submission-proof" type="url" placeholder="https://" />
-          </label>
-          <label>
-            Observações
-            <textarea id="submission-notes" rows="2" placeholder="Informações adicionais"></textarea>
-          </label>
-          <label>
-            <input id="submission-auto" type="checkbox" /> Story identificado automaticamente (marcou @hidrapink)
-          </label>
-          <button type="submit">Enviar story</button>
-          <span id="submission-feedback" class="muted"></span>
-        </form>
-
-        <h3>Histórico de Submissões</h3>
-        <table>
-          <thead>
-            <tr>
-              <th>Data</th>
-              <th>Status</th>
-              <th>Última atualização</th>
-            </tr>
-          </thead>
-          <tbody id="submission-table">
-            <tr><td colspan="3" class="muted">Nenhum story enviado ainda.</td></tr>
-          </tbody>
-        </table>
-      </section>
     </main>
 
     <script>
@@ -216,7 +235,7 @@
       const state = {
         cycle: null,
         plans: [],
-        submissions: []
+        draftDays: []
       };
 
       const headers = () => ({
@@ -230,6 +249,14 @@
         return `${day}/${month}/${year}`;
       };
 
+      const statusLabels = {
+        scheduled: 'Pendente',
+        validated: 'Validado',
+        posted: 'Em validação',
+        missed: 'Não entregue'
+      };
+      const formatStatus = (status) => statusLabels[status] || status;
+
       const setText = (id, text) => {
         const el = document.getElementById(id);
         if (el) {
@@ -237,62 +264,80 @@
         }
       };
 
-      const renderPlans = () => {
-        const table = document.getElementById('plan-table');
-        const select = document.getElementById('submission-plan');
-        table.innerHTML = '';
-        select.innerHTML = '';
+      const getCyclePrefix = () => {
+        if (!state.cycle) return null;
+        const month = String(state.cycle.cycle_month).padStart(2, '0');
+        return `${state.cycle.cycle_year}-${month}-`;
+      };
 
-        if (!state.plans.length) {
-          table.innerHTML = '<tr><td colspan="3" class="muted">Nenhum agendamento cadastrado.</td></tr>';
-          select.innerHTML = '<option value="">Nenhum agendamento disponível</option>';
+      function removeDay(day) {
+        state.draftDays = state.draftDays.filter((value) => value !== day);
+        renderSelectedDays();
+      }
+
+      function renderSelectedDays() {
+        const container = document.getElementById('selected-days');
+        if (!container) return;
+        container.innerHTML = '';
+        if (!state.draftDays.length) {
+          container.classList.add('muted');
+          container.textContent = 'Nenhuma data selecionada.';
           return;
         }
+        container.classList.remove('muted');
+        state.draftDays.forEach((day) => {
+          const chip = document.createElement('span');
+          chip.className = 'chip';
+          const label = document.createElement('span');
+          label.textContent = formatDate(day);
+          const removeButton = document.createElement('button');
+          removeButton.type = 'button';
+          removeButton.setAttribute('aria-label', `Remover ${formatDate(day)}`);
+          removeButton.textContent = '×';
+          removeButton.addEventListener('click', () => removeDay(day));
+          chip.append(label, removeButton);
+          container.appendChild(chip);
+        });
+      }
 
+      function syncDraftFromPlans() {
+        state.draftDays = state.plans
+          .filter((plan) => plan.status === 'scheduled')
+          .map((plan) => plan.scheduled_date);
+        state.draftDays.sort();
+        renderSelectedDays();
+      }
+
+      function renderPlans() {
+        const table = document.getElementById('plan-table');
+        if (!table) return;
+        table.innerHTML = '';
+        if (!state.plans.length) {
+          table.innerHTML = '<tr><td colspan="3" class="muted">Nenhum agendamento cadastrado.</td></tr>';
+          return;
+        }
         state.plans.forEach((plan) => {
           const row = document.createElement('tr');
+          const statusText = formatStatus(plan.status);
           row.innerHTML = `
             <td>${formatDate(plan.scheduled_date)}</td>
-            <td><span class="status-chip">${plan.status}</span></td>
+            <td><span class="status-chip">${statusText}</span></td>
             <td>${plan.script_title || '-'}</td>
           `;
           table.appendChild(row);
-
-          const option = document.createElement('option');
-          option.value = plan.id;
-          option.textContent = `${formatDate(plan.scheduled_date)} – ${plan.status}`;
-          select.appendChild(option);
         });
-      };
-
-      const renderSubmissions = () => {
-        const table = document.getElementById('submission-table');
-        table.innerHTML = '';
-        if (!state.submissions.length) {
-          table.innerHTML = '<tr><td colspan="3" class="muted">Nenhum story enviado ainda.</td></tr>';
-          return;
-        }
-        state.submissions.forEach((submission) => {
-          const row = document.createElement('tr');
-          const updated = submission.validated_at || submission.submitted_at;
-          row.innerHTML = `
-            <td>${formatDate(submission.scheduled_date)}</td>
-            <td><span class="status-chip">${submission.status}</span></td>
-            <td class="muted">${updated || '-'}</td>
-          `;
-          table.appendChild(row);
-        });
-      };
+      }
 
       const renderStatus = (dashboard) => {
         state.cycle = dashboard.cycle;
         state.plans = dashboard.plans || [];
-        state.submissions = dashboard.submissions || [];
+        syncDraftFromPlans();
 
         setText('cycle-period', `${dashboard.cycle.cycle_month}/${dashboard.cycle.cycle_year}`);
         setText('cycle-multiplier', `${dashboard.progress.multiplier}x – ${dashboard.progress.multiplierLabel}`);
         setText('cycle-planned', String(dashboard.progress.plannedDays));
         setText('cycle-validated', String(dashboard.progress.validatedDays));
+        setText('cycle-pending', String(dashboard.progress.pendingValidations));
         setText(
           'cycle-commission',
           dashboard.commission ? `R$ ${dashboard.commission.total.toFixed(2)}` : '–'
@@ -307,11 +352,7 @@
           alerts.appendChild(element);
         });
 
-        const textarea = document.getElementById('plan-days');
-        textarea.value = state.plans.map((plan) => plan.scheduled_date).join('\n');
-
         renderPlans();
-        renderSubmissions();
       };
 
       const loadDashboard = async () => {
@@ -323,60 +364,71 @@
         renderStatus(data);
       };
 
-      document.getElementById('plan-form').addEventListener('submit', async (event) => {
+      const planForm = document.getElementById('plan-form');
+      const addDayButton = document.getElementById('add-day');
+      const planFeedback = document.getElementById('plan-feedback');
+      const planDateInput = document.getElementById('plan-date');
+      const setFeedback = (message) => {
+        if (planFeedback) {
+          planFeedback.textContent = message;
+        }
+      };
+
+      addDayButton.addEventListener('click', () => {
+        setFeedback('');
+        if (!state.cycle) {
+          setFeedback('Carregando ciclo atual...');
+          return;
+        }
+        const rawValue = planDateInput.value;
+        if (!rawValue) {
+          setFeedback('Selecione uma data.');
+          return;
+        }
+        const normalized = rawValue.trim();
+        const prefix = getCyclePrefix();
+        if (prefix && !normalized.startsWith(prefix)) {
+          const month = String(state.cycle.cycle_month).padStart(2, '0');
+          setFeedback(`Escolha uma data dentro de ${month}/${state.cycle.cycle_year}.`);
+          return;
+        }
+        if (state.draftDays.includes(normalized)) {
+          setFeedback('Esta data já foi adicionada.');
+          return;
+        }
+        const alreadyValidated = state.plans.some(
+          (plan) => plan.scheduled_date === normalized && plan.status === 'validated'
+        );
+        if (alreadyValidated) {
+          setFeedback('Este dia já foi validado e não pode ser alterado.');
+          return;
+        }
+        state.draftDays.push(normalized);
+        state.draftDays.sort();
+        renderSelectedDays();
+        planDateInput.value = '';
+      });
+
+      planForm.addEventListener('submit', async (event) => {
         event.preventDefault();
-        const feedback = document.getElementById('plan-feedback');
-        feedback.textContent = 'Salvando...';
-        const days = document
-          .getElementById('plan-days')
-          .value.split(/\s+/)
-          .map((day) => day.trim())
-          .filter((day) => day);
+        setFeedback('Salvando...');
+        if (!state.draftDays.length) {
+          setFeedback('Adicione ao menos uma data antes de salvar.');
+          return;
+        }
         const response = await fetch('/influencer/plan', {
           method: 'POST',
           headers: headers(),
-          body: JSON.stringify({ days })
+          body: JSON.stringify({ days: state.draftDays })
         });
         if (!response.ok) {
           const error = await response.json().catch(() => ({}));
-          feedback.textContent = error.error || 'Não foi possível salvar a agenda.';
+          setFeedback(error.error || 'Não foi possível salvar a agenda.');
           return;
         }
-        feedback.textContent = 'Agenda atualizada com sucesso!';
-        const data = await response.json();
-        state.plans = data.plans || [];
-        renderPlans();
-        loadDashboard();
-      });
-
-      document.getElementById('submission-form').addEventListener('submit', async (event) => {
-        event.preventDefault();
-        const feedback = document.getElementById('submission-feedback');
-        feedback.textContent = 'Enviando story...';
-        const planId = document.getElementById('submission-plan').value;
-        if (!planId) {
-          feedback.textContent = 'Selecione um dia agendado.';
-          return;
-        }
-        const payload = {
-          planId: Number(planId),
-          proofUrl: document.getElementById('submission-proof').value.trim() || undefined,
-          proofNotes: document.getElementById('submission-notes').value.trim() || undefined,
-          autoDetected: document.getElementById('submission-auto').checked
-        };
-        const response = await fetch('/influencer/submissions', {
-          method: 'POST',
-          headers: headers(),
-          body: JSON.stringify(payload)
-        });
-        const message = response.ok ? 'Story enviado com sucesso!' : 'Não foi possível enviar o story.';
-        feedback.textContent = message;
-        document.getElementById('submission-proof').value = '';
-        document.getElementById('submission-notes').value = '';
-        document.getElementById('submission-auto').checked = false;
+        setFeedback('Agenda atualizada com sucesso!');
         await loadDashboard();
       });
-
       loadDashboard().catch((error) => {
         console.error(error);
         document.body.innerHTML = '<main><section><h2>Erro ao carregar painel</h2><p>Tente novamente mais tarde.</p></section></main>';
