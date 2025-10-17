@@ -467,11 +467,197 @@ const ensureContentScriptsTable = () => {
   db.exec('CREATE INDEX IF NOT EXISTS idx_content_scripts_created_at ON content_scripts(created_at DESC);');
 };
 
+const createMonthlyCyclesTable = (tableName = 'monthly_cycles') => `
+  CREATE TABLE ${tableName} (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    cycle_year INTEGER NOT NULL,
+    cycle_month INTEGER NOT NULL,
+    status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'closed')),
+    started_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    closed_at DATETIME,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+`;
+
+const ensureMonthlyCyclesTable = () => {
+  let tableInfo = db.prepare('PRAGMA table_info(monthly_cycles)').all();
+  if (!tableInfo.length) {
+    db.exec(createMonthlyCyclesTable());
+    tableInfo = db.prepare('PRAGMA table_info(monthly_cycles)').all();
+  }
+
+  const hasColumn = (name) => tableInfo.some((column) => column.name === name);
+
+  const ensureColumn = (name, definition) => {
+    if (!hasColumn(name)) {
+      db.exec(`ALTER TABLE monthly_cycles ADD COLUMN ${definition};`);
+      tableInfo = db.prepare('PRAGMA table_info(monthly_cycles)').all();
+    }
+  };
+
+  ensureColumn('status', "status TEXT NOT NULL DEFAULT 'open'");
+  ensureColumn('started_at', 'started_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP');
+  ensureColumn('closed_at', 'closed_at DATETIME');
+  ensureColumn('created_at', 'created_at DATETIME DEFAULT CURRENT_TIMESTAMP');
+  ensureColumn('updated_at', 'updated_at DATETIME DEFAULT CURRENT_TIMESTAMP');
+
+  db.exec(
+    'CREATE UNIQUE INDEX IF NOT EXISTS uniq_monthly_cycles_year_month ON monthly_cycles(cycle_year, cycle_month);'
+  );
+  db.exec(
+    "CREATE INDEX IF NOT EXISTS idx_monthly_cycles_status ON monthly_cycles(status, cycle_year DESC, cycle_month DESC);"
+  );
+};
+
+const createInfluencerPlansTable = (tableName = 'influencer_plans') => `
+  CREATE TABLE ${tableName} (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    cycle_id INTEGER NOT NULL,
+    influencer_id INTEGER NOT NULL,
+    scheduled_date TEXT NOT NULL,
+    content_script_id INTEGER,
+    notes TEXT,
+    status TEXT NOT NULL DEFAULT 'scheduled' CHECK (status IN ('scheduled', 'posted', 'validated', 'missed')),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(cycle_id) REFERENCES monthly_cycles(id) ON DELETE CASCADE,
+    FOREIGN KEY(influencer_id) REFERENCES influenciadoras(id) ON DELETE CASCADE,
+    FOREIGN KEY(content_script_id) REFERENCES content_scripts(id) ON DELETE SET NULL
+  );
+`;
+
+const ensureInfluencerPlansTable = () => {
+  let tableInfo = db.prepare('PRAGMA table_info(influencer_plans)').all();
+  if (!tableInfo.length) {
+    db.exec(createInfluencerPlansTable());
+    tableInfo = db.prepare('PRAGMA table_info(influencer_plans)').all();
+  }
+
+  const hasColumn = (name) => tableInfo.some((column) => column.name === name);
+
+  const ensureColumn = (name, definition) => {
+    if (!hasColumn(name)) {
+      db.exec(`ALTER TABLE influencer_plans ADD COLUMN ${definition};`);
+      tableInfo = db.prepare('PRAGMA table_info(influencer_plans)').all();
+    }
+  };
+
+  ensureColumn('status', "status TEXT NOT NULL DEFAULT 'scheduled'");
+  ensureColumn('notes', 'notes TEXT');
+  ensureColumn('content_script_id', 'content_script_id INTEGER');
+  ensureColumn('updated_at', 'updated_at DATETIME DEFAULT CURRENT_TIMESTAMP');
+
+  db.exec(
+    'CREATE UNIQUE INDEX IF NOT EXISTS uniq_influencer_plans_cycle_influencer_date ON influencer_plans(cycle_id, influencer_id, scheduled_date);'
+  );
+  db.exec(
+    'CREATE INDEX IF NOT EXISTS idx_influencer_plans_influencer ON influencer_plans(influencer_id, scheduled_date);'
+  );
+};
+
+const createStorySubmissionsTable = (tableName = 'story_submissions') => `
+  CREATE TABLE ${tableName} (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    cycle_id INTEGER NOT NULL,
+    influencer_id INTEGER NOT NULL,
+    plan_id INTEGER,
+    scheduled_date TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+    validation_type TEXT DEFAULT 'manual',
+    auto_detected INTEGER DEFAULT 0,
+    proof_url TEXT,
+    proof_notes TEXT,
+    submitted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    validated_at DATETIME,
+    validated_by INTEGER,
+    rejection_reason TEXT,
+    FOREIGN KEY(cycle_id) REFERENCES monthly_cycles(id) ON DELETE CASCADE,
+    FOREIGN KEY(influencer_id) REFERENCES influenciadoras(id) ON DELETE CASCADE,
+    FOREIGN KEY(plan_id) REFERENCES influencer_plans(id) ON DELETE SET NULL,
+    FOREIGN KEY(validated_by) REFERENCES users(id) ON DELETE SET NULL
+  );
+`;
+
+const ensureStorySubmissionsTable = () => {
+  let tableInfo = db.prepare('PRAGMA table_info(story_submissions)').all();
+  if (!tableInfo.length) {
+    db.exec(createStorySubmissionsTable());
+    tableInfo = db.prepare('PRAGMA table_info(story_submissions)').all();
+  }
+
+  const hasColumn = (name) => tableInfo.some((column) => column.name === name);
+  const ensureColumn = (name, definition) => {
+    if (!hasColumn(name)) {
+      db.exec(`ALTER TABLE story_submissions ADD COLUMN ${definition};`);
+      tableInfo = db.prepare('PRAGMA table_info(story_submissions)').all();
+    }
+  };
+
+  ensureColumn('rejection_reason', 'rejection_reason TEXT');
+  ensureColumn('auto_detected', 'auto_detected INTEGER DEFAULT 0');
+  ensureColumn('validation_type', "validation_type TEXT DEFAULT 'manual'");
+
+  db.exec(
+    'CREATE INDEX IF NOT EXISTS idx_story_submissions_cycle_status ON story_submissions(cycle_id, status, scheduled_date);'
+  );
+  db.exec(
+    'CREATE UNIQUE INDEX IF NOT EXISTS uniq_story_submissions_plan ON story_submissions(plan_id) WHERE plan_id IS NOT NULL;'
+  );
+};
+
+const createMonthlyCommissionsTable = (tableName = 'monthly_commissions') => `
+  CREATE TABLE ${tableName} (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    cycle_id INTEGER NOT NULL,
+    influencer_id INTEGER NOT NULL,
+    validated_days INTEGER NOT NULL DEFAULT 0,
+    multiplier REAL NOT NULL DEFAULT 0,
+    base_commission REAL NOT NULL DEFAULT 0,
+    total_commission REAL NOT NULL DEFAULT 0,
+    deliveries_planned INTEGER NOT NULL DEFAULT 0,
+    deliveries_completed INTEGER NOT NULL DEFAULT 0,
+    validation_summary TEXT,
+    closed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(cycle_id) REFERENCES monthly_cycles(id) ON DELETE CASCADE,
+    FOREIGN KEY(influencer_id) REFERENCES influenciadoras(id) ON DELETE CASCADE
+  );
+`;
+
+const ensureMonthlyCommissionsTable = () => {
+  let tableInfo = db.prepare('PRAGMA table_info(monthly_commissions)').all();
+  if (!tableInfo.length) {
+    db.exec(createMonthlyCommissionsTable());
+    tableInfo = db.prepare('PRAGMA table_info(monthly_commissions)').all();
+  }
+
+  const hasColumn = (name) => tableInfo.some((column) => column.name === name);
+  const ensureColumn = (name, definition) => {
+    if (!hasColumn(name)) {
+      db.exec(`ALTER TABLE monthly_commissions ADD COLUMN ${definition};`);
+      tableInfo = db.prepare('PRAGMA table_info(monthly_commissions)').all();
+    }
+  };
+
+  ensureColumn('validation_summary', 'validation_summary TEXT');
+  ensureColumn('deliveries_planned', 'deliveries_planned INTEGER NOT NULL DEFAULT 0');
+  ensureColumn('deliveries_completed', 'deliveries_completed INTEGER NOT NULL DEFAULT 0');
+
+  db.exec(
+    'CREATE UNIQUE INDEX IF NOT EXISTS uniq_monthly_commissions_cycle_influencer ON monthly_commissions(cycle_id, influencer_id);'
+  );
+};
+
 ensureUsersTable();
 ensureInfluenciadorasTable();
 ensureSalesTable();
 ensureAceiteTermosTable();
 ensureContentScriptsTable();
+ensureMonthlyCyclesTable();
+ensureInfluencerPlansTable();
+ensureStorySubmissionsTable();
+ensureMonthlyCommissionsTable();
 
 db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_influenciadoras_instagram ON influenciadoras(instagram);');
 db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_influenciadoras_cpf ON influenciadoras(cpf) WHERE cpf IS NOT NULL;');
