@@ -58,4 +58,14 @@ Os testes usam um banco SQLite isolado (`test.sqlite`) e garantem que o fluxo de
 - **Codigo de assinatura nao e reconhecido**: confira se o codigo informado corresponde ao registrado para a influenciadora cadastrada.
 - **Problemas para compilar o `better-sqlite3` no Windows**: instale o [Windows Build Tools](https://github.com/felixrieseberg/windows-build-tools) ou utilize o WSL.
 
+## 8. Filtrando pedidos de influenciadoras
+
+Para validar os pedidos exportados do Shopify (`orders_export.csv`), utilize o script `scripts/filter_orders.py`. Ele aplica automaticamente as regras combinadas (pedido numerado, data de pagamento preenchida, cupom cadastrado e subtotal valido) e gera o arquivo `orders_valid.csv` com os registros aprovados:
+
+```bash
+scripts/filter_orders.py
+```
+
+O script utiliza a lista de cupons cadastrados em `data/valid_coupons.json`. Atualize esse arquivo sempre que um novo cupom for liberado para garantir que apenas pedidos elegiveis sejam processados.
+
 Com essas configuracoes o projeto estara pronto para rodar localmente, permitindo que o fluxo de aceite e as demais funcionalidades sejam exercitadas sem dependencia de infraestrutura externa.
