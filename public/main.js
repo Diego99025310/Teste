@@ -3162,6 +3162,11 @@
     const backButtons = document.querySelectorAll('.btn-back');
     const scriptsListEl = document.getElementById('influencerScriptsList');
     const scriptsMessageEl = document.getElementById('influencerScriptsMessage');
+    const planCyclePeriodEl = document.getElementById('planCyclePeriod');
+    const planScheduledCountEl = document.getElementById('planScheduledCount');
+    const planValidatedCountEl = document.getElementById('planValidatedCount');
+    const planMessageEl = document.getElementById('planMessage');
+    const planEntriesListEl = document.getElementById('planEntriesList');
 
     const sectionsMap = sectionNodes.reduce((acc, section) => {
       if (section?.id) {
@@ -3173,19 +3178,440 @@
     let scriptsLoaded = false;
     let scriptsLoading = false;
 
+    const planStatusLabels = {
+      scheduled: 'Pendente',
+      validated: 'Validado',
+      posted: 'Em validação',
+      missed: 'Não entregue'
+    };
+
+    const planState = {
+      cycle: null,
+      plans: [],
+      scripts: [],
+      loading: false
+    };
+
     let currentContractRecord = null;
     let contractWaived = false;
 
-    const renderScriptsList = (rows) => {
+    const formatPlanStatus = (status) => planStatusLabels[status] || status || '-';
+
+    const computeCycleBounds = (cycle) => {
+      if (!cycle) return {};
+      const year = Number(cycle.cycle_year);
+      const month = Number(cycle.cycle_month);
+      if (!Number.isInteger(year) || !Number.isInteger(month)) return {};
+      const monthStr = String(month).padStart(2, '0');
+      const firstDay = `${year}-${monthStr}-01`;
+      const lastDay = new Date(year, month, 0).getDate();
+      const lastDayStr = `${year}-${monthStr}-${String(lastDay).padStart(2, '0')}`;
+      return { min: firstDay, max: lastDayStr };
+    };
+
+    const setFormDisabled = (form, disabled) => {
+      if (!form) return;
+      form.querySelectorAll('input, select, textarea, button').forEach((field) => {
+        field.disabled = disabled;
+      });
+    };
+
+    const buildPlanEntriesPayload = (additional = []) => {
+      const scheduled = Array.isArray(planState.plans)
+        ? planState.plans.filter((plan) => plan.status === 'scheduled')
+        : [];
+      const entries = scheduled.map((plan) => {
+        const entry = { date: plan.scheduled_date };
+        if (plan.content_script_id) {
+          entry.scriptId = plan.content_script_id;
+        }
+        if (plan.notes) {
+          entry.notes = plan.notes;
+        }
+        return entry;
+      });
+      additional
+        .filter((entry) => entry && entry.date)
+        .forEach((entry) => entries.push(entry));
+      return entries;
+    };
+
+    const resolveScriptTitle = (plan) => {
+      if (!plan) return '-';
+      const existingTitle = toTrimmedString(plan.script_title ?? plan.scriptTitle ?? '');
+      if (existingTitle) return existingTitle;
+      const scriptId = plan.content_script_id;
+      if (scriptId == null) return '-';
+      const script = planState.scripts.find((item) => Number(item?.id) === Number(scriptId));
+      return toTrimmedString(script?.titulo ?? script?.title ?? '') || `Roteiro ${scriptId}`;
+    };
+
+    const renderPlanOverview = () => {
+      if (planCyclePeriodEl) {
+        if (planState.cycle) {
+          const month = String(planState.cycle.cycle_month).padStart(2, '0');
+          planCyclePeriodEl.textContent = `${month}/${planState.cycle.cycle_year}`;
+        } else {
+          planCyclePeriodEl.textContent = '–';
+        }
+      }
+
+      const plans = Array.isArray(planState.plans) ? planState.plans : [];
+      const scheduledCount = plans.filter((plan) => plan.status === 'scheduled').length;
+      const validatedCount = plans.filter((plan) => plan.status === 'validated').length;
+
+      if (planScheduledCountEl) {
+        planScheduledCountEl.textContent = String(scheduledCount);
+      }
+      if (planValidatedCountEl) {
+        planValidatedCountEl.textContent = String(validatedCount);
+      }
+    };
+
+    const buildPlanEditForm = (plan) => {
+      const form = document.createElement('form');
+      form.className = 'plan-edit-form';
+      form.hidden = true;
+
+      const bounds = computeCycleBounds(planState.cycle);
+
+      const dateLabel = document.createElement('label');
+      dateLabel.textContent = 'Data do story';
+      const dateInput = document.createElement('input');
+      dateInput.type = 'date';
+      if (bounds.min) dateInput.min = bounds.min;
+      if (bounds.max) dateInput.max = bounds.max;
+      dateInput.value = plan.scheduled_date;
+      dateLabel.appendChild(dateInput);
+
+      const scriptLabel = document.createElement('label');
+      scriptLabel.textContent = 'Roteiro';
+      const scriptSelect = document.createElement('select');
+      const emptyOption = document.createElement('option');
+      emptyOption.value = '';
+      emptyOption.textContent = 'Sem roteiro definido';
+      scriptSelect.appendChild(emptyOption);
+      planState.scripts.forEach((script) => {
+        if (!script) return;
+        const option = document.createElement('option');
+        option.value = String(script.id);
+        option.textContent = toTrimmedString(script.titulo ?? script.title ?? '') || `Roteiro ${script.id}`;
+        scriptSelect.appendChild(option);
+      });
+      if (plan.content_script_id) {
+        scriptSelect.value = String(plan.content_script_id);
+      }
+      scriptLabel.appendChild(scriptSelect);
+
+      const noteLabel = document.createElement('label');
+      noteLabel.textContent = 'Observações';
+      const noteInput = document.createElement('textarea');
+      noteInput.rows = 2;
+      noteInput.value = plan.notes ?? '';
+      noteLabel.appendChild(noteInput);
+
+      const actions = document.createElement('div');
+      actions.className = 'form-actions';
+
+      const submitBtn = document.createElement('button');
+      submitBtn.type = 'submit';
+      submitBtn.textContent = 'Salvar alterações';
+
+      const cancelBtn = document.createElement('button');
+      cancelBtn.type = 'button';
+      cancelBtn.className = 'link-button';
+      cancelBtn.textContent = 'Cancelar';
+
+      actions.append(submitBtn, cancelBtn);
+
+      form.append(dateLabel, scriptLabel, noteLabel, actions);
+
+      cancelBtn.addEventListener('click', () => {
+        form.hidden = true;
+      });
+
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        if (form.dataset.loading === 'true') return;
+
+        const nextDate = dateInput.value.trim();
+        if (!nextDate) {
+          setMessage(planMessageEl, 'Informe uma data válida para atualizar o agendamento.', 'error');
+          dateInput.focus();
+          return;
+        }
+
+        const scriptValue = scriptSelect.value.trim();
+        const noteValue = noteInput.value.trim();
+
+        const payload = {};
+        if (nextDate !== plan.scheduled_date) {
+          payload.date = nextDate;
+        }
+        if (scriptValue !== '') {
+          payload.scriptId = Number(scriptValue);
+        } else if (plan.content_script_id != null) {
+          payload.scriptId = null;
+        }
+        if (noteValue !== (plan.notes ?? '')) {
+          payload.notes = noteValue;
+        }
+
+        if (!Object.keys(payload).length) {
+          setMessage(planMessageEl, 'Nenhuma alteração detectada.', 'info');
+          form.hidden = true;
+          return;
+        }
+
+        try {
+          form.dataset.loading = 'true';
+          setFormDisabled(form, true);
+          setMessage(planMessageEl, 'Atualizando agendamento...', 'info');
+          await apiFetch(`/influencer/plan/${plan.id}`, { method: 'PUT', body: payload });
+          setMessage(planMessageEl, 'Agendamento atualizado com sucesso!', 'success');
+          form.hidden = true;
+          await loadPlan({ silent: true });
+        } catch (error) {
+          if (error.status === 401) {
+            logout();
+            return;
+          }
+          setMessage(planMessageEl, error.message || 'Não foi possível atualizar o agendamento.', 'error');
+        } finally {
+          form.dataset.loading = 'false';
+          setFormDisabled(form, false);
+        }
+      });
+
+      return form;
+    };
+
+    const renderPlanEntries = () => {
+      if (!planEntriesListEl) return;
+      planEntriesListEl.innerHTML = '';
+
+      const plans = Array.isArray(planState.plans) ? planState.plans : [];
+      if (!plans.length) {
+        const empty = document.createElement('li');
+        empty.className = 'plan-entry empty';
+        empty.textContent = 'Nenhum agendamento cadastrado.';
+        planEntriesListEl.appendChild(empty);
+        return;
+      }
+
+      plans.forEach((plan) => {
+        const item = document.createElement('li');
+        item.className = 'plan-entry';
+
+        const header = document.createElement('div');
+        header.className = 'plan-entry-header';
+
+        const dateEl = document.createElement('span');
+        dateEl.className = 'plan-entry-date';
+        dateEl.textContent = formatDateToBR(plan.scheduled_date);
+        header.appendChild(dateEl);
+
+        const statusEl = document.createElement('span');
+        statusEl.className = 'plan-entry-status';
+        statusEl.textContent = formatPlanStatus(plan.status);
+        header.appendChild(statusEl);
+
+        item.appendChild(header);
+
+        const scriptInfo = document.createElement('div');
+        scriptInfo.className = 'plan-entry-script';
+        scriptInfo.textContent = plan.content_script_id
+          ? `Roteiro: ${resolveScriptTitle(plan)}`
+          : 'Roteiro: a definir';
+        item.appendChild(scriptInfo);
+
+        if (plan.notes) {
+          const note = document.createElement('div');
+          note.className = 'plan-entry-note';
+          note.textContent = plan.notes;
+          item.appendChild(note);
+        }
+
+        if (plan.status === 'scheduled') {
+          const actions = document.createElement('div');
+          actions.className = 'plan-entry-actions';
+          const editButton = document.createElement('button');
+          editButton.type = 'button';
+          editButton.className = 'link-button';
+          editButton.textContent = 'Editar';
+          actions.appendChild(editButton);
+          item.appendChild(actions);
+
+          const editForm = buildPlanEditForm(plan);
+          item.appendChild(editForm);
+
+          editButton.addEventListener('click', () => {
+            const bounds = computeCycleBounds(planState.cycle);
+            const dateInput = editForm.querySelector('input[type="date"]');
+            if (dateInput) {
+              if (bounds.min) dateInput.min = bounds.min;
+              if (bounds.max) dateInput.max = bounds.max;
+            }
+            editForm.hidden = !editForm.hidden;
+            if (!editForm.hidden) {
+              window.requestAnimationFrame(() => dateInput?.focus());
+            }
+          });
+        }
+
+        planEntriesListEl.appendChild(item);
+      });
+    };
+
+    const buildScheduleForm = (script) => {
+      const form = document.createElement('form');
+      form.className = 'script-schedule-form';
+      form.hidden = true;
+
+      const dateLabel = document.createElement('label');
+      dateLabel.textContent = 'Definir data';
+      const dateInput = document.createElement('input');
+      dateInput.type = 'date';
+      dateLabel.appendChild(dateInput);
+
+      const noteLabel = document.createElement('label');
+      noteLabel.textContent = 'Observações (opcional)';
+      const noteInput = document.createElement('textarea');
+      noteInput.rows = 2;
+      noteInput.placeholder = 'Inclua lembretes para este conteúdo (opcional)';
+      noteLabel.appendChild(noteInput);
+
+      const actions = document.createElement('div');
+      actions.className = 'form-actions';
+
+      const submitBtn = document.createElement('button');
+      submitBtn.type = 'submit';
+      submitBtn.textContent = 'Salvar agendamento';
+
+      const cancelBtn = document.createElement('button');
+      cancelBtn.type = 'button';
+      cancelBtn.className = 'link-button';
+      cancelBtn.textContent = 'Cancelar';
+
+      actions.append(submitBtn, cancelBtn);
+
+      form.append(dateLabel, noteLabel, actions);
+
+      cancelBtn.addEventListener('click', () => {
+        form.reset();
+        form.hidden = true;
+      });
+
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        if (form.dataset.loading === 'true') return;
+
+        if (!planState.cycle) {
+          setMessage(planMessageEl, 'Carregando ciclo atual. Tente novamente em instantes.', 'info');
+          return;
+        }
+
+        const bounds = computeCycleBounds(planState.cycle);
+        const rawValue = dateInput.value;
+        if (!rawValue) {
+          setMessage(planMessageEl, 'Selecione uma data para agendar este roteiro.', 'error');
+          dateInput.focus();
+          return;
+        }
+
+        const normalized = rawValue.trim();
+        const expectedPrefix = `${planState.cycle.cycle_year}-${String(planState.cycle.cycle_month).padStart(2, '0')}-`;
+        if (!normalized.startsWith(expectedPrefix)) {
+          setMessage(planMessageEl, 'Escolha uma data dentro do ciclo vigente.', 'error');
+          dateInput.focus();
+          return;
+        }
+
+        const existingPlan = Array.isArray(planState.plans)
+          ? planState.plans.find((plan) => plan.scheduled_date === normalized)
+          : null;
+        const notesValue = noteInput.value.trim();
+
+        let shouldRefresh = false;
+        try {
+          form.dataset.loading = 'true';
+          setFormDisabled(form, true);
+          setMessage(planMessageEl, 'Salvando agendamento...', 'info');
+
+          if (existingPlan) {
+            if (existingPlan.status !== 'scheduled') {
+              setMessage(
+                planMessageEl,
+                'Este dia já foi registrado e não pode ser alterado por aqui.',
+                'error'
+              );
+            } else {
+              const payload = {};
+              const scriptId = Number(script?.id);
+              if (Number.isInteger(scriptId) && scriptId > 0) {
+                payload.scriptId = scriptId;
+              }
+              if (notesValue) {
+                payload.notes = notesValue;
+              } else if (existingPlan.notes) {
+                payload.notes = existingPlan.notes;
+              }
+              await apiFetch(`/influencer/plan/${existingPlan.id}`, { method: 'PUT', body: payload });
+              setMessage(planMessageEl, 'Roteiro vinculado à data selecionada.', 'success');
+              shouldRefresh = true;
+            }
+          } else {
+            const additionalEntry = { date: normalized };
+            const scriptId = Number(script?.id);
+            if (Number.isInteger(scriptId) && scriptId > 0) {
+              additionalEntry.scriptId = scriptId;
+            }
+            if (notesValue) {
+              additionalEntry.notes = notesValue;
+            }
+            const payload = buildPlanEntriesPayload([additionalEntry]);
+            await apiFetch('/influencer/plan', { method: 'POST', body: { entries: payload } });
+            setMessage(planMessageEl, 'Agenda atualizada com sucesso!', 'success');
+            shouldRefresh = true;
+          }
+
+          if (shouldRefresh) {
+            form.reset();
+            form.hidden = true;
+            await loadPlan({ silent: true });
+          }
+        } catch (error) {
+          if (error.status === 401) {
+            logout();
+            return;
+          }
+          setMessage(
+            planMessageEl,
+            error.message || 'Não foi possível salvar o agendamento.',
+            'error'
+          );
+        } finally {
+          form.dataset.loading = 'false';
+          setFormDisabled(form, false);
+        }
+      });
+
+      return form;
+    };
+
+    const renderScriptsList = (rows = planState.scripts) => {
       if (!scriptsListEl) return;
       scriptsListEl.innerHTML = '';
-      if (!Array.isArray(rows) || rows.length === 0) {
+
+      const scripts = Array.isArray(rows) ? rows : [];
+      if (!scripts.length) {
         return;
       }
 
       const fragment = document.createDocumentFragment();
 
-      rows.forEach((script, index) => {
+      scripts.forEach((script, index) => {
+        if (!script) return;
         const item = document.createElement('article');
         item.className = 'script-item';
 
@@ -3198,13 +3624,12 @@
         titleSpan.className = 'script-title';
         const rawTitle = toTrimmedString(script?.titulo ?? script?.title ?? '');
         titleSpan.textContent = rawTitle || `Roteiro ${index + 1}`;
+        headerButton.appendChild(titleSpan);
 
         const iconSpan = document.createElement('span');
         iconSpan.className = 'script-icon';
         iconSpan.setAttribute('aria-hidden', 'true');
         iconSpan.textContent = '+';
-
-        headerButton.appendChild(titleSpan);
         headerButton.appendChild(iconSpan);
 
         const content = document.createElement('div');
@@ -3220,7 +3645,6 @@
         const updatedAt = script?.updated_at ?? script?.updatedAt ?? null;
         const hasDifferentDates = createdAt && updatedAt && createdAt !== updatedAt;
         const referenceDate = hasDifferentDates ? updatedAt : updatedAt || createdAt;
-
         if (referenceDate) {
           const meta = document.createElement('span');
           meta.className = 'script-meta';
@@ -3228,6 +3652,53 @@
           meta.textContent = `${label} ${formatDateTimeDetailed(referenceDate)}`;
           content.appendChild(meta);
         }
+
+        const scheduledForScript = Array.isArray(planState.plans)
+          ? planState.plans.filter((plan) => plan.content_script_id === script.id)
+          : [];
+        if (scheduledForScript.length) {
+          const scheduledWrapper = document.createElement('div');
+          scheduledWrapper.className = 'script-scheduled-dates';
+          const label = document.createElement('span');
+          label.textContent = 'Datas agendadas:';
+          label.style.fontWeight = '600';
+          scheduledWrapper.appendChild(label);
+          scheduledForScript.forEach((plan) => {
+            const chip = document.createElement('span');
+            chip.className = 'chip';
+            chip.textContent = formatDateToBR(plan.scheduled_date);
+            scheduledWrapper.appendChild(chip);
+          });
+          content.appendChild(scheduledWrapper);
+        }
+
+        const actions = document.createElement('div');
+        actions.className = 'script-actions';
+        const scheduleButton = document.createElement('button');
+        scheduleButton.type = 'button';
+        scheduleButton.className = 'script-schedule-button';
+        scheduleButton.textContent = 'Agendar com este roteiro';
+        actions.appendChild(scheduleButton);
+        content.appendChild(actions);
+
+        const scheduleForm = buildScheduleForm(script);
+        content.appendChild(scheduleForm);
+
+        scheduleButton.addEventListener('click', () => {
+          const bounds = computeCycleBounds(planState.cycle);
+          const dateInput = scheduleForm.querySelector('input[type="date"]');
+          if (dateInput) {
+            if (bounds.min) dateInput.min = bounds.min;
+            if (bounds.max) dateInput.max = bounds.max;
+            if (!dateInput.value && bounds.min) {
+              dateInput.value = bounds.min;
+            }
+          }
+          scheduleForm.hidden = !scheduleForm.hidden;
+          if (!scheduleForm.hidden) {
+            window.requestAnimationFrame(() => dateInput?.focus());
+          }
+        });
 
         const contentId = `script-content-${script?.id ?? index}`;
         content.id = contentId;
@@ -3250,6 +3721,7 @@
             item.classList.remove('open');
             headerButton.setAttribute('aria-expanded', 'false');
             content.hidden = true;
+            scheduleForm.hidden = true;
             iconSpan.textContent = '+';
           } else {
             item.classList.add('open');
@@ -3267,15 +3739,25 @@
       scriptsListEl.appendChild(fragment);
     };
 
-    const loadScripts = async ({ force = false } = {}) => {
-      if (!scriptsListEl || scriptsLoading) return;
-      if (scriptsLoaded && !force) return;
-      scriptsLoading = true;
-      setMessage(scriptsMessageEl, 'Carregando roteiros...', 'info');
+    const loadPlan = async ({ silent = false } = {}) => {
+      if (planState.loading) return;
+      planState.loading = true;
+      if (!silent) {
+        setMessage(planMessageEl, 'Carregando sua agenda...', 'info');
+      }
       try {
-        const scripts = await fetchScripts();
-        renderScriptsList(scripts);
-        if (!Array.isArray(scripts) || scripts.length === 0) {
+        const data = await apiFetch('/influencer/plan');
+        planState.cycle = data?.cycle ?? null;
+        planState.plans = Array.isArray(data?.plans) ? data.plans : [];
+        planState.scripts = Array.isArray(data?.scripts) ? data.scripts : [];
+        renderPlanOverview();
+        renderPlanEntries();
+        renderScriptsList(planState.scripts);
+        scriptsLoaded = true;
+        if (!silent) {
+          setMessage(planMessageEl, '', '');
+        }
+        if (!planState.scripts.length) {
           setMessage(
             scriptsMessageEl,
             'Nenhum roteiro disponível por enquanto. Assim que houver novidades você verá tudo aqui. 💗',
@@ -3284,8 +3766,48 @@
         } else {
           setMessage(scriptsMessageEl, '', '');
         }
-        scriptsLoaded = true;
       } catch (error) {
+        if (error.status === 401) {
+          logout();
+          return;
+        }
+        if (!silent) {
+          setMessage(planMessageEl, error.message || 'Não foi possível carregar sua agenda.', 'error');
+        }
+        throw error;
+      } finally {
+        planState.loading = false;
+      }
+    };
+
+    const loadScripts = async ({ force = false } = {}) => {
+      if (!scriptsListEl || scriptsLoading) return;
+      if (!force && scriptsLoaded && planState.scripts.length) {
+        renderPlanOverview();
+        renderPlanEntries();
+        renderScriptsList(planState.scripts);
+        return;
+      }
+      scriptsLoading = true;
+      if (!force) {
+        setMessage(scriptsMessageEl, 'Carregando roteiros...', 'info');
+      }
+      try {
+        await loadPlan({ silent: true });
+        if (!planState.scripts.length) {
+          setMessage(
+            scriptsMessageEl,
+            'Nenhum roteiro disponível por enquanto. Assim que houver novidades você verá tudo aqui. 💗',
+            'info'
+          );
+        } else {
+          setMessage(scriptsMessageEl, '', '');
+        }
+      } catch (error) {
+        if (error.status === 401) {
+          logout();
+          return;
+        }
         setMessage(
           scriptsMessageEl,
           error.message || 'Nao foi possivel carregar os roteiros. Tente novamente em instantes.',
@@ -3320,8 +3842,12 @@
         return;
       }
 
-      if (targetId === 'scriptsSection' && !scriptsLoaded && !scriptsLoading) {
-        loadScripts();
+      if (targetId === 'scriptsSection') {
+        if (!scriptsLoaded && !scriptsLoading) {
+          loadScripts();
+        } else if (!planState.loading) {
+          loadPlan({ silent: true }).catch(() => {});
+        }
       }
 
       const targetSection = sectionsMap[targetId];
