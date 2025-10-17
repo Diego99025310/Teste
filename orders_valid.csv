@@ -1,0 +1,521 @@
+Name,Email,Financial Status,Paid at,Fulfillment Status,Fulfilled at,Accepts Marketing,Currency,Subtotal,Shipping,Taxes,Total,Discount Code,Discount Amount,Shipping Method,Created at,Lineitem quantity,Lineitem name,Lineitem price,Lineitem compare at price,Lineitem sku,Lineitem requires shipping,Lineitem taxable,Lineitem fulfillment status,Billing Name,Billing Street,Billing Address1,Billing Address2,Billing Company,Billing City,Billing Zip,Billing Province,Billing Country,Billing Phone,Shipping Name,Shipping Street,Shipping Address1,Shipping Address2,Shipping Company,Shipping City,Shipping Zip,Shipping Province,Shipping Country,Shipping Phone,Notes,Note Attributes,Cancelled at,Payment Method,Payment Reference,Refunded Amount,Vendor,Outstanding Balance,Employee,Location,Device ID,Id,Tags,Risk Level,Source,Lineitem discount,Tax 1 Name,Tax 1 Value,Tax 2 Name,Tax 2 Value,Tax 3 Name,Tax 3 Value,Tax 4 Name,Tax 4 Value,Tax 5 Name,Tax 5 Value,Phone,Receipt Number,Duties,Billing Province Name,Shipping Province Name,Payment ID,Payment Terms Name,Next Payment Due At,Payment References
+#1052,debora.oliveira235@hotmail.com,paid,2025-08-08 13:35:24 -0300,fulfilled,2025-08-11 08:10:19 -0300,no,BRL,62.47,0.00,0.00,62.47,debora,5.43,Sedex,2025-08-08 13:33:14 -0300,1,Hidrapink Hidratante Facial 5 em 1 - 1 UNIDADE,67.90,119.90,HPNK-30ML-V1,true,false,fulfilled,Francieli Oliveira,"Rua Ciro Fernandes, ⁠715, ⁠Núcleo Habitacional João Zillo","Rua Ciro Fernandes, ⁠715",⁠Núcleo Habitacional João Zillo,,Lençóis Paulista,18681-450,SP,BR,14996430559,Francieli Oliveira,"Rua Ciro Fernandes, ⁠715, ⁠Núcleo Habitacional João Zillo","Rua Ciro Fernandes, ⁠715",⁠Núcleo Habitacional João Zillo,,Lençóis Paulista,18681-450,SP,BR,14996430559,,"shipping_street_name: Rua Ciro Fernandes
+shipping_street_number: 715
+shipping_street_complement: Núcleo Habitacional João Zillo
+shipping_neighborhood: Núcleo Habitacional João Zillo III
+shipping_full_address: Rua Ciro Fernandes, 715 - Núcleo Habitacional João Zillo III - Lençóis Paulista/SP - 18681450
+billing_street_name: Rua Ciro Fernandes
+billing_street_number: 715
+billing_street_complement: Núcleo Habitacional João Zillo
+billing_neighborhood: Núcleo Habitacional João Zillo III
+billing_full_address: Rua Ciro Fernandes, 715 - Núcleo Habitacional João Zillo III - Lençóis Paulista/SP - 18681450
+payment_method: Appmax
+appmax_order_id: 94288583
+payment_type: credit_card
+payment_approved_date: 2025-08-08 13:33:11
+payment_installment: 1
+payment_card_brand: mastercard",,Appmax - Cartão de Crédito,ro3q4vbIGYy8teyzCCxMmyZuV,0.00,HIDRAPINK,0.00,,,,5628279980084,,Low,web,0.00,VAT 17%,0.00,,,,,,,,,,,,São Paulo,São Paulo,ro3q4vbIGYy8teyzCCxMmyZuV,,,ro3q4vbIGYy8teyzCCxMmyZuV
+#1054,leticiaromaani@gmail.com,paid,2025-08-09 15:56:55 -0300,fulfilled,2025-08-10 19:55:31 -0300,no,BRL,62.47,0.00,0.00,62.47,debora,5.43,Sedex,2025-08-09 15:56:16 -0300,1,Hidrapink Hidratante Facial 5 em 1 - 1 UNIDADE,67.90,119.90,HPNK-30ML-V1,true,false,fulfilled,Letícia Romani Sant’Ana,"Rua Antônio Brandi, ⁠264, ⁠Vila Paccola","Rua Antônio Brandi, ⁠264",⁠Vila Paccola,,Lençóis Paulista,18682-600,SP,BR,15991226482,Letícia Romani Sant’Ana,"Rua Antônio Brandi, ⁠264, ⁠Vila Paccola","Rua Antônio Brandi, ⁠264",⁠Vila Paccola,,Lençóis Paulista,18682-600,SP,BR,15991226482,,"shipping_street_name: Rua Antônio Brandi
+shipping_street_number: 264
+shipping_street_complement: Vila Paccola
+shipping_neighborhood: Vila Paccola
+shipping_full_address: Rua Antônio Brandi, 264 - Vila Paccola - Lençóis Paulista/SP - 18682600
+billing_street_name: Rua Antônio Brandi
+billing_street_number: 264
+billing_street_complement: Vila Paccola
+billing_neighborhood: Vila Paccola
+billing_full_address: Rua Antônio Brandi, 264 - Vila Paccola - Lençóis Paulista/SP - 18682600
+payment_method: Appmax
+appmax_order_id: 94357519
+payment_type: pix
+payment_pix_code: 00020101021226850014br.gov.bcb.pix2563qrcodepix.bb.com.br/pix/v2/069407b5-939a-449f-b27d-b9e9a67c7476520400005303986540562.475802BR5925APPMAX PLATAFORMA DE PAGA6012PORTO ALEGRE62070503***630417B5
+payment_expiration_date: 2025-08-09 16:26:13",,Appmax Pix,rAozSCsghK337wSuIpnWHu8mZ,0.00,HIDRAPINK,0.00,,,,5629845078068,,Low,web,0.00,VAT 17%,0.00,,,,,,,,,,,,São Paulo,São Paulo,rAozSCsghK337wSuIpnWHu8mZ,,,rAozSCsghK337wSuIpnWHu8mZ
+#1055,luzelena.ramos1997@hotmail.com,paid,2025-08-12 07:45:38 -0300,fulfilled,2025-08-13 14:56:00 -0300,no,BRL,62.47,0.00,0.00,62.47,debora,5.43,Sedex,2025-08-12 07:43:35 -0300,1,Hidrapink Hidratante Facial 5 em 1 - 1 UNIDADE,67.90,119.90,HPNK-30ML-V1,true,false,fulfilled,Luzelena Pereira Ramos,"Rua Santo Leonardo Giglioli, ⁠495, ⁠Caju 1","Rua Santo Leonardo Giglioli, ⁠495",⁠Caju 1,,LENÇÓIS PAULISTA,18682-751,SP,BR,+5514997348830,Luzelena Pereira Ramos,"Rua Santo Leonardo Giglioli, ⁠495, ⁠Caju 1","Rua Santo Leonardo Giglioli, ⁠495",⁠Caju 1,,LENÇÓIS PAULISTA,18682-751,SP,BR,+5514997348830,,"shipping_street_name: Rua Santo Leonardo Giglioli
+shipping_street_number: 495
+shipping_street_complement: Caju 1
+shipping_neighborhood: Cidade Jardim do Caju I
+shipping_full_address: Rua Santo Leonardo Giglioli, 495 - Cidade Jardim do Caju I - LENÇÓIS PAULISTA/SP - 18682751
+billing_street_name: Rua Santo Leonardo Giglioli
+billing_street_number: 495
+billing_street_complement: Caju 1
+billing_neighborhood: Cidade Jardim do Caju I
+billing_full_address: Rua Santo Leonardo Giglioli, 495 - Cidade Jardim do Caju I - LENÇÓIS PAULISTA/SP - 18682751
+payment_method: Appmax
+appmax_order_id: 94515840
+payment_type: credit_card
+payment_approved_date: 2025-08-12 07:43:31
+payment_installment: 2
+payment_card_brand: visa",,Appmax - Cartão de Crédito,r7fvIVQf9n7h938lqXzAKAlsK,0.00,HIDRAPINK,0.00,,,,5633304330292,,High,web,0.00,VAT 17%,0.00,,,,,,,,,,,,São Paulo,São Paulo,r7fvIVQf9n7h938lqXzAKAlsK,,,r7fvIVQf9n7h938lqXzAKAlsK
+#1056,,paid,2025-08-13 17:57:26 -0300,fulfilled,2025-08-14 16:55:55 -0300,no,BRL,62.47,0.00,0.00,62.47,GI,5.43,Sedex,2025-08-13 17:55:21 -0300,1,Hidrapink Hidratante Facial 5 em 1 - 1 UNIDADE,67.90,119.90,HPNK-30ML-V1,true,false,fulfilled,Ana Maria Lucena,"Rua Coronel Joaquim Gabriel, ⁠177, Ap 03, ⁠Centro","Rua Coronel Joaquim Gabriel, ⁠177","Ap 03, ⁠Centro",,Lençóis Paulista,18682-030,SP,BR,99982346313,Ana Maria Lucena,"Rua Coronel Joaquim Gabriel, ⁠177, Ap 03, ⁠Centro","Rua Coronel Joaquim Gabriel, ⁠177","Ap 03, ⁠Centro",,Lençóis Paulista,18682-030,SP,BR,99982346313,,"shipping_street_name: Rua Coronel Joaquim Gabriel
+shipping_street_number: 177
+shipping_street_complement: Ap 03, Centro
+shipping_neighborhood: Centro
+shipping_full_address: Rua Coronel Joaquim Gabriel, 177 - Centro - Lençóis Paulista/SP - 18682030
+billing_street_name: Rua Coronel Joaquim Gabriel
+billing_street_number: 177
+billing_street_complement: Ap 03, Centro
+billing_neighborhood: Centro
+billing_full_address: Rua Coronel Joaquim Gabriel, 177 - Centro - Lençóis Paulista/SP - 18682030
+payment_method: Appmax
+appmax_order_id: 94620060
+payment_type: credit_card
+payment_approved_date: 2025-08-13 17:55:17
+payment_installment: 1
+payment_card_brand: mastercard",,Appmax - Cartão de Crédito,rCrKfm5SRiQfQBg14Go0Gnygt,0.00,HIDRAPINK,0.00,,,,5635131441204,,Medium,web,0.00,VAT 17%,0.00,,,,,,,,,+5599982346313,,,São Paulo,São Paulo,rCrKfm5SRiQfQBg14Go0Gnygt,,,rCrKfm5SRiQfQBg14Go0Gnygt
+#1057,flavianerr@hotmail.com,paid,2025-08-13 21:47:36 -0300,fulfilled,2025-08-14 16:55:30 -0300,no,BRL,62.47,0.00,0.00,62.47,Flareis,5.43,Sedex,2025-08-13 21:45:33 -0300,1,Hidrapink Hidratante Facial 5 em 1 - 1 UNIDADE,67.90,119.90,HPNK-30ML-V1,true,false,fulfilled,Flaviane Regina Dos Reis,"Avenida Brasil, ⁠650, Supermercados, ⁠Centro","Avenida Brasil, ⁠650","Supermercados, ⁠Centro",,Lençóis Paulista,18682-060,SP,BR,14997046716,Flaviane Regina Dos Reis,"Avenida Brasil, ⁠650, Supermercados, ⁠Centro","Avenida Brasil, ⁠650","Supermercados, ⁠Centro",,Lençóis Paulista,18682-060,SP,BR,14997046716,,"shipping_street_name: Avenida Brasil
+shipping_street_number: 650
+shipping_street_complement: Supermercados, Centro
+shipping_neighborhood: Centro
+shipping_full_address: Avenida Brasil, 650 - Centro - Lençóis Paulista/SP - 18682060
+billing_street_name: Avenida Brasil
+billing_street_number: 650
+billing_street_complement: Supermercados, Centro
+billing_neighborhood: Centro
+billing_full_address: Avenida Brasil, 650 - Centro - Lençóis Paulista/SP - 18682060
+payment_method: Appmax
+appmax_order_id: 94636151
+payment_type: credit_card
+payment_approved_date: 2025-08-13 21:45:29
+payment_installment: 1
+payment_card_brand: mastercard",,Appmax - Cartão de Crédito,r671OQWg3AuPSwukN6DySoTgD,0.00,HIDRAPINK,0.00,,,,5635353509940,,Medium,web,0.00,VAT 17%,0.00,,,,,,,,,,,,São Paulo,São Paulo,r671OQWg3AuPSwukN6DySoTgD,,,r671OQWg3AuPSwukN6DySoTgD
+#1058,flavianerr@hotmail.com,paid,2025-08-13 21:52:43 -0300,fulfilled,2025-08-14 16:55:17 -0300,no,BRL,62.47,0.00,0.00,62.47,Flareis,5.43,Sedex,2025-08-13 21:50:34 -0300,1,Hidrapink Hidratante Facial 5 em 1 - 1 UNIDADE,67.90,119.90,HPNK-30ML-V1,true,false,fulfilled,Flaviane Reis,"Avenida Brasil, ⁠650, Supermercados, ⁠Centro","Avenida Brasil, ⁠650","Supermercados, ⁠Centro",,Lençóis Paulista,18682-060,SP,BR,14997046716,Flaviane Reis,"Avenida Brasil, ⁠650, Supermercados, ⁠Centro","Avenida Brasil, ⁠650","Supermercados, ⁠Centro",,Lençóis Paulista,18682-060,SP,BR,14997046716,,"shipping_street_name: Avenida Brasil
+shipping_street_number: 650
+shipping_street_complement: Supermercados, Centro
+shipping_neighborhood: Centro
+shipping_full_address: Avenida Brasil, 650 - Centro - Lençóis Paulista/SP - 18682060
+billing_street_name: Avenida Brasil
+billing_street_number: 650
+billing_street_complement: Supermercados, Centro
+billing_neighborhood: Centro
+billing_full_address: Avenida Brasil, 650 - Centro - Lençóis Paulista/SP - 18682060
+payment_method: Appmax
+appmax_order_id: 94636498
+payment_type: credit_card
+payment_approved_date: 2025-08-13 21:50:32
+payment_installment: 1
+payment_card_brand: mastercard",,Appmax - Cartão de Crédito,rNqxOpzuQrGE4ccjTZdYeCVYV,0.00,HIDRAPINK,0.00,,,,5635358064692,,Medium,web,0.00,VAT 17%,0.00,,,,,,,,,,,,São Paulo,São Paulo,rNqxOpzuQrGE4ccjTZdYeCVYV,,,rNqxOpzuQrGE4ccjTZdYeCVYV
+#1059,fabiolagatinha@msn.com,paid,2025-08-14 22:42:41 -0300,fulfilled,2025-08-15 11:39:49 -0300,no,BRL,62.47,0.00,0.00,62.47,SUPINK,5.43,Sedex,2025-08-14 22:41:50 -0300,1,Hidratante Facial Pele Poderosa 5 em 1 - 1 UNIDADE,67.90,119.90,HPNK-30ML-V1,true,false,fulfilled,Fabiola de Cassia Campezatto,"Rua Henrique Losinskas Alves Salao Espaco Vip, ⁠1436, Salao espaco vip, ⁠Principe","Rua Henrique Losinskas Alves Salao Espaco Vip, ⁠1436","Salao espaco vip, ⁠Principe",,LenÇÓis Paulista,18681-390,SP,BR,14997345943,Fabiola de Cassia Campezatto,"Rua Henrique Losinskas Alves Salao Espaco Vip, ⁠1436, Salao espaco vip, ⁠Principe","Rua Henrique Losinskas Alves Salao Espaco Vip, ⁠1436","Salao espaco vip, ⁠Principe",,LenÇÓis Paulista,18681-390,SP,BR,14997345943,,"shipping_street_name: Rua Henrique Losinskas Alves Salao Espaco Vip
+shipping_street_number: 1436
+shipping_street_complement: Salao espaco vip, Principe
+shipping_neighborhood: Conjunto Habitacional Lençóis Paulista II
+shipping_full_address: Rua Henrique Losinskas Alves Salao Espaco Vip, 1436 - Conjunto Habitacional Lençóis Paulista II - LenÇÓis Paulista/SP - 18681390
+billing_street_name: Rua Henrique Losinskas Alves Salao Espaco Vip
+billing_street_number: 1436
+billing_street_complement: Salao espaco vip, Principe
+billing_neighborhood: Conjunto Habitacional Lençóis Paulista II
+billing_full_address: Rua Henrique Losinskas Alves Salao Espaco Vip, 1436 - Conjunto Habitacional Lençóis Paulista II - LenÇÓis Paulista/SP - 18681390
+payment_method: Appmax
+appmax_order_id: 94705897
+payment_type: pix
+payment_pix_code: 00020101021226850014br.gov.bcb.pix2563qrcodepix.bb.com.br/pix/v2/3d3eba09-19b6-474b-b308-bf52a3a1bbb6520400005303986540562.475802BR5925APPMAX PLATAFORMA DE PAGA6012PORTO ALEGRE62070503***6304DF92
+payment_expiration_date: 2025-08-14 23:11:48",,Appmax Pix,rKqAM1ZTZ9jy73g8DaZUtCWmU,0.00,HIDRAPINK,0.00,,,,5636911890484,,Low,web,0.00,VAT 17%,0.00,,,,,,,,,,,,São Paulo,São Paulo,rKqAM1ZTZ9jy73g8DaZUtCWmU,,,rKqAM1ZTZ9jy73g8DaZUtCWmU
+#1061,brunarog23@gmail.com,paid,2025-08-16 20:02:33 -0300,fulfilled,2025-08-18 11:58:58 -0300,no,BRL,64.51,0.00,0.00,64.51,PRIMEIRACOMPRA,3.39,Jadlog Package,2025-08-16 20:01:46 -0300,1,Hidratante Facial Pele Poderosa 5 em 1 - 1 UNIDADE,67.90,119.90,HPNK-30ML-V1,true,false,fulfilled,Bruna Rogeria silva lemes,"Rua Décio Celso Campanari, ⁠575, ⁠Jardim Maria Luiza IV","Rua Décio Celso Campanari, ⁠575",⁠Jardim Maria Luiza IV,,Lençóis Paulista,18684-556,SP,BR,14997496838,Bruna Rogeria silva lemes,"Rua Décio Celso Campanari, ⁠575, ⁠Jardim Maria Luiza IV","Rua Décio Celso Campanari, ⁠575",⁠Jardim Maria Luiza IV,,Lençóis Paulista,18684-556,SP,BR,14997496838,,"shipping_street_name: Rua Décio Celso Campanari
+shipping_street_number: 575
+shipping_street_complement: Jardim Maria Luiza IV
+shipping_neighborhood: Jardim Maria Luiza IV
+shipping_full_address: Rua Décio Celso Campanari, 575 - Jardim Maria Luiza IV - Lençóis Paulista/SP - 18684556
+billing_street_name: Rua Décio Celso Campanari
+billing_street_number: 575
+billing_street_complement: Jardim Maria Luiza IV
+billing_neighborhood: Jardim Maria Luiza IV
+billing_full_address: Rua Décio Celso Campanari, 575 - Jardim Maria Luiza IV - Lençóis Paulista/SP - 18684556
+payment_method: Appmax
+appmax_order_id: 94811398
+payment_type: pix
+payment_pix_code: 00020101021226850014br.gov.bcb.pix2563qrcodepix.bb.com.br/pix/v2/0ec6df30-942a-4ec7-80b6-7055baa0b52d520400005303986540564.515802BR5925APPMAX PLATAFORMA DE PAGA6012PORTO ALEGRE62070503***63044843
+payment_expiration_date: 2025-08-16 20:31:44",,Appmax Pix,rXKXEBjHznJXd8aSKTGsKwIsz,0.00,HIDRAPINK,0.00,,,,5639475101748,,Low,web,0.00,VAT 17%,0.00,,,,,,,,,,,,São Paulo,São Paulo,rXKXEBjHznJXd8aSKTGsKwIsz,,,rXKXEBjHznJXd8aSKTGsKwIsz
+#1062,aps_psico@hotmail.com,paid,2025-08-16 21:24:23 -0300,fulfilled,2025-08-18 12:03:30 -0300,no,BRL,62.47,0.00,0.00,62.47,LAIZA,5.43,Jadlog Package,2025-08-16 21:23:22 -0300,1,Hidratante Facial Pele Poderosa 5 em 1 - 1 UNIDADE,67.90,119.90,HPNK-30ML-V1,true,false,fulfilled,Ana Brito,"Rua Benedicto Pereira De Andrade, ⁠29, 29, ⁠Maria Luiza 4","Rua Benedicto Pereira De Andrade, ⁠29","29, ⁠Maria Luiza 4",,LenÇÓis Paulista,18684-532,SP,BR,14997330781,Ana Brito,"Rua Benedicto Pereira De Andrade, ⁠29, 29, ⁠Maria Luiza 4","Rua Benedicto Pereira De Andrade, ⁠29","29, ⁠Maria Luiza 4",,LenÇÓis Paulista,18684-532,SP,BR,14997330781,,"shipping_street_name: Rua Benedicto Pereira De Andrade
+shipping_street_number: 29
+shipping_street_complement: 29, Maria Luiza 4
+shipping_neighborhood: Jardim Santa Lúcia
+shipping_full_address: Rua Benedicto Pereira De Andrade, 29 - Jardim Santa Lúcia - LenÇÓis Paulista/SP - 18684532
+billing_street_name: Rua Benedicto Pereira De Andrade
+billing_street_number: 29
+billing_street_complement: 29, Maria Luiza 4
+billing_neighborhood: Jardim Santa Lúcia
+billing_full_address: Rua Benedicto Pereira De Andrade, 29 - Jardim Santa Lúcia - LenÇÓis Paulista/SP - 18684532
+payment_method: Appmax
+appmax_order_id: 94815112
+payment_type: pix
+payment_pix_code: 00020101021226850014br.gov.bcb.pix2563qrcodepix.bb.com.br/pix/v2/ae2ec741-1423-49d4-9d46-de56b5e1fae6520400005303986540562.475802BR5925APPMAX PLATAFORMA DE PAGA6012PORTO ALEGRE62070503***6304B78B
+payment_expiration_date: 2025-08-16 21:53:19",,Appmax Pix,rqsotmGRFuCCFbYhqufkV4AMR,0.00,HIDRAPINK,0.00,,,,5639558430772,,Low,web,0.00,VAT 17%,0.00,,,,,,,,,,,,São Paulo,São Paulo,rqsotmGRFuCCFbYhqufkV4AMR,,,rqsotmGRFuCCFbYhqufkV4AMR
+#1065,carol_111922@icloud.com,paid,2025-08-20 12:43:27 -0300,fulfilled,2025-08-20 13:37:10 -0300,no,BRL,62.47,15.25,0.00,77.72,Assucena,5.43,Jadlog Package,2025-08-20 12:37:40 -0300,1,Hidratante Facial Pele Poderosa 5 em 1 - 1 UNIDADE,67.90,119.90,HPNK-30ML-V1,true,false,fulfilled,Caroline Pereira,"Rua Uruguai, ⁠658, casa cinza c/ 2 portoes brancos, ⁠Núcleo Habitacional Antônio Lorenzetti","Rua Uruguai, ⁠658","casa cinza c/ 2 portoes brancos, ⁠Núcleo Habitacional Antônio Lorenzetti",,Macatuba,17290-572,SP,BR,14998888631,Caroline Pereira,"Rua Uruguai, ⁠658, casa cinza c/ 2 portoes brancos, ⁠Núcleo Habitacional Antônio Lorenzetti","Rua Uruguai, ⁠658","casa cinza c/ 2 portoes brancos, ⁠Núcleo Habitacional Antônio Lorenzetti",,Macatuba,17290-572,SP,BR,14998888631,,"shipping_street_name: Rua Uruguai
+shipping_street_number: 658
+shipping_street_complement: casa cinza c/ 2 portoes branco
+shipping_neighborhood: Núcleo Habitacional Antônio Lorenzetti
+shipping_full_address: Rua Uruguai, 658 - Núcleo Habitacional Antônio Lorenzetti - Macatuba/SP - 17290572
+billing_street_name: Rua Uruguai
+billing_street_number: 658
+billing_street_complement: casa cinza c/ 2 portoes branco
+billing_neighborhood: Núcleo Habitacional Antônio Lorenzetti
+billing_full_address: Rua Uruguai, 658 - Núcleo Habitacional Antônio Lorenzetti - Macatuba/SP - 17290572
+payment_method: Appmax
+appmax_order_id: 95022644
+payment_type: pix
+payment_pix_code: 00020101021226850014br.gov.bcb.pix2563qrcodepix.bb.com.br/pix/v2/c78107e4-d940-496c-89ef-22fb860cb45c520400005303986540577.725802BR5925APPMAX PLATAFORMA DE PAGA6012PORTO ALEGRE62070503***63047B9B
+payment_expiration_date: 2025-08-20 13:07:38",,Appmax Pix,rZijol70QLj7LZtfxc5kr09W9,0.00,HIDRAPINK,0.00,,,,5644005703732,,Medium,web,0.00,VAT 17%,0.00,,,,,,,,,,,,São Paulo,São Paulo,rZijol70QLj7LZtfxc5kr09W9,,,rZijol70QLj7LZtfxc5kr09W9
+#1066,,paid,2025-08-20 13:10:11 -0300,fulfilled,2025-08-20 13:36:31 -0300,no,BRL,62.47,15.25,0.00,77.72,Assucena,5.43,Jadlog Package,2025-08-20 13:09:08 -0300,1,Hidratante Facial Pele Poderosa 5 em 1 - 1 UNIDADE,67.90,119.90,HPNK-30ML-V1,true,false,fulfilled,Ana Manoel,"Equador, Casa, ⁠382, Casa, ⁠Santa Rita","Equador, Casa, ⁠382","Casa, ⁠Santa Rita",,Macatuba,17290-574,SP,BR,14998284042,Ana Manoel,"Equador, Casa, ⁠382, Casa, ⁠Santa Rita","Equador, Casa, ⁠382","Casa, ⁠Santa Rita",,Macatuba,17290-574,SP,BR,14998284042,,"shipping_street_name: Equador, Casa
+shipping_street_number: 382
+shipping_street_complement: Casa, Santa Rita
+shipping_neighborhood: Núcleo Habitacional Antônio Lorenzetti
+shipping_full_address: Equador, Casa, 382 - Núcleo Habitacional Antônio Lorenzetti - Macatuba/SP - 17290574
+billing_street_name: Equador, Casa
+billing_street_number: 382
+billing_street_complement: Casa, Santa Rita
+billing_neighborhood: Núcleo Habitacional Antônio Lorenzetti
+billing_full_address: Equador, Casa, 382 - Núcleo Habitacional Antônio Lorenzetti - Macatuba/SP - 17290574
+payment_method: Appmax
+appmax_order_id: 95024711
+payment_type: pix
+payment_pix_code: 00020101021226850014br.gov.bcb.pix2563qrcodepix.bb.com.br/pix/v2/47912d5a-48c2-4dfa-b092-58615f4ea22d520400005303986540577.725802BR5925APPMAX PLATAFORMA DE PAGA6012PORTO ALEGRE62070503***6304B9AA
+payment_expiration_date: 2025-08-20 13:39:06",,Appmax Pix,rCoXvAt81prxD66OaNDgLFFGz,0.00,HIDRAPINK,0.00,,,,5644044599348,,Low,web,0.00,VAT 17%,0.00,,,,,,,,,+5514998284042,,,São Paulo,São Paulo,rCoXvAt81prxD66OaNDgLFFGz,,,rCoXvAt81prxD66OaNDgLFFGz
+#1067,rosedesouza04@gmail.com,paid,2025-08-20 15:52:32 -0300,fulfilled,2025-08-22 08:20:58 -0300,no,BRL,62.47,0.00,0.00,62.47,GI,5.43,Jadlog Package,2025-08-20 15:44:40 -0300,1,Hidratante Facial Pele Poderosa 5 em 1 - 1 UNIDADE,67.90,119.90,HPNK-30ML-V1,true,false,fulfilled,Rosimeire Maria de Souza,"Rua Geraldo Pereira de Barros, ⁠1235, ⁠Centro","Rua Geraldo Pereira de Barros, ⁠1235",⁠Centro,,Lençóis Paulista,18680-020,SP,BR,14998305024,Rosimeire Maria de Souza,"Rua Geraldo Pereira de Barros, ⁠1235, ⁠Centro","Rua Geraldo Pereira de Barros, ⁠1235",⁠Centro,,Lençóis Paulista,18680-020,SP,BR,14998305024,,"shipping_street_name: Rua Geraldo Pereira de Barros
+shipping_street_number: 1235
+shipping_street_complement: Centro
+shipping_neighborhood: Centro
+shipping_full_address: Rua Geraldo Pereira de Barros, 1235 - Centro - Lençóis Paulista/SP - 18680020
+billing_street_name: Rua Geraldo Pereira de Barros
+billing_street_number: 1235
+billing_street_complement: Centro
+billing_neighborhood: Centro
+billing_full_address: Rua Geraldo Pereira de Barros, 1235 - Centro - Lençóis Paulista/SP - 18680020
+payment_method: Appmax
+appmax_order_id: 95034379
+payment_type: pix
+payment_pix_code: 00020101021226850014br.gov.bcb.pix2563qrcodepix.bb.com.br/pix/v2/9e0cca8b-36e0-4b80-9291-518c81b2a2c9520400005303986540562.475802BR5925APPMAX PLATAFORMA DE PAGA6012PORTO ALEGRE62070503***63043D69
+payment_expiration_date: 2025-08-20 16:14:38",,Appmax Pix,rXyafPIJ8HIO496mExd2IP1nn,0.00,HIDRAPINK,0.00,,,,5644235145268,,Low,web,0.00,VAT 17%,0.00,,,,,,,,,,,,São Paulo,São Paulo,rXyafPIJ8HIO496mExd2IP1nn,,,rXyafPIJ8HIO496mExd2IP1nn
+#1071,suelenmoraes81@gmail.com,paid,2025-09-02 09:41:09 -0300,fulfilled,2025-09-03 08:44:44 -0300,no,BRL,64.51,0.00,0.00,64.51,PRIMEIRACOMPRA,3.39,Sedex,2025-09-02 09:40:09 -0300,1,Hidratante Facial Pele Poderosa 5 em 1 - 1 UNIDADE,67.90,119.90,HPNK-30ML-V1,true,false,fulfilled,Suelen Moraes,"Avenida Osaka, ⁠875, Apartamento 471, ⁠Jardim Itamaraty","Avenida Osaka, ⁠875","Apartamento 471, ⁠Jardim Itamaraty",,Lençóis Paulista,18682-359,SP,BR,14997769752,Suelen Moraes,"Avenida Osaka, ⁠875, Apartamento 471, ⁠Jardim Itamaraty","Avenida Osaka, ⁠875","Apartamento 471, ⁠Jardim Itamaraty",,Lençóis Paulista,18682-359,SP,BR,14997769752,,"shipping_street_name: Avenida Osaka
+shipping_street_number: 875
+shipping_street_complement: Apartamento 471, Jardim Itamar
+shipping_neighborhood: Jardim Itamaraty
+shipping_full_address: Avenida Osaka, 875 - Jardim Itamaraty - Lençóis Paulista/SP - 18682359
+billing_street_name: Avenida Osaka
+billing_street_number: 875
+billing_street_complement: Apartamento 471, Jardim Itamar
+billing_neighborhood: Jardim Itamaraty
+billing_full_address: Avenida Osaka, 875 - Jardim Itamaraty - Lençóis Paulista/SP - 18682359
+payment_method: Appmax
+appmax_order_id: 95779842
+payment_type: pix
+payment_pix_code: 00020101021226850014br.gov.bcb.pix2563qrcodepix.bb.com.br/pix/v2/367a7127-4b78-4979-9be0-e63498ab0481520400005303986540564.515802BR5925APPMAX PLATAFORMA DE PAGA6012PORTO ALEGRE62070503***630486DF
+payment_expiration_date: 2025-09-02 10:10:06",,Appmax Pix,r76Mruq93iKFJY8FSNIGO7csv,0.00,HIDRAPINK,0.00,,,,5662855036980,,Low,web,0.00,VAT 17%,0.00,,,,,,,,,,,,São Paulo,São Paulo,r76Mruq93iKFJY8FSNIGO7csv,,,r76Mruq93iKFJY8FSNIGO7csv
+#1072,carol.pimenta33@gmail.com,paid,2025-09-05 09:20:36 -0300,fulfilled,2025-09-08 07:47:00 -0300,yes,BRL,62.47,0.00,0.00,62.47,debora,5.43,Jadlog Package,2025-09-05 09:19:50 -0300,1,Hidratante Facial Pele Poderosa 5 em 1 - 1 UNIDADE,67.90,119.90,HPNK-30ML-V1,true,false,fulfilled,Carol Pimenta Pimenta,"Rua Geraldo Pereira de Barros, ⁠1235, ⁠Centro","Rua Geraldo Pereira de Barros, ⁠1235",⁠Centro,,Lençóis Paulista,18680-020,SP,BR,14997355705,Carol Pimenta Pimenta,"Rua Geraldo Pereira de Barros, ⁠1235, ⁠Centro","Rua Geraldo Pereira de Barros, ⁠1235",⁠Centro,,Lençóis Paulista,18680-020,SP,BR,14997355705,,"shipping_street_name: Rua Geraldo Pereira de Barros
+shipping_street_number: 1235
+shipping_street_complement: Centro
+shipping_neighborhood: Centro
+shipping_full_address: Rua Geraldo Pereira de Barros, 1235 - Centro - Lençóis Paulista/SP - 18680020
+billing_street_name: Rua Geraldo Pereira de Barros
+billing_street_number: 1235
+billing_street_complement: Centro
+billing_neighborhood: Centro
+billing_full_address: Rua Geraldo Pereira de Barros, 1235 - Centro - Lençóis Paulista/SP - 18680020
+payment_method: Appmax
+appmax_order_id: 95959007
+payment_type: pix
+payment_pix_code: 00020101021226770014BR.GOV.BCB.PIX2555api.itau/pix/qr/v2/ad00952d-ccb6-4c70-a172-bb22e9d6d3225204000053039865802BR5906APPMAX6012PORTO ALEGRE62070503***63045015
+payment_expiration_date: 2025-09-05 09:49:47",,Appmax Pix,rUzvDx4AfJW3I44tKZpUQNi0c,0.00,HIDRAPINK,0.00,,,,5666802925620,,Low,web,0.00,VAT 17%,0.00,,,,,,,,,,,,São Paulo,São Paulo,rUzvDx4AfJW3I44tKZpUQNi0c,,,rUzvDx4AfJW3I44tKZpUQNi0c
+#1073,,paid,2025-09-05 15:51:20 -0300,fulfilled,2025-09-08 08:59:50 -0300,no,BRL,62.47,0.00,0.00,62.47,debora,5.43,Sedex,2025-09-05 15:42:12 -0300,1,Hidratante Facial Pele Poderosa 5 em 1 - 1 UNIDADE,67.90,119.90,HPNK-30ML-V1,true,false,fulfilled,Karina Fernandes,"Rua Ciro Fernandes, ⁠715, ⁠Cecap","Rua Ciro Fernandes, ⁠715",⁠Cecap,,Lençóis Paulista,18681-450,SP,BR,+5514996249835,Karina Fernandes,"Rua Ciro Fernandes, ⁠715, ⁠Cecap","Rua Ciro Fernandes, ⁠715",⁠Cecap,,Lençóis Paulista,18681-450,SP,BR,+5514996249835,,"shipping_street_name: Rua Ciro Fernandes
+shipping_street_number: 715
+shipping_street_complement: Cecap
+shipping_neighborhood: Núcleo Habitacional João Zillo III
+shipping_full_address: Rua Ciro Fernandes, 715 - Núcleo Habitacional João Zillo III - Lençóis Paulista/SP - 18681450
+billing_street_name: Rua Ciro Fernandes
+billing_street_number: 715
+billing_street_complement: Cecap
+billing_neighborhood: Núcleo Habitacional João Zillo III
+billing_full_address: Rua Ciro Fernandes, 715 - Núcleo Habitacional João Zillo III - Lençóis Paulista/SP - 18681450
+payment_method: Appmax
+appmax_order_id: 95985372
+payment_type: pix
+payment_pix_code: 00020101021226770014BR.GOV.BCB.PIX2555api.itau/pix/qr/v2/fe8bea11-0872-4661-93c4-812c6b9475a85204000053039865802BR5906APPMAX6012PORTO ALEGRE62070503***6304A0C8
+payment_expiration_date: 2025-09-05 16:12:08",,Appmax Pix,rwnupN8JEbxjuar2zVPJW4vcA,0.00,HIDRAPINK,0.00,,,,5667191914548,,Low,web,0.00,VAT 17%,0.00,,,,,,,,,+5514996249835,,,São Paulo,São Paulo,rwnupN8JEbxjuar2zVPJW4vcA,,,rwnupN8JEbxjuar2zVPJW4vcA
+#1074,nailaoliva01041997@gmail.com,paid,2025-09-09 20:53:16 -0300,fulfilled,2025-09-10 06:49:58 -0300,no,BRL,62.47,0.00,0.00,62.47,SUPINK,5.43,Jadlog Package,2025-09-09 20:51:10 -0300,1,Hidratante Facial Pele Poderosa 5 em 1 - 1 UNIDADE,67.90,119.90,HPNK-30ML-V1,true,false,fulfilled,Naila Maria Oliva,"Rua Helena Bento de Oliveira Perantoni, ⁠300, ⁠Jardim Itapuã","Rua Helena Bento de Oliveira Perantoni, ⁠300",⁠Jardim Itapuã,,Lençóis Paulista,18681-862,SP,BR,14998266841,Naila Maria Oliva,"Rua Helena Bento de Oliveira Perantoni, ⁠300, ⁠Jardim Itapuã","Rua Helena Bento de Oliveira Perantoni, ⁠300",⁠Jardim Itapuã,,Lençóis Paulista,18681-862,SP,BR,14998266841,,"shipping_street_name: Rua Helena Bento de Oliveira Perantoni
+shipping_street_number: 300
+shipping_street_complement: Jardim Itapuã
+shipping_neighborhood: Jardim Itapuã
+shipping_full_address: Rua Helena Bento de Oliveira Perantoni, 300 - Jardim Itapuã - Lençóis Paulista/SP - 18681862
+billing_street_name: Rua Helena Bento de Oliveira Perantoni
+billing_street_number: 300
+billing_street_complement: Jardim Itapuã
+billing_neighborhood: Jardim Itapuã
+billing_full_address: Rua Helena Bento de Oliveira Perantoni, 300 - Jardim Itapuã - Lençóis Paulista/SP - 18681862
+payment_method: Appmax
+appmax_order_id: 96251994
+payment_type: credit_card
+payment_approved_date: 2025-09-09 20:51:07
+payment_installment: 2
+payment_card_brand: visa",,Appmax - Cartão de Crédito,rwAyQh5Oy8iNd4eHcJ46VTpPK,0.00,HIDRAPINK,0.00,,,,5673329688628,,Medium,web,0.00,VAT 17%,0.00,,,,,,,,,,,,São Paulo,São Paulo,rwAyQh5Oy8iNd4eHcJ46VTpPK,,,rwAyQh5Oy8iNd4eHcJ46VTpPK
+#1075,carolinamfreitas89@gmail.com,paid,2025-09-09 23:01:16 -0300,fulfilled,2025-09-10 09:51:31 -0300,no,BRL,62.47,0.00,0.00,62.47,AMENDES8,5.43,Sedex,2025-09-09 22:59:11 -0300,1,Hidratante Facial Pele Poderosa 5 em 1 - 1 UNIDADE,67.90,119.90,HPNK-30ML-V1,true,false,fulfilled,Carolina Freitas,"Rua Alfredo Chiari, ⁠180, ⁠Jardim Europa","Rua Alfredo Chiari, ⁠180",⁠Jardim Europa,,Lençóis Paulista,18683-732,SP,BR,+5514997741440,Carolina Freitas,"Rua Alfredo Chiari, ⁠180, ⁠Jardim Europa","Rua Alfredo Chiari, ⁠180",⁠Jardim Europa,,Lençóis Paulista,18683-732,SP,BR,+5514997741440,,"shipping_street_name: Rua Alfredo Chiari
+shipping_street_number: 180
+shipping_street_complement: Jardim Europa
+shipping_neighborhood: Jardim Europa
+shipping_full_address: Rua Alfredo Chiari, 180 - Jardim Europa - Lençóis Paulista/SP - 18683732
+billing_street_name: Rua Alfredo Chiari
+billing_street_number: 180
+billing_street_complement: Jardim Europa
+billing_neighborhood: Jardim Europa
+billing_full_address: Rua Alfredo Chiari, 180 - Jardim Europa - Lençóis Paulista/SP - 18683732
+payment_method: Appmax
+appmax_order_id: 96259912
+payment_type: credit_card
+payment_approved_date: 2025-09-09 22:59:08
+payment_installment: 3
+payment_card_brand: mastercard",,Appmax - Cartão de Crédito,r110i3NM6FK9AyfCkv8QJ1Yep,0.00,HIDRAPINK,0.00,,,,5673464201268,,Low,web,0.00,VAT 17%,0.00,,,,,,,,,,,,São Paulo,São Paulo,r110i3NM6FK9AyfCkv8QJ1Yep,,,r110i3NM6FK9AyfCkv8QJ1Yep
+#1076,carol.pimenta33@gmail.com,paid,2025-09-11 08:42:33 -0300,fulfilled,2025-09-12 16:43:34 -0300,yes,BRL,62.47,0.00,0.00,62.47,BIA,5.43,Sedex,2025-09-11 08:41:07 -0300,1,Hidratante Facial Pele Poderosa 5 em 1 - 1 UNIDADE,67.90,119.90,HPNK-30ML-V1,true,false,fulfilled,Carol Pimenta Pimenta,"Rodovia Juliano Lorenzetti, ⁠00, ⁠Centro","Rodovia Juliano Lorenzetti, ⁠00",⁠Centro,,Lençois Paulista,18685-900,SP,BR,14997355705,Carol Pimenta Pimenta,"Rodovia Juliano Lorenzetti, ⁠00, ⁠Centro","Rodovia Juliano Lorenzetti, ⁠00",⁠Centro,,Lençois Paulista,18685-900,SP,BR,14997355705,,"shipping_street_name: Rodovia Juliano Lorenzetti
+shipping_street_number: 00
+shipping_street_complement: Centro
+shipping_neighborhood: Distrito Empresarial Luiz Trecenti
+shipping_full_address: Rodovia Juliano Lorenzetti, 00 - Distrito Empresarial Luiz Trecenti - Lençois Paulista/SP - 18685900
+billing_street_name: Rodovia Juliano Lorenzetti
+billing_street_number: 00
+billing_street_complement: Centro
+billing_neighborhood: Distrito Empresarial Luiz Trecenti
+billing_full_address: Rodovia Juliano Lorenzetti, 00 - Distrito Empresarial Luiz Trecenti - Lençois Paulista/SP - 18685900
+payment_method: Appmax
+appmax_order_id: 96328803
+payment_type: pix
+payment_pix_code: 00020101021226770014BR.GOV.BCB.PIX2555api.itau/pix/qr/v2/3a6b06b8-a790-4ce6-b21b-f78ca7e231c15204000053039865802BR5906APPMAX6012PORTO ALEGRE62070503***6304C15E
+payment_expiration_date: 2025-09-11 09:11:04",,Appmax Pix,rDwUGwWOuXSOMQm9goItmyklA,0.00,HIDRAPINK,0.00,,,,5675569774644,,Low,web,0.00,VAT 17%,0.00,,,,,,,,,,,,São Paulo,São Paulo,rDwUGwWOuXSOMQm9goItmyklA,,,rDwUGwWOuXSOMQm9goItmyklA
+#1078,fanticeli@hotmail.com,paid,2025-09-12 23:57:28 -0300,fulfilled,2025-09-15 08:36:07 -0300,no,BRL,193.52,15.64,0.00,209.16,PRIMEIRACOMPRA,10.18,Jadlog Package,2025-09-12 23:55:56 -0300,1,Hidratante Facial Pele Poderosa 5 em 1 - Combo 3 Unidades,203.70,359.70,HPNK-30ML-V3,true,false,fulfilled,Rafaella Fanticeli,"Quadra Smpw Quadra 15 Conjunto 9, Lote 12 Casa B, ⁠12, Casa B, ⁠Parkway","Quadra Smpw Quadra 15 Conjunto 9, Lote 12 Casa B, ⁠12","Casa B, ⁠Parkway",,BrasÍlia,71741-509,DF,BR,61999797708,Rafaella Fanticeli,"Quadra Smpw Quadra 15 Conjunto 9, Lote 12 Casa B, ⁠12, Casa B, ⁠Parkway","Quadra Smpw Quadra 15 Conjunto 9, Lote 12 Casa B, ⁠12","Casa B, ⁠Parkway",,BrasÍlia,71741-509,DF,BR,61999797708,,"shipping_street_name: Quadra Smpw Quadra 15 Conjunto 9, Lote Casa B
+shipping_street_number: 12
+shipping_street_complement: Casa B, Parkway
+shipping_neighborhood: Park Way
+shipping_full_address: Quadra Smpw Quadra 15 Conjunto 9, Lote Casa B, 12 - Park Way - BrasÍlia/DF - 71741509
+billing_street_name: Quadra Smpw Quadra 15 Conjunto 9, Lote Casa B
+billing_street_number: 12
+billing_street_complement: Casa B, Parkway
+billing_neighborhood: Park Way
+billing_full_address: Quadra Smpw Quadra 15 Conjunto 9, Lote Casa B, 12 - Park Way - BrasÍlia/DF - 71741509
+payment_method: Appmax
+appmax_order_id: 96430325
+payment_type: pix
+payment_pix_code: 00020101021226770014BR.GOV.BCB.PIX2555api.itau/pix/qr/v2/8ca09dbc-92f4-4327-8484-fea5830f6dff5204000053039865802BR5906APPMAX6012PORTO ALEGRE62070503***63046DB5
+payment_expiration_date: 2025-09-13 00:25:53",,Appmax Pix,rkKlNBQAwDuVDHP9mPxuVxecv,0.00,HIDRAPINK,0.00,,,,5678729658420,,Medium,web,0.00,VAT 17%,0.00,,,,,,,,,,,,Distrito Federal,Distrito Federal,rkKlNBQAwDuVDHP9mPxuVxecv,,,rkKlNBQAwDuVDHP9mPxuVxecv
+#1080,,paid,2025-09-20 19:58:10 -0300,fulfilled,2025-09-22 07:43:27 -0300,no,BRL,64.13,15.25,0.00,79.38,Assucena,5.57,Jadlog Package,2025-09-20 19:56:08 -0300,1,Hidratante Facial Pele Poderosa 5 em 1 - 1 UNIDADE,69.70,119.90,HPNK-30ML-V1,true,false,fulfilled,Beatriz Betiol,"Rua São Paulo, ⁠1214, ⁠Centro","Rua São Paulo, ⁠1214",⁠Centro,,Macatuba,17290-009,SP,BR,14997956849,Beatriz Betiol,"Rua São Paulo, ⁠1214, ⁠Centro","Rua São Paulo, ⁠1214",⁠Centro,,Macatuba,17290-009,SP,BR,14997956849,,"shipping_street_name: Rua São Paulo
+shipping_street_number: 1214
+shipping_street_complement: Centro
+shipping_neighborhood: Centro
+shipping_full_address: Rua São Paulo, 1214 - Centro - Macatuba/SP - 17290009
+billing_street_name: Rua São Paulo
+billing_street_number: 1214
+billing_street_complement: Centro
+billing_neighborhood: Centro
+billing_full_address: Rua São Paulo, 1214 - Centro - Macatuba/SP - 17290009
+payment_method: Appmax
+appmax_order_id: 96879605
+payment_type: credit_card
+payment_approved_date: 2025-09-20 19:56:02
+payment_installment: 3
+payment_card_brand: mastercard",,Appmax - Cartão de Crédito,rA1k2Bmiz8DPzIVNsF7lgT0V2,0.00,HIDRAPINK,0.00,,,,5692545171508,,Low,web,0.00,VAT 17%,0.00,,,,,,,,,+5515997956849,,,São Paulo,São Paulo,rA1k2Bmiz8DPzIVNsF7lgT0V2,,,rA1k2Bmiz8DPzIVNsF7lgT0V2
+#1082,,paid,2025-10-02 07:42:17 -0300,fulfilled,2025-10-03 08:27:08 -0300,no,BRL,66.22,0.00,0.00,66.22,PRIMEIRACOMPRA,3.48,Jadlog Package,2025-10-02 07:41:24 -0300,1,Hidratante Facial Pele Poderosa 5 em 1 - 1 UNIDADE,69.70,119.90,HPNK-30ML-V1,true,false,fulfilled,Cristiane Assis Siqueira,"Felicio Bianchini, ⁠169, Casa, ⁠Antonio Lopes","Felicio Bianchini, ⁠169","Casa, ⁠Antonio Lopes",,Lençóis Paulista,18686-404,SP,BR,+5514996333860,Cristiane Assis Siqueira,"Felicio Bianchini, ⁠169, Casa, ⁠Antonio Lopes","Felicio Bianchini, ⁠169","Casa, ⁠Antonio Lopes",,Lençóis Paulista,18686-404,SP,BR,+5514996333860,,"discount_to_apply: 0
+shipping_street_name: Felicio Bianchini
+shipping_street_number: 169
+shipping_street_complement: Casa, Antonio Lopes
+shipping_neighborhood: Antonio Lopes
+shipping_full_address: Felicio Bianchini, 169 - Antonio Lopes - Lençóis Paulista/SP - 18686404
+billing_street_name: Felicio Bianchini
+billing_street_number: 169
+billing_street_complement: Casa, Antonio Lopes
+billing_neighborhood: Antonio Lopes
+billing_full_address: Felicio Bianchini, 169 - Antonio Lopes - Lençóis Paulista/SP - 18686404
+payment_method: Appmax
+appmax_order_id: 97483449
+payment_type: pix
+payment_pix_code: 00020101021226850014br.gov.bcb.pix2563qrcodepix.bb.com.br/pix/v2/c9a7b27d-20a4-45c3-a034-c84abc87d0f9520400005303986540566.225802BR5925APPMAX PLATAFORMA DE PAGA6012PORTO ALEGRE62070503***63043BBE
+payment_expiration_date: 2025-10-02 08:11:22",,Appmax Pix,rgU9qbu1LXqxSHR3Y79CVMtKv,0.00,HIDRAPINK,0.00,,,,5718717923380,,Low,web,0.00,VAT 17%,0.00,,,,,,,,,+5514996333860,,,São Paulo,São Paulo,rgU9qbu1LXqxSHR3Y79CVMtKv,,,rgU9qbu1LXqxSHR3Y79CVMtKv
+#1084,,paid,2025-10-02 20:50:05 -0300,fulfilled,2025-10-02 21:07:00 -0300,no,BRL,64.13,0.00,0.00,64.13,INGRID,5.57,Jadlog Package,2025-10-02 20:49:22 -0300,1,Hidratante Facial Pele Poderosa 5 em 1 - 1 UNIDADE,69.70,119.90,HPNK-30ML-V1,true,false,fulfilled,Tatiane Rossini,"Rua dos Chupins, ⁠375, Ap 103 B, ⁠Jardim Nova Lençóis","Rua dos Chupins, ⁠375","Ap 103 B, ⁠Jardim Nova Lençóis",,Lençóis Paulista,18685-510,SP,BR,+5514998125876,Tatiane Rossini,"Rua dos Chupins, ⁠375, Ap 103 B, ⁠Jardim Nova Lençóis","Rua dos Chupins, ⁠375","Ap 103 B, ⁠Jardim Nova Lençóis",,Lençóis Paulista,18685-510,SP,BR,+5514998125876,,"discount_to_apply: 0
+shipping_street_name: Rua dos Chupins
+shipping_street_number: 375
+shipping_street_complement: Ap 103 B, Jardim Nova Lençóis
+shipping_neighborhood: Jardim Nova Lençóis
+shipping_full_address: Rua dos Chupins, 375 - Jardim Nova Lençóis - Lençóis Paulista/SP - 18685510
+billing_street_name: Rua dos Chupins
+billing_street_number: 375
+billing_street_complement: Ap 103 B, Jardim Nova Lençóis
+billing_neighborhood: Jardim Nova Lençóis
+billing_full_address: Rua dos Chupins, 375 - Jardim Nova Lençóis - Lençóis Paulista/SP - 18685510
+payment_method: Appmax
+appmax_order_id: 97526205
+payment_type: pix
+payment_pix_code: 00020101021226850014br.gov.bcb.pix2563qrcodepix.bb.com.br/pix/v2/8b2f769f-a534-4643-bed3-8adc24f493b8520400005303986540564.135802BR5925APPMAX PLATAFORMA DE PAGA6012PORTO ALEGRE62070503***6304E2F3
+payment_expiration_date: 2025-10-02 21:19:20",,Appmax Pix,reb14FMwTmEqWrBATetfb0EcY,0.00,HIDRAPINK,0.00,,,,5719745200180,,Low,web,0.00,VAT 17%,0.00,,,,,,,,,+5514998125876,,,São Paulo,São Paulo,reb14FMwTmEqWrBATetfb0EcY,,,reb14FMwTmEqWrBATetfb0EcY
+#1086,paullinha_santana@hotmail.com,paid,2025-10-04 11:35:36 -0300,fulfilled,2025-10-06 14:47:23 -0300,no,BRL,192.19,0.00,0.00,192.19,Paloma,16.71,Jadlog Package,2025-10-04 11:33:27 -0300,1,Hidratante Facial Pele Poderosa 5 em 1 - KIT 3 UNIDADES,208.90,359.90,HPNK-30ML-V3,true,false,fulfilled,Paula Rocha santana,"Zona De ExpansÃo (olhos D'agua), ⁠410, Rua Projetada Apartamento 205, ⁠Capua","Zona De ExpansÃo (olhos D'agua), ⁠410","Rua Projetada Apartamento 205, ⁠Capua",,Barra Dos Coqueiros,49140-009,SE,BR,+5579999064683,Paula Rocha santana,"Zona De ExpansÃo (olhos D'agua), ⁠410, Rua Projetada Apartamento 205, ⁠Capua","Zona De ExpansÃo (olhos D'agua), ⁠410","Rua Projetada Apartamento 205, ⁠Capua",,Barra Dos Coqueiros,49140-009,SE,BR,+5579999064683,,"discount_to_apply: 0
+shipping_street_name: Zona De ExpansÃo (olhos D'agua)
+shipping_street_number: 410
+shipping_street_complement: Rua Projetada Apartamento 205,
+shipping_neighborhood: Moisés Gomes
+shipping_full_address: Zona De ExpansÃo (olhos D'agua), 410 - Moisés Gomes - Barra Dos Coqueiros/SE - 49140009
+billing_street_name: Zona De ExpansÃo (olhos D'agua)
+billing_street_number: 410
+billing_street_complement: Rua Projetada Apartamento 205,
+billing_neighborhood: Moisés Gomes
+billing_full_address: Zona De ExpansÃo (olhos D'agua), 410 - Moisés Gomes - Barra Dos Coqueiros/SE - 49140009
+payment_method: Appmax
+appmax_order_id: 97606051
+payment_type: credit_card
+payment_approved_date: 2025-10-04 11:33:24
+payment_installment: 2
+payment_card_brand: mastercard",,Appmax - Cartão de Crédito,r9x1GYkSrztcmo7X4qNKrvRsj,0.00,HIDRAPINK,0.00,,,,5723196489780,,Medium,web,0.00,VAT 17%,0.00,,,,,,,,,,,,Sergipe,Sergipe,r9x1GYkSrztcmo7X4qNKrvRsj,,,rTz2rmTmM2hs1eT6XVFOGR2Mb + r9x1GYkSrztcmo7X4qNKrvRsj
+#1087,naa.zatte@hotmail.com,paid,2025-10-04 21:02:24 -0300,fulfilled,2025-10-06 14:46:21 -0300,no,BRL,64.13,0.00,0.00,64.13,BIA,5.57,Sedex,2025-10-04 21:00:17 -0300,1,Hidratante Facial Pele Poderosa 5 em 1 - 1 UNIDADE,69.70,119.90,HPNK-30ML-V1,true,false,fulfilled,Ana Paula Bronzatti,"Rua JosuÉ Montello, ⁠235, Apto 161, ⁠João Zillo","Rua JosuÉ Montello, ⁠235","Apto 161, ⁠João Zillo",,LenÇÓis Paulista,18681-660,SP,BR,+5514998163614,Ana Paula Bronzatti,"Rua JosuÉ Montello, ⁠235, Apto 161, ⁠João Zillo","Rua JosuÉ Montello, ⁠235","Apto 161, ⁠João Zillo",,LenÇÓis Paulista,18681-660,SP,BR,+5514998163614,,"discount_to_apply: 0
+shipping_street_name: Rua JosuÉ Montello
+shipping_street_number: 235
+shipping_street_complement: Apto 161, João Zillo
+shipping_neighborhood: Núcleo Habitacional João Zillo IV
+shipping_full_address: Rua JosuÉ Montello, 235 - Núcleo Habitacional João Zillo IV - LenÇÓis Paulista/SP - 18681660
+billing_street_name: Rua JosuÉ Montello
+billing_street_number: 235
+billing_street_complement: Apto 161, João Zillo
+billing_neighborhood: Núcleo Habitacional João Zillo IV
+billing_full_address: Rua JosuÉ Montello, 235 - Núcleo Habitacional João Zillo IV - LenÇÓis Paulista/SP - 18681660
+payment_method: Appmax
+appmax_order_id: 97634564
+payment_type: credit_card
+payment_approved_date: 2025-10-04 21:00:14
+payment_installment: 1
+payment_card_brand: mastercard",,Appmax - Cartão de Crédito,rXoJF85cX86JAyD0Qm02khR6L,0.00,HIDRAPINK,0.00,,,,5723918073908,,Low,web,0.00,VAT 17%,0.00,,,,,,,,,,,,São Paulo,São Paulo,rXoJF85cX86JAyD0Qm02khR6L,,,rXoJF85cX86JAyD0Qm02khR6L
+#1089,marildaffortes@gmail.com,paid,2025-10-11 09:06:58 -0300,fulfilled,2025-10-13 07:02:20 -0300,no,BRL,64.13,0.00,0.00,64.13,Correre,5.57,Jadlog Package,2025-10-11 09:05:53 -0300,1,Hidratante Facial Pele Poderosa 5 em 1 - 1 UNIDADE,69.70,119.90,HPNK-30ML-V1,true,false,fulfilled,Marílda fortes,"Rua Edílio carani filho, ⁠140, ⁠Village","Rua Edílio carani filho, ⁠140",⁠Village,,Lençóis Paulista,18681-037,SP,BR,+5514997156946,Marílda fortes,"Rua Edílio carani filho, ⁠140, ⁠Village","Rua Edílio carani filho, ⁠140",⁠Village,,Lençóis Paulista,18681-037,SP,BR,+5514997156946,,"discount_to_apply: 0
+shipping_street_name: Rua Edílio carani filho
+shipping_street_number: 140
+shipping_street_complement: Village
+shipping_neighborhood: Vila Mamedina
+shipping_full_address: Rua Edílio carani filho, 140 - Vila Mamedina - Lençóis Paulista/SP - 18681037
+billing_street_name: Rua Edílio carani filho
+billing_street_number: 140
+billing_street_complement: Village
+billing_neighborhood: Vila Mamedina
+billing_full_address: Rua Edílio carani filho, 140 - Vila Mamedina - Lençóis Paulista/SP - 18681037
+payment_method: Appmax
+appmax_order_id: 98041328
+payment_type: pix
+payment_pix_code: 00020101021226770014br.gov.bcb.pix2555api.itau/pix/qr/v2/ef4fab1b-6756-418a-8596-e7de86d9896f520400005303986540564.135802BR5906APPMAX6012PORTO ALEGRE62070503***63046126
+payment_expiration_date: 2025-10-11 09:35:51",,Appmax Pix,r5EP59Bj2sBtGrYBQbCwYJLvP,0.00,HIDRAPINK,0.00,,,,5732070424628,,Low,web,0.00,VAT 17%,0.00,,,,,,,,,,,,São Paulo,São Paulo,r5EP59Bj2sBtGrYBQbCwYJLvP,,,r5EP59Bj2sBtGrYBQbCwYJLvP
+#1090,natoshiemaeda@hotmail.com,paid,2025-10-11 09:08:11 -0300,fulfilled,2025-10-13 07:02:41 -0300,no,BRL,64.13,0.00,0.00,64.13,INGRID,5.57,Jadlog Package,2025-10-11 09:06:03 -0300,1,Hidratante Facial Pele Poderosa 5 em 1 - 1 UNIDADE,69.70,119.90,HPNK-30ML-V1,true,false,fulfilled,Nadime Toshie Maeda,"Rua Abílio Dalbem, ⁠779, Casa, ⁠Jardim Planalto","Rua Abílio Dalbem, ⁠779","Casa, ⁠Jardim Planalto",,Lençóis Paulista,18686-360,SP,BR,+5535984688583,Nadime Toshie Maeda,"Rua Abílio Dalbem, ⁠779, Casa, ⁠Jardim Planalto","Rua Abílio Dalbem, ⁠779","Casa, ⁠Jardim Planalto",,Lençóis Paulista,18686-360,SP,BR,+5535984688583,,"discount_to_apply: 0
+shipping_street_name: Rua Abílio Dalbem
+shipping_street_number: 779
+shipping_street_complement: Casa, Jardim Planalto
+shipping_neighborhood: Jardim Planalto
+shipping_full_address: Rua Abílio Dalbem, 779 - Jardim Planalto - Lençóis Paulista/SP - 18686360
+billing_street_name: Rua Abílio Dalbem
+billing_street_number: 779
+billing_street_complement: Casa, Jardim Planalto
+billing_neighborhood: Jardim Planalto
+billing_full_address: Rua Abílio Dalbem, 779 - Jardim Planalto - Lençóis Paulista/SP - 18686360
+payment_method: Appmax
+appmax_order_id: 98041340
+payment_type: credit_card
+payment_approved_date: 2025-10-11 09:06:01
+payment_installment: 1
+payment_card_brand: mastercard",,Appmax - Cartão de Crédito,r4ZR9OkzuC96NQK1NgX0I2yOM,0.00,HIDRAPINK,0.00,,,,5732070555700,,Low,web,0.00,VAT 17%,0.00,,,,,,,,,,,,São Paulo,São Paulo,r4ZR9OkzuC96NQK1NgX0I2yOM,,,r4ZR9OkzuC96NQK1NgX0I2yOM
+#1091,juniaduarte@outlook.com.br,paid,2025-10-11 09:22:37 -0300,fulfilled,2025-10-13 22:10:30 -0300,no,BRL,64.13,0.00,0.00,64.13,Tacruzeiro,5.57,Jadlog Package,2025-10-11 09:20:33 -0300,1,Hidratante Facial Pele Poderosa 5 em 1 - 1 UNIDADE,69.70,119.90,HPNK-30ML-V1,true,false,fulfilled,Junia Duarte,"Rua José Raphaeli, ⁠442, ⁠Jardim Maria Luíza I","Rua José Raphaeli, ⁠442",⁠Jardim Maria Luíza I,,Lençóis Paulista,18682-713,SP,BR,+5514996493560,Junia Duarte,"Rua José Raphaeli, ⁠442, ⁠Jardim Maria Luíza I","Rua José Raphaeli, ⁠442",⁠Jardim Maria Luíza I,,Lençóis Paulista,18682-713,SP,BR,+5514996493560,,"discount_to_apply: 0
+shipping_street_name: Rua José Raphaeli
+shipping_street_number: 442
+shipping_street_complement: Jardim Maria Luíza I
+shipping_neighborhood: Jardim Maria Luíza I
+shipping_full_address: Rua José Raphaeli, 442 - Jardim Maria Luíza I - Lençóis Paulista/SP - 18682713
+billing_street_name: Rua José Raphaeli
+billing_street_number: 442
+billing_street_complement: Jardim Maria Luíza I
+billing_neighborhood: Jardim Maria Luíza I
+billing_full_address: Rua José Raphaeli, 442 - Jardim Maria Luíza I - Lençóis Paulista/SP - 18682713
+payment_method: Appmax
+appmax_order_id: 98042129
+payment_type: credit_card
+payment_approved_date: 2025-10-11 09:20:29
+payment_installment: 1
+payment_card_brand: mastercard",,Appmax - Cartão de Crédito,rrdQsKDr8jLenBSgmoe3fHn7g,0.00,HIDRAPINK,0.00,,,,5732081041460,,Low,web,0.00,VAT 17%,0.00,,,,,,,,,,,,São Paulo,São Paulo,rrdQsKDr8jLenBSgmoe3fHn7g,,,rrdQsKDr8jLenBSgmoe3fHn7g
+#1092,v98321329@gmail.com,paid,2025-10-13 07:40:05 -0300,fulfilled,2025-10-14 20:30:21 -0300,no,BRL,64.13,0.00,0.00,64.13,GI,5.57,Sedex,2025-10-13 07:39:19 -0300,1,Hidratante Facial Pele Poderosa 5 em 1 - 1 UNIDADE,69.70,119.90,HPNK-30ML-V1,true,false,fulfilled,Vitoria Araujo,"R. Antônio Vieira, 59, ⁠59, ⁠Brazil","R. Antônio Vieira, 59, ⁠59",⁠Brazil,,Lençóis Paulista,18680-390,SP,BR,+5514998531044,Vitoria Araujo,"R. Antônio Vieira, 59, ⁠59, ⁠Brazil","R. Antônio Vieira, 59, ⁠59",⁠Brazil,,Lençóis Paulista,18680-390,SP,BR,+5514998531044,,"shipping_street_name: R. Antônio Vieira
+shipping_street_number: 59
+shipping_street_complement: Brazil
+shipping_neighborhood: Jardim São João
+shipping_full_address: R. Antônio Vieira, 59 - Jardim São João - Lençóis Paulista/SP - 18680390
+billing_street_name: R. Antônio Vieira
+billing_street_number: 59
+billing_street_complement: Brazil
+billing_neighborhood: Jardim São João
+billing_full_address: R. Antônio Vieira, 59 - Jardim São João - Lençóis Paulista/SP - 18680390
+payment_method: Appmax
+appmax_order_id: 98147950
+payment_type: pix
+payment_pix_code: 00020101021226770014br.gov.bcb.pix2555api.itau/pix/qr/v2/a8bb7879-4459-4675-a7b6-7e529767a9fd520400005303986540564.135802BR5906APPMAX6012PORTO ALEGRE62070503***63042C2F
+payment_expiration_date: 2025-10-13 08:09:17",,Appmax Pix,rVKggRMV5pHPfGC4XyQf0kaJS,0.00,HIDRAPINK,0.00,,,,5734565314612,,Medium,web,0.00,VAT 17%,0.00,,,,,,,,,,,,São Paulo,São Paulo,rVKggRMV5pHPfGC4XyQf0kaJS,,,rVKggRMV5pHPfGC4XyQf0kaJS
+#1093,,paid,2025-10-13 10:01:52 -0300,fulfilled,2025-10-14 14:14:27 -0300,no,BRL,64.13,15.63,0.00,79.76,JANA,5.57,Jadlog Package,2025-10-13 10:01:30 -0300,1,Hidratante Facial Pele Poderosa 5 em 1 - 1 UNIDADE,69.70,119.90,HPNK-30ML-V1,true,false,fulfilled,Jessica Rodrigues,"Rua dona Lídia, ⁠812, Ap 206, ⁠Serraria","Rua dona Lídia, ⁠812","Ap 206, ⁠Serraria",,Sao jose,88115-370,SC,BR,+5548991611530,Jessica Rodrigues,"Rua dona Lídia, ⁠812, Ap 206, ⁠Serraria","Rua dona Lídia, ⁠812","Ap 206, ⁠Serraria",,Sao jose,88115-370,SC,BR,+5548991611530,,"discount_to_apply: 0
+shipping_street_name: Rua dona Lídia
+shipping_street_number: 812
+shipping_street_complement: Ap 206, Serraria
+shipping_neighborhood: Serraria
+shipping_full_address: Rua dona Lídia, 812 - Serraria - Sao jose/SC - 88115370
+billing_street_name: Rua dona Lídia
+billing_street_number: 812
+billing_street_complement: Ap 206, Serraria
+billing_neighborhood: Serraria
+billing_full_address: Rua dona Lídia, 812 - Serraria - Sao jose/SC - 88115370
+payment_method: Appmax
+appmax_order_id: 98154578
+payment_type: pix
+payment_pix_code: 00020101021226770014br.gov.bcb.pix2555api.itau/pix/qr/v2/bf389529-fce0-402d-adef-85a287789ec8520400005303986540579.765802BR5906APPMAX6012PORTO ALEGRE62070503***63043ABE
+payment_expiration_date: 2025-10-13 10:31:28",,Appmax Pix,rlJXEpGfHvuocBycOlJ28lYak,0.00,HIDRAPINK,0.00,,,,5734658703412,,Low,web,0.00,VAT 17%,0.00,,,,,,,,,+5548991611530,,,Santa Catarina,Santa Catarina,rlJXEpGfHvuocBycOlJ28lYak,,,rlJXEpGfHvuocBycOlJ28lYak
+#1095,biancabarbosa0212@gmail.com,paid,2025-10-13 20:45:49 -0300,fulfilled,2025-10-14 14:14:59 -0300,yes,BRL,64.13,0.00,0.00,64.13,franmoraes,5.57,Jadlog Package,2025-10-13 20:21:29 -0300,1,Hidratante Facial Pele Poderosa 5 em 1 - 1 UNIDADE,69.70,119.90,HPNK-30ML-V1,true,false,fulfilled,Bianca Amorim,"Rua Gino Augusto Antônio Bosi, ⁠720, Casa, ⁠Parque Residencial Rondon","Rua Gino Augusto Antônio Bosi, ⁠720","Casa, ⁠Parque Residencial Rondon",,Lençóis Paulista,18685-090,SP,BR,+5514998515583,Bianca Amorim,"Rua Gino Augusto Antônio Bosi, ⁠720, Casa, ⁠Parque Residencial Rondon","Rua Gino Augusto Antônio Bosi, ⁠720","Casa, ⁠Parque Residencial Rondon",,Lençóis Paulista,18685-090,SP,BR,+5514998515583,,"discount_to_apply: 0
+shipping_street_name: Rua Gino Augusto Antônio Bosi
+shipping_street_number: 720
+shipping_street_complement: Casa, Parque Residencial Rondo
+shipping_neighborhood: Parque Residencial Rondon
+shipping_full_address: Rua Gino Augusto Antônio Bosi, 720 - Parque Residencial Rondon - Lençóis Paulista/SP - 18685090
+billing_street_name: Rua Gino Augusto Antônio Bosi
+billing_street_number: 720
+billing_street_complement: Casa, Parque Residencial Rondo
+billing_neighborhood: Parque Residencial Rondon
+billing_full_address: Rua Gino Augusto Antônio Bosi, 720 - Parque Residencial Rondon - Lençóis Paulista/SP - 18685090
+payment_method: Appmax
+appmax_order_id: 98195916
+payment_type: pix
+payment_pix_code: 00020101021226850014br.gov.bcb.pix2563pix.santander.com.br/qr/v2/85f037a6-20ee-484b-ad25-738b207908a5520400005303986540564.135802BR5906APPMAX6012PORTO ALEGRE62070503***63043FB7
+payment_expiration_date: 2025-10-13 20:51:28",,Appmax Pix,ruxzCP5cOxHGd4W9P4952DhmX,0.00,HIDRAPINK,0.00,,,,5735321665588,,Low,web,0.00,VAT 17%,0.00,,,,,,,,,,,,São Paulo,São Paulo,ruxzCP5cOxHGd4W9P4952DhmX,,,ruxzCP5cOxHGd4W9P4952DhmX
+#1097,,paid,2025-10-13 22:46:11 -0300,fulfilled,2025-10-14 20:30:37 -0300,no,BRL,125.03,0.00,0.00,125.03,franmoraes,10.87,Jadlog Package,2025-10-13 22:44:02 -0300,1,Hidratante Facial Pele Poderosa 5 em 1 - KIT 2 UNIDADES,135.90,239.90,HPNK-30ML-V2,true,false,fulfilled,Sheila Murador,"Av luiz pacola sobrinho, ⁠194, ⁠Jd monte azul","Av luiz pacola sobrinho, ⁠194",⁠Jd monte azul,,Lençóis Paulista,18682-758,SP,BR,+5514981455912,Sheila Murador,"Av luiz pacola sobrinho, ⁠194, ⁠Jd monte azul","Av luiz pacola sobrinho, ⁠194",⁠Jd monte azul,,Lençóis Paulista,18682-758,SP,BR,+5514981455912,,"discount_to_apply: 0
+shipping_street_name: Av luiz pacola sobrinho
+shipping_street_number: 194
+shipping_street_complement: Jd monte azul
+shipping_neighborhood: Jardim Monte Azul
+shipping_full_address: Av luiz pacola sobrinho, 194 - Jardim Monte Azul - Lençóis Paulista/SP - 18682758
+billing_street_name: Av luiz pacola sobrinho
+billing_street_number: 194
+billing_street_complement: Jd monte azul
+billing_neighborhood: Jardim Monte Azul
+billing_full_address: Av luiz pacola sobrinho, 194 - Jardim Monte Azul - Lençóis Paulista/SP - 18682758
+payment_method: Appmax
+appmax_order_id: 98205025
+payment_type: credit_card
+payment_approved_date: 2025-10-13 22:43:59
+payment_installment: 5
+payment_card_brand: visa",,Appmax - Cartão de Crédito,rBFRS8VW3VfX87A5Kcc352IAD,0.00,HIDRAPINK,0.00,,,,5735445987380,,Medium,web,0.00,VAT 17%,0.00,,,,,,,,,+5514981455912,,,São Paulo,São Paulo,rBFRS8VW3VfX87A5Kcc352IAD,,,rBFRS8VW3VfX87A5Kcc352IAD
+#1098,,paid,2025-10-14 09:15:49 -0300,fulfilled,2025-10-14 14:14:44 -0300,no,BRL,29.64,15.63,0.00,45.27,JANA_PROVISORIO,40.06,Jadlog Package,2025-10-14 09:15:26 -0300,1,Hidratante Facial Pele Poderosa 5 em 1 - 1 UNIDADE,69.70,119.90,HPNK-30ML-V1,true,false,fulfilled,Jessica Rodrigues,"Rua Dona Lídia, ⁠812, Ap 206, ⁠Serraria","Rua Dona Lídia, ⁠812","Ap 206, ⁠Serraria",,São José,88115-370,SC,BR,+5548991611530,Jessica Rodrigues,"Rua Dona Lídia, ⁠812, Ap 206, ⁠Serraria","Rua Dona Lídia, ⁠812","Ap 206, ⁠Serraria",,São José,88115-370,SC,BR,+5548991611530,,"discount_to_apply: 0
+shipping_street_name: Rua Dona Lídia
+shipping_street_number: 812
+shipping_street_complement: Ap 206, Serraria
+shipping_neighborhood: Serraria
+shipping_full_address: Rua Dona Lídia, 812 - Serraria - São José/SC - 88115370
+billing_street_name: Rua Dona Lídia
+billing_street_number: 812
+billing_street_complement: Ap 206, Serraria
+billing_neighborhood: Serraria
+billing_full_address: Rua Dona Lídia, 812 - Serraria - São José/SC - 88115370
+payment_method: Appmax
+appmax_order_id: 98220392
+payment_type: pix
+payment_pix_code: 00020101021226850014br.gov.bcb.pix2563pix.santander.com.br/qr/v2/640fadd6-7389-45e8-ae60-bdb7a01db324520400005303986540545.275802BR5906APPMAX6012PORTO ALEGRE62070503***6304AFCC
+payment_expiration_date: 2025-10-14 09:45:24",,Appmax Pix,r85xw5xtXPR4OLDnDFFZoj322,0.00,HIDRAPINK,0.00,,,,5735839531060,,Low,web,0.00,VAT 17%,0.00,,,,,,,,,+5548991611530,,,Santa Catarina,Santa Catarina,r85xw5xtXPR4OLDnDFFZoj322,,,r85xw5xtXPR4OLDnDFFZoj322
+#1099,musousa@gmail.com,paid,2025-10-14 09:52:02 -0300,fulfilled,2025-10-14 20:31:02 -0300,no,BRL,64.13,0.00,0.00,64.13,Tacruzeiro,5.57,Jadlog Package,2025-10-14 09:51:35 -0300,1,Hidratante Facial Pele Poderosa 5 em 1 - 1 UNIDADE,69.70,119.90,HPNK-30ML-V1,true,false,fulfilled,Murilo Leite,"Rua Geraldo Pereira de Barros, ⁠1235, Ap 42, ⁠Centro","Rua Geraldo Pereira de Barros, ⁠1235","Ap 42, ⁠Centro",,Lençóis Paulista,18680-020,SP,BR,+5514998079937,Murilo Leite,"Rua Geraldo Pereira de Barros, ⁠1235, Ap 42, ⁠Centro","Rua Geraldo Pereira de Barros, ⁠1235","Ap 42, ⁠Centro",,Lençóis Paulista,18680-020,SP,BR,+5514998079937,,"discount_to_apply: 0
+shipping_street_name: Rua Geraldo Pereira de Barros
+shipping_street_number: 1235
+shipping_street_complement: Ap 42, Centro
+shipping_neighborhood: Centro
+shipping_full_address: Rua Geraldo Pereira de Barros, 1235 - Centro - Lençóis Paulista/SP - 18680020
+billing_street_name: Rua Geraldo Pereira de Barros
+billing_street_number: 1235
+billing_street_complement: Ap 42, Centro
+billing_neighborhood: Centro
+billing_full_address: Rua Geraldo Pereira de Barros, 1235 - Centro - Lençóis Paulista/SP - 18680020
+payment_method: Appmax
+appmax_order_id: 98222748
+payment_type: pix
+payment_pix_code: 00020101021226850014br.gov.bcb.pix2563pix.santander.com.br/qr/v2/4772bed3-1f9e-4241-bf8d-7db2354a35c8520400005303986540564.135802BR5906APPMAX6012PORTO ALEGRE62070503***63044C05
+payment_expiration_date: 2025-10-14 10:21:34",,Appmax Pix,rTe9rI6mGqmpR8pbzfvCCFwE0,0.00,HIDRAPINK,0.00,,,,5735868203060,,Low,web,0.00,VAT 17%,0.00,,,,,,,,,,,,São Paulo,São Paulo,rTe9rI6mGqmpR8pbzfvCCFwE0,,,rTe9rI6mGqmpR8pbzfvCCFwE0

@@ -58,4 +58,23 @@ Os testes usam um banco SQLite isolado (`test.sqlite`) e garantem que o fluxo de
 - **Codigo de assinatura nao e reconhecido**: confira se o codigo informado corresponde ao registrado para a influenciadora cadastrada.
 - **Problemas para compilar o `better-sqlite3` no Windows**: instale o [Windows Build Tools](https://github.com/felixrieseberg/windows-build-tools) ou utilize o WSL.
 
+## 8. Importando pedidos de influenciadoras
+
+O painel master em `master-sales.html` permite carregar diretamente o CSV exportado do Shopify (`orders_export.csv`). Basta selecionar o arquivo em **Importar vendas em massa** – o frontend envia o conteúdo bruto para o backend, que aplica automaticamente as regras combinadas (pedido numerado, data de pagamento preenchida, cupom cadastrado e subtotal válido) antes de exibir a análise e concluir o salvamento.
+
+Se quiser validar o arquivo manualmente fora da interface (por exemplo, em pipelines de CI), utilize o script opcional `scripts/filter_orders.py`. Ele reutiliza a mesma lista de cupons (`data/valid_coupons.json`) e gera um CSV somente com pedidos aprovados:
+
+```bash
+# lendo do arquivo padrão
+scripts/filter_orders.py
+
+# lendo de um caminho específico
+scripts/filter_orders.py --input caminho/para/orders_export.csv --output caminho/para/orders_valid.csv
+
+# colando o conteúdo manualmente (encerre com Ctrl+D)
+scripts/filter_orders.py --stdin --output orders_valid.csv
+```
+
+Consulte `docs/sales-import.md` para o passo a passo completo da importação e para entender como o registro das vendas é calculado internamente.
+
 Com essas configuracoes o projeto estara pronto para rodar localmente, permitindo que o fluxo de aceite e as demais funcionalidades sejam exercitadas sem dependencia de infraestrutura externa.
