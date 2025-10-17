@@ -8,6 +8,7 @@ const jwt = require('jsonwebtoken');
 const db = require('./database');
 const createAceiteRouter = require('./routes/aceite');
 const verificarAceite = require('./middlewares/verificarAceite');
+const { calculateCommissionMultiplier, summarizeCommission } = require('./utils/multiplier');
 
 const app = express();
 
@@ -386,6 +387,226 @@ const findContentScriptByIdStmt = db.prepare(
 const listContentScriptsForMigrationStmt = db.prepare('SELECT id, descricao FROM content_scripts');
 const updateContentScriptDescriptionStmt = db.prepare('UPDATE content_scripts SET descricao = ? WHERE id = ?');
 
+const findCycleByIdStmt = db.prepare(
+  'SELECT id, cycle_year, cycle_month, status, started_at, closed_at, created_at, updated_at FROM monthly_cycles WHERE id = ?'
+);
+const findCycleByYearMonthStmt = db.prepare(
+  'SELECT id, cycle_year, cycle_month, status, started_at, closed_at, created_at, updated_at FROM monthly_cycles WHERE cycle_year = ? AND cycle_month = ? LIMIT 1'
+);
+const listCyclesStmt = db.prepare(
+  'SELECT id, cycle_year, cycle_month, status, started_at, closed_at, created_at, updated_at FROM monthly_cycles ORDER BY cycle_year DESC, cycle_month DESC'
+);
+const listOpenCyclesStmt = db.prepare(
+  "SELECT id, cycle_year, cycle_month, status, started_at, closed_at FROM monthly_cycles WHERE status = 'open' ORDER BY cycle_year DESC, cycle_month DESC"
+);
+const insertMonthlyCycleStmt = db.prepare(
+  "INSERT INTO monthly_cycles (cycle_year, cycle_month, status, started_at, created_at, updated_at) VALUES (?, ?, 'open', ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+);
+const closeCycleStmt = db.prepare(
+  "UPDATE monthly_cycles SET status = 'closed', closed_at = COALESCE(closed_at, CURRENT_TIMESTAMP), updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+);
+const touchCycleStmt = db.prepare('UPDATE monthly_cycles SET updated_at = CURRENT_TIMESTAMP WHERE id = ?');
+
+const deletePendingPlansStmt = db.prepare(
+  "DELETE FROM influencer_plans WHERE cycle_id = ? AND influencer_id = ? AND status IN ('scheduled', 'posted')"
+);
+const insertInfluencerPlanStmt = db.prepare(
+  `INSERT INTO influencer_plans (cycle_id, influencer_id, scheduled_date, content_script_id, notes, status, created_at, updated_at)
+   VALUES (@cycle_id, @influencer_id, @scheduled_date, @content_script_id, @notes, COALESCE(@status, 'scheduled'), CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
+);
+const updateInfluencerPlanStmt = db.prepare(
+  `UPDATE influencer_plans
+      SET scheduled_date = @scheduled_date,
+          content_script_id = @content_script_id,
+          notes = @notes,
+          updated_at = CURRENT_TIMESTAMP
+    WHERE id = @id`
+);
+const updateInfluencerPlanStatusStmt = db.prepare(
+  "UPDATE influencer_plans SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+);
+const markMissedPlansStmt = db.prepare(
+  `UPDATE influencer_plans
+      SET status = 'missed', updated_at = CURRENT_TIMESTAMP
+    WHERE cycle_id = ?
+      AND influencer_id = ?
+      AND status = 'scheduled'
+      AND scheduled_date <= ?`
+);
+const listPlansByInfluencerStmt = db.prepare(
+  `SELECT p.id,
+          p.cycle_id,
+          p.influencer_id,
+          p.scheduled_date,
+          p.content_script_id,
+          p.notes,
+          p.status,
+          p.created_at,
+          p.updated_at,
+          s.titulo AS script_title,
+          s.descricao AS script_description
+     FROM influencer_plans p
+     LEFT JOIN content_scripts s ON s.id = p.content_script_id
+    WHERE p.cycle_id = ?
+      AND p.influencer_id = ?
+    ORDER BY p.scheduled_date ASC, p.id ASC`
+);
+const listPlansForCycleStmt = db.prepare(
+  `SELECT p.id,
+          p.cycle_id,
+          p.influencer_id,
+          p.scheduled_date,
+          p.status,
+          p.content_script_id,
+          i.nome AS influencer_name,
+          i.instagram,
+          s.titulo AS script_title
+     FROM influencer_plans p
+     JOIN influenciadoras i ON i.id = p.influencer_id
+     LEFT JOIN content_scripts s ON s.id = p.content_script_id
+    WHERE p.cycle_id = ?
+    ORDER BY p.scheduled_date ASC, LOWER(i.nome)`
+);
+const findPlanByIdStmt = db.prepare(
+  `SELECT p.id,
+          p.cycle_id,
+          p.influencer_id,
+          p.scheduled_date,
+          p.content_script_id,
+          p.notes,
+          p.status,
+          p.created_at,
+          p.updated_at
+     FROM influencer_plans p
+    WHERE p.id = ?`
+);
+const findPlanByDateStmt = db.prepare(
+  `SELECT p.id,
+          p.cycle_id,
+          p.influencer_id,
+          p.scheduled_date,
+          p.content_script_id,
+          p.notes,
+          p.status,
+          p.created_at,
+          p.updated_at
+     FROM influencer_plans p
+    WHERE p.cycle_id = ?
+      AND p.influencer_id = ?
+      AND p.scheduled_date = ?
+    LIMIT 1`
+);
+const countPlansByInfluencerStmt = db.prepare(
+  'SELECT COUNT(*) AS total FROM influencer_plans WHERE cycle_id = ? AND influencer_id = ?'
+);
+const countValidatedPlansStmt = db.prepare(
+  "SELECT COUNT(*) AS total FROM influencer_plans WHERE cycle_id = ? AND influencer_id = ? AND status = 'validated'"
+);
+const listPendingPlanValidationsStmt = db.prepare(
+  `SELECT p.id,
+          p.cycle_id,
+          p.influencer_id,
+          p.scheduled_date,
+          p.status,
+          i.nome AS influencer_name,
+          i.instagram,
+          s.titulo AS script_title
+     FROM influencer_plans p
+     JOIN influenciadoras i ON i.id = p.influencer_id
+     LEFT JOIN content_scripts s ON s.id = p.content_script_id
+    WHERE p.cycle_id = ?
+      AND p.status = 'scheduled'
+    ORDER BY p.scheduled_date ASC, LOWER(i.nome)`
+);
+const findPlanWithInfluencerStmt = db.prepare(
+  `SELECT p.id,
+          p.cycle_id,
+          p.influencer_id,
+          p.scheduled_date,
+          p.status,
+          p.content_script_id,
+          p.notes,
+          p.created_at,
+          p.updated_at,
+          i.nome AS influencer_name,
+          i.instagram,
+          s.titulo AS script_title
+     FROM influencer_plans p
+     JOIN influenciadoras i ON i.id = p.influencer_id
+     LEFT JOIN content_scripts s ON s.id = p.content_script_id
+    WHERE p.id = ?`
+);
+const listValidatedPlansStmt = db.prepare(
+  `SELECT scheduled_date,
+          content_script_id,
+          notes
+     FROM influencer_plans
+    WHERE cycle_id = ?
+      AND influencer_id = ?
+      AND status = 'validated'
+    ORDER BY scheduled_date`
+);
+
+const insertMonthlyCommissionStmt = db.prepare(
+  `INSERT INTO monthly_commissions (
+      cycle_id,
+      influencer_id,
+      validated_days,
+      multiplier,
+      base_commission,
+      total_commission,
+      deliveries_planned,
+      deliveries_completed,
+      validation_summary,
+      closed_at
+    ) VALUES (@cycle_id, @influencer_id, @validated_days, @multiplier, @base_commission, @total_commission, @deliveries_planned, @deliveries_completed, @validation_summary, CURRENT_TIMESTAMP)
+    ON CONFLICT(cycle_id, influencer_id) DO UPDATE SET
+      validated_days = excluded.validated_days,
+      multiplier = excluded.multiplier,
+      base_commission = excluded.base_commission,
+      total_commission = excluded.total_commission,
+      deliveries_planned = excluded.deliveries_planned,
+      deliveries_completed = excluded.deliveries_completed,
+      validation_summary = excluded.validation_summary,
+      closed_at = CURRENT_TIMESTAMP`
+);
+const listMonthlyCommissionsByInfluencerStmt = db.prepare(
+  `SELECT mc.id,
+          mc.cycle_id,
+          mc.validated_days,
+          mc.multiplier,
+          mc.base_commission,
+          mc.total_commission,
+          mc.deliveries_planned,
+          mc.deliveries_completed,
+          mc.validation_summary,
+          mc.closed_at,
+          c.cycle_year,
+          c.cycle_month
+     FROM monthly_commissions mc
+     JOIN monthly_cycles c ON c.id = mc.cycle_id
+    WHERE mc.influencer_id = ?
+    ORDER BY c.cycle_year DESC, c.cycle_month DESC`
+);
+const listMonthlyRankingStmt = db.prepare(
+  `SELECT mc.id,
+          mc.cycle_id,
+          mc.influencer_id,
+          mc.validated_days,
+          mc.multiplier,
+          mc.total_commission,
+          mc.base_commission,
+          mc.deliveries_completed,
+          i.nome,
+          i.instagram,
+          c.cycle_year,
+          c.cycle_month
+     FROM monthly_commissions mc
+     JOIN influenciadoras i ON i.id = mc.influencer_id
+     JOIN monthly_cycles c ON c.id = mc.cycle_id
+    ORDER BY c.cycle_year DESC, c.cycle_month DESC, mc.total_commission DESC, mc.validated_days DESC`
+);
+
 const MASTER_DEFAULT_EMAIL = process.env.MASTER_EMAIL || 'master@example.com';
 const MASTER_DEFAULT_PASSWORD = process.env.MASTER_PASSWORD || 'master123';
 
@@ -437,6 +658,85 @@ const migrateContentScriptsToHtml = () => {
 };
 
 migrateContentScriptsToHtml();
+
+const getCurrentCycleParts = (referenceDate = new Date()) => {
+  const date = referenceDate instanceof Date ? referenceDate : new Date();
+  const year = date.getUTCFullYear();
+  const month = date.getUTCMonth() + 1;
+  return { year, month };
+};
+
+const formatCycleMonthStart = (year, month) => {
+  const normalizedMonth = String(month).padStart(2, '0');
+  return `${year}-${normalizedMonth}-01`;
+};
+
+const ensureMonthlyCycle = () => {
+  const { year, month } = getCurrentCycleParts();
+  let cycle = findCycleByYearMonthStmt.get(year, month);
+  if (cycle && cycle.status === 'open') {
+    return cycle;
+  }
+
+  db.exec('BEGIN');
+  try {
+    const openCycles = listOpenCyclesStmt.all();
+    for (const openCycle of openCycles) {
+      if (!openCycle) continue;
+      if (openCycle.cycle_year === year && openCycle.cycle_month === month) {
+        cycle = findCycleByIdStmt.get(openCycle.id);
+        continue;
+      }
+      closeCycleStmt.run(openCycle.id);
+    }
+
+    if (!cycle) {
+      const startedAt = formatCycleMonthStart(year, month);
+      const result = insertMonthlyCycleStmt.run(year, month, startedAt);
+      cycle = findCycleByIdStmt.get(result.lastInsertRowid);
+    } else if (cycle.status !== 'open') {
+      db.prepare(
+        "UPDATE monthly_cycles SET status = 'open', closed_at = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+      ).run(cycle.id);
+      cycle = findCycleByIdStmt.get(cycle.id);
+    }
+
+    db.exec('COMMIT');
+  } catch (error) {
+    db.exec('ROLLBACK');
+    throw error;
+  }
+
+  return cycle;
+};
+
+const getCycleByIdOrCurrent = (cycleId) => {
+  if (cycleId != null) {
+    const id = Number(cycleId);
+    if (Number.isInteger(id) && id > 0) {
+      const cycle = findCycleByIdStmt.get(id);
+      if (cycle) {
+        return cycle;
+      }
+    }
+  }
+  return ensureMonthlyCycle();
+};
+
+const computeCycleEndDate = (cycle) => {
+  if (!cycle) return null;
+  const year = Number(cycle.cycle_year);
+  const month = Number(cycle.cycle_month);
+  if (!Number.isInteger(year) || !Number.isInteger(month)) {
+    return null;
+  }
+  const nextMonthDate = new Date(Date.UTC(year, month, 0));
+  const day = String(nextMonthDate.getUTCDate()).padStart(2, '0');
+  const normalizedMonth = String(month).padStart(2, '0');
+  return `${year}-${normalizedMonth}-${day}`;
+};
+
+ensureMonthlyCycle();
 
 const normalizeDigits = (value) => (value || '').replace(/\D/g, '');
 
@@ -1620,6 +1920,108 @@ const ensureInfluencerAccess = (req, influencerId) => {
   return { status: 403, message: 'Acesso negado.' };
 };
 
+const getAuthenticatedInfluencer = (req) => {
+  if (!req?.auth?.user || req.auth.user.role !== 'influencer') {
+    return null;
+  }
+  const influencer = findInfluencerByUserIdStmt.get(req.auth.user.id);
+  return influencer || null;
+};
+
+const resolveInfluencerForRequest = (req, influencerId) => {
+  if (req.auth?.user?.role === 'master') {
+    if (influencerId == null) {
+      return { status: 400, message: 'Informe o ID da influenciadora.' };
+    }
+    return ensureInfluencerAccess(req, influencerId);
+  }
+  if (req.auth?.user?.role === 'influencer') {
+    const influencer = getAuthenticatedInfluencer(req);
+    if (!influencer) {
+      return { status: 404, message: 'Cadastro da influenciadora nao encontrado.' };
+    }
+    return { influencer };
+  }
+  return { status: 403, message: 'Acesso negado.' };
+};
+
+const normalizePlanEntriesPayload = (body, cycle) => {
+  if (!cycle) {
+    return { error: 'Ciclo mensal nao encontrado.' };
+  }
+
+  const candidates = Array.isArray(body?.entries)
+    ? body.entries
+    : Array.isArray(body?.days)
+      ? body.days
+      : Array.isArray(body?.dates)
+        ? body.dates
+        : [];
+
+  if (!candidates.length) {
+    return { error: 'Informe ao menos um dia para agendar.' };
+  }
+
+  const cycleYear = Number(cycle.cycle_year);
+  const cycleMonth = String(cycle.cycle_month).padStart(2, '0');
+  const expectedPrefix = `${cycleYear}-${cycleMonth}-`;
+
+  const result = [];
+  const seen = new Set();
+
+  candidates.forEach((entry) => {
+    let dateValue = null;
+    let scriptId = null;
+    let notes = null;
+
+    if (typeof entry === 'string') {
+      dateValue = entry;
+    } else if (entry && typeof entry === 'object') {
+      dateValue = entry.date ?? entry.day ?? entry.scheduled_date ?? entry.scheduledDate ?? entry.data;
+      scriptId = entry.scriptId ?? entry.contentScriptId ?? entry.content_script_id ?? null;
+      notes = trimString(entry.notes ?? entry.observacao ?? entry.obs ?? entry.annotation ?? '') || null;
+    }
+
+    if (typeof dateValue !== 'string' || !isValidDate(dateValue)) {
+      return;
+    }
+
+    const normalizedDate = dateValue.trim();
+    if (!normalizedDate.startsWith(expectedPrefix)) {
+      return;
+    }
+
+    if (seen.has(normalizedDate)) {
+      return;
+    }
+    seen.add(normalizedDate);
+
+    let contentScriptId = null;
+    if (scriptId != null) {
+      const parsed = Number(scriptId);
+      if (Number.isInteger(parsed) && parsed > 0) {
+        const script = findContentScriptByIdStmt.get(parsed);
+        if (script) {
+          contentScriptId = parsed;
+        }
+      }
+    }
+
+    result.push({
+      scheduled_date: normalizedDate,
+      content_script_id: contentScriptId,
+      notes
+    });
+  });
+
+  if (!result.length) {
+    return { error: 'Nao foi possivel identificar dias validos para o agendamento.' };
+  }
+
+  result.sort((a, b) => a.scheduled_date.localeCompare(b.scheduled_date));
+  return { entries: result };
+};
+
 const normalizeSaleBody = (body) => {
   const orderNumberRaw = body?.orderNumber ?? body?.order_number ?? body?.pedido ?? body?.order;
   const orderNumber = orderNumberRaw == null ? '' : String(trimString(orderNumberRaw)).trim();
@@ -2145,6 +2547,380 @@ app.post('/sales/import/confirm', authenticate, authorizeMaster, (req, res) => {
     console.error('Erro ao importar vendas:', error);
     return res.status(500).json({ error: 'Nao foi possivel concluir a importacao.' });
   }
+});
+
+app.get('/influencer/plan', authenticate, verificarAceite, (req, res) => {
+  const cycle = getCycleByIdOrCurrent(req.query?.cycleId ?? req.query?.cycle_id);
+  const { influencer, status, message } = resolveInfluencerForRequest(
+    req,
+    req.query?.influencerId ?? req.query?.influencer_id
+  );
+  if (!influencer) {
+    return res.status(status).json({ error: message });
+  }
+
+  const plans = listPlansByInfluencerStmt.all(cycle.id, influencer.id);
+  const scripts = listContentScriptsStmt
+    .all()
+    .slice(0, 15)
+    .map((script) => ({
+      id: script.id,
+      titulo: script.titulo,
+      descricao: script.descricao
+    }));
+
+  return res.status(200).json({ cycle, influencer: { id: influencer.id, nome: influencer.nome }, plans, scripts });
+});
+
+app.post('/influencer/plan', authenticate, verificarAceite, (req, res) => {
+  const baseCycle = ensureMonthlyCycle();
+  const { influencer, status, message } = resolveInfluencerForRequest(
+    req,
+    req.body?.influencerId ?? req.body?.influencer_id
+  );
+  if (!influencer) {
+    return res.status(status).json({ error: message });
+  }
+
+  const cycle = req.body?.cycleId ? getCycleByIdOrCurrent(req.body.cycleId) : baseCycle;
+  const { entries, error } = normalizePlanEntriesPayload(req.body || {}, cycle);
+  if (error) {
+    return res.status(400).json({ error });
+  }
+
+  db.exec('BEGIN');
+  try {
+    deletePendingPlansStmt.run(cycle.id, influencer.id);
+    entries.forEach((entry) => {
+      insertInfluencerPlanStmt.run({
+        cycle_id: cycle.id,
+        influencer_id: influencer.id,
+        scheduled_date: entry.scheduled_date,
+        content_script_id: entry.content_script_id,
+        notes: entry.notes,
+        status: 'scheduled'
+      });
+    });
+    touchCycleStmt.run(cycle.id);
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    console.error('Erro ao registrar agenda de stories:', err);
+    return res.status(500).json({ error: 'Nao foi possivel salvar a agenda.' });
+  }
+
+  const plans = listPlansByInfluencerStmt.all(cycle.id, influencer.id);
+  return res.status(201).json({ cycle, plans });
+});
+
+app.put('/influencer/plan/:id', authenticate, verificarAceite, (req, res) => {
+  const planId = Number(req.params.id);
+  if (!Number.isInteger(planId) || planId <= 0) {
+    return res.status(400).json({ error: 'ID invalido.' });
+  }
+
+  const plan = findPlanByIdStmt.get(planId);
+  if (!plan) {
+    return res.status(404).json({ error: 'Agendamento nao encontrado.' });
+  }
+
+  const { influencer, status, message } = resolveInfluencerForRequest(req, plan.influencer_id);
+  if (!influencer) {
+    return res.status(status).json({ error: message });
+  }
+
+  if (plan.status === 'validated') {
+    return res.status(409).json({ error: 'Stories ja validado para este dia.' });
+  }
+
+  const cycle = findCycleByIdStmt.get(plan.cycle_id) || ensureMonthlyCycle();
+  const nextDate = req.body?.date ?? req.body?.scheduled_date ?? req.body?.scheduledDate;
+  let scheduledDate = plan.scheduled_date;
+  if (nextDate) {
+    if (!isValidDate(nextDate)) {
+      return res.status(400).json({ error: 'Informe uma data valida (YYYY-MM-DD).' });
+    }
+    const normalized = nextDate.trim();
+    const cycleMonth = String(cycle.cycle_month).padStart(2, '0');
+    const expectedPrefix = `${cycle.cycle_year}-${cycleMonth}-`;
+    if (!normalized.startsWith(expectedPrefix)) {
+      return res.status(400).json({ error: 'Data precisa estar no mesmo ciclo mensal.' });
+    }
+    if (findPlanByDateStmt.get(cycle.id, influencer.id, normalized)?.id && normalized !== plan.scheduled_date) {
+      return res.status(409).json({ error: 'Ja existe um agendamento para esta data.' });
+    }
+    scheduledDate = normalized;
+  }
+
+  let scriptId = plan.content_script_id;
+  if (Object.prototype.hasOwnProperty.call(req.body || {}, 'scriptId') || Object.prototype.hasOwnProperty.call(req.body || {}, 'contentScriptId')) {
+    const rawScript = req.body?.scriptId ?? req.body?.contentScriptId;
+    const parsed = Number(rawScript);
+    if (rawScript == null || rawScript === '') {
+      scriptId = null;
+    } else if (Number.isInteger(parsed) && parsed > 0) {
+      const script = findContentScriptByIdStmt.get(parsed);
+      if (!script) {
+        return res.status(404).json({ error: 'Roteiro nao encontrado.' });
+      }
+      scriptId = parsed;
+    } else {
+      return res.status(400).json({ error: 'Identificador de roteiro invalido.' });
+    }
+  }
+
+  const notes = trimString(
+    req.body?.notes ?? req.body?.observacao ?? req.body?.obs ?? req.body?.annotation ?? plan.notes ?? ''
+  );
+
+  try {
+    updateInfluencerPlanStmt.run({
+      id: plan.id,
+      scheduled_date: scheduledDate,
+      content_script_id: scriptId,
+      notes: notes || null
+    });
+    touchCycleStmt.run(plan.cycle_id);
+  } catch (error) {
+    console.error('Erro ao atualizar agendamento de story:', error);
+    return res.status(500).json({ error: 'Nao foi possivel atualizar o agendamento.' });
+  }
+
+  const updated = findPlanByIdStmt.get(plan.id);
+  return res.status(200).json(updated);
+});
+
+app.get('/influencer/dashboard', authenticate, verificarAceite, (req, res) => {
+  const cycle = getCycleByIdOrCurrent(req.query?.cycleId ?? req.query?.cycle_id);
+  const { influencer, status, message } = resolveInfluencerForRequest(
+    req,
+    req.query?.influencerId ?? req.query?.influencer_id
+  );
+  if (!influencer) {
+    return res.status(status).json({ error: message });
+  }
+
+  const plans = listPlansByInfluencerStmt.all(cycle.id, influencer.id);
+  const validatedDaysRow = countValidatedPlansStmt.get(cycle.id, influencer.id) || { total: 0 };
+  const validatedDays = Number(validatedDaysRow.total) || 0;
+  const plannedDays = plans.length;
+  const pendingValidations = plans.filter((plan) => plan.status === 'scheduled').length;
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const alerts = plans
+    .filter((plan) => plan.status !== 'validated' && plan.scheduled_date < todayIso)
+    .map((plan) => ({ id: plan.id, date: plan.scheduled_date, status: plan.status }));
+  const scripts = listContentScriptsStmt
+    .all()
+    .slice(0, 15)
+    .map((script) => ({ id: script.id, titulo: script.titulo, descricao: script.descricao }));
+
+  const salesSummary = salesSummaryStmt.get(influencer.id) || { total_commission: 0 };
+  const commission = summarizeCommission(salesSummary.total_commission || 0, validatedDays);
+  const nextPlan = plans.find((plan) => plan.scheduled_date >= todayIso) || null;
+
+  return res.status(200).json({
+    cycle,
+    influencer: {
+      id: influencer.id,
+      nome: influencer.nome,
+      instagram: influencer.instagram,
+      commission_rate: influencer.commission_rate,
+      vendas_valor: influencer.vendas_valor
+    },
+    plans,
+    progress: {
+      plannedDays,
+      validatedDays,
+      pendingValidations,
+      multiplier: commission.multiplier,
+      multiplierLabel: commission.label,
+      estimatedCommission: commission.total
+    },
+    commission,
+    alerts,
+    suggestions: scripts,
+    nextPlan
+  });
+});
+
+app.get('/influencer/history', authenticate, verificarAceite, (req, res) => {
+  const { influencer, status, message } = resolveInfluencerForRequest(
+    req,
+    req.query?.influencerId ?? req.query?.influencer_id
+  );
+  if (!influencer) {
+    return res.status(status).json({ error: message });
+  }
+
+  const history = listMonthlyCommissionsByInfluencerStmt.all(influencer.id);
+  return res.status(200).json({ influencer: { id: influencer.id, nome: influencer.nome }, history });
+});
+
+app.get('/master/validations', authenticate, authorizeMaster, (req, res) => {
+  const cycle = getCycleByIdOrCurrent(req.query?.cycleId ?? req.query?.cycle_id);
+  const pending = listPendingPlanValidationsStmt.all(cycle.id);
+  return res.status(200).json({ cycle, pending });
+});
+
+app.post('/master/validations/:id/approve', authenticate, authorizeMaster, (req, res) => {
+  const planId = Number(req.params.id);
+  if (!Number.isInteger(planId) || planId <= 0) {
+    return res.status(400).json({ error: 'ID invalido.' });
+  }
+
+  const plan = findPlanWithInfluencerStmt.get(planId);
+  if (!plan) {
+    return res.status(404).json({ error: 'Agendamento nao encontrado.' });
+  }
+
+  if (plan.status === 'validated') {
+    return res.status(409).json({ error: 'Este dia ja foi validado.' });
+  }
+
+  try {
+    updateInfluencerPlanStatusStmt.run('validated', plan.id);
+    touchCycleStmt.run(plan.cycle_id);
+  } catch (error) {
+    console.error('Erro ao validar agendamento:', error);
+    return res.status(500).json({ error: 'Nao foi possivel aprovar o story.' });
+  }
+
+  const updated = findPlanWithInfluencerStmt.get(plan.id);
+  return res.status(200).json(updated);
+});
+
+app.post('/master/validations/:id/reject', authenticate, authorizeMaster, (req, res) => {
+  const planId = Number(req.params.id);
+  if (!Number.isInteger(planId) || planId <= 0) {
+    return res.status(400).json({ error: 'ID invalido.' });
+  }
+
+  const plan = findPlanWithInfluencerStmt.get(planId);
+  if (!plan) {
+    return res.status(404).json({ error: 'Agendamento nao encontrado.' });
+  }
+
+  try {
+    updateInfluencerPlanStatusStmt.run('scheduled', plan.id);
+    touchCycleStmt.run(plan.cycle_id);
+  } catch (error) {
+    console.error('Erro ao reabrir agendamento:', error);
+    return res.status(500).json({ error: 'Nao foi possivel rejeitar o story.' });
+  }
+
+  const updated = findPlanWithInfluencerStmt.get(plan.id);
+  return res.status(200).json(updated);
+});
+
+app.get('/master/dashboard', authenticate, authorizeMaster, (req, res) => {
+  const cycle = getCycleByIdOrCurrent(req.query?.cycleId ?? req.query?.cycle_id);
+  const plans = listPlansForCycleStmt.all(cycle.id);
+  const pending = listPendingPlanValidationsStmt.all(cycle.id);
+  const influencers = listInfluencersStmt.all();
+  const todayIso = new Date().toISOString().slice(0, 10);
+
+  const influencersSummary = influencers.map((row) => {
+    const validatedRow = countValidatedPlansStmt.get(cycle.id, row.id) || { total: 0 };
+    const plannedRow = countPlansByInfluencerStmt.get(cycle.id, row.id) || { total: 0 };
+    return {
+      id: row.id,
+      nome: row.nome,
+      instagram: row.instagram,
+      planned: Number(plannedRow.total) || 0,
+      validated: Number(validatedRow.total) || 0
+    };
+  });
+
+  const alerts = plans.filter(
+    (plan) => plan.status !== 'validated' && plan.scheduled_date < todayIso
+  );
+
+  const stats = {
+    totalInfluencers: influencersSummary.length,
+    plannedPosts: plans.length,
+    validatedPosts: influencersSummary.reduce((total, item) => total + item.validated, 0),
+    pendingValidations: pending.length,
+    alerts: alerts.length
+  };
+
+  return res.status(200).json({ cycle, plans, pendingValidations: pending, influencers: influencersSummary, stats });
+});
+
+app.get('/master/cycles', authenticate, authorizeMaster, (req, res) => {
+  const cycles = listCyclesStmt.all();
+  return res.status(200).json({ cycles });
+});
+
+app.get('/master/ranking', authenticate, authorizeMaster, (req, res) => {
+  const cycleId = req.query?.cycleId ?? req.query?.cycle_id;
+  const ranking = listMonthlyRankingStmt
+    .all()
+    .filter((row) => (cycleId ? Number(row.cycle_id) === Number(cycleId) : true));
+  return res.status(200).json({ ranking });
+});
+
+app.post('/master/cycles/:id/close', authenticate, authorizeMaster, (req, res) => {
+  const cycle = getCycleByIdOrCurrent(req.params.id);
+  if (!cycle) {
+    return res.status(404).json({ error: 'Ciclo nao encontrado.' });
+  }
+
+  const influencers = listInfluencersStmt.all();
+  const cycleEnd = computeCycleEndDate(cycle) || formatCycleMonthStart(cycle.cycle_year, cycle.cycle_month);
+  const summaries = [];
+
+  db.exec('BEGIN');
+  try {
+    influencers.forEach((influencer) => {
+      if (!influencer) return;
+      const validatedRow = countValidatedPlansStmt.get(cycle.id, influencer.id) || { total: 0 };
+      const plannedRow = countPlansByInfluencerStmt.get(cycle.id, influencer.id) || { total: 0 };
+      const validatedDays = Number(validatedRow.total) || 0;
+      const plannedDays = Number(plannedRow.total) || 0;
+
+      const salesSummary = salesSummaryStmt.get(influencer.id) || { total_commission: 0 };
+      const commissionSummary = summarizeCommission(salesSummary.total_commission || 0, validatedDays);
+      const validatedPlans = listValidatedPlansStmt.all(cycle.id, influencer.id) || [];
+      const validationSummary = validatedPlans.length ? JSON.stringify(validatedPlans) : null;
+
+      insertMonthlyCommissionStmt.run({
+        cycle_id: cycle.id,
+        influencer_id: influencer.id,
+        validated_days: validatedDays,
+        multiplier: commissionSummary.multiplier,
+        base_commission: commissionSummary.base,
+        total_commission: commissionSummary.total,
+        deliveries_planned: plannedDays,
+        deliveries_completed: validatedDays,
+        validation_summary: validationSummary
+      });
+
+      if (plannedDays > 0) {
+        markMissedPlansStmt.run(cycle.id, influencer.id, cycleEnd);
+      }
+
+      summaries.push({
+        influencer_id: influencer.id,
+        influencer_nome: influencer.nome,
+        validated_days: validatedDays,
+        multiplier: commissionSummary.multiplier,
+        total_commission: commissionSummary.total,
+        base_commission: commissionSummary.base,
+        deliveries_planned: plannedDays,
+        deliveries_completed: validatedDays
+      });
+    });
+
+    closeCycleStmt.run(cycle.id);
+    db.exec('COMMIT');
+  } catch (error) {
+    db.exec('ROLLBACK');
+    console.error('Erro ao fechar ciclo mensal:', error);
+    return res.status(500).json({ error: 'Nao foi possivel fechar o ciclo mensal.' });
+  }
+
+  const updatedCycle = findCycleByIdStmt.get(cycle.id);
+  return res.status(200).json({ cycle: updatedCycle, summaries });
 });
 
 app.get('/scripts', authenticate, verificarAceite, (req, res) => {

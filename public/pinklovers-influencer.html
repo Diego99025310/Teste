@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Painel Pinklovers – Influenciadora</title>
+    <link rel="stylesheet" href="/style.css" />
+    <style>
+      body {
+        font-family: 'Outfit', 'Segoe UI', sans-serif;
+        margin: 0;
+        background: linear-gradient(180deg, #ffe0ec 0%, #ffffff 100%);
+        color: #333;
+      }
+      header {
+        background: #e4447a;
+        color: #fff;
+        padding: 1.5rem;
+        text-align: center;
+      }
+      main {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 1.5rem;
+        display: grid;
+        gap: 1.5rem;
+      }
+      section {
+        background: #fff;
+        border-radius: 16px;
+        padding: 1.5rem;
+        box-shadow: 0 12px 24px rgba(228, 68, 122, 0.12);
+      }
+      h2 {
+        margin-top: 0;
+        color: #e4447a;
+      }
+      .grid {
+        display: grid;
+        gap: 1rem;
+      }
+      @media (min-width: 900px) {
+        .grid.two-columns {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 1rem;
+      }
+      th,
+      td {
+        padding: 0.65rem 0.75rem;
+        text-align: left;
+        border-bottom: 1px solid #f3a6c2;
+      }
+      th {
+        background: rgba(228, 68, 122, 0.08);
+        color: #c72b60;
+        font-weight: 600;
+      }
+      button,
+      input,
+      textarea,
+      select {
+        font: inherit;
+      }
+      button {
+        background: #e4447a;
+        color: #fff;
+        border: none;
+        border-radius: 999px;
+        padding: 0.75rem 1.5rem;
+        cursor: pointer;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+      }
+      button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 10px 20px rgba(228, 68, 122, 0.25);
+      }
+      .button-secondary {
+        background: rgba(228, 68, 122, 0.12);
+        color: #c72b60;
+      }
+      .button-secondary:hover {
+        box-shadow: none;
+        transform: none;
+      }
+      textarea,
+      input,
+      select {
+        width: 100%;
+        border-radius: 12px;
+        border: 1px solid #f3a6c2;
+        padding: 0.75rem;
+        margin-top: 0.4rem;
+        margin-bottom: 0.9rem;
+      }
+      .status-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        background: rgba(228, 68, 122, 0.12);
+        color: #c72b60;
+        border-radius: 999px;
+        padding: 0.35rem 0.9rem;
+        font-size: 0.85rem;
+      }
+      .alert {
+        border-left: 4px solid #f97316;
+        background: rgba(249, 115, 22, 0.15);
+        padding: 0.75rem 1rem;
+        border-radius: 12px;
+      }
+      .planner-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        align-items: center;
+        margin-bottom: 0.75rem;
+      }
+      .chip-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+      }
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        background: rgba(228, 68, 122, 0.16);
+        color: #c72b60;
+        border-radius: 999px;
+        padding: 0.35rem 0.8rem;
+        font-size: 0.9rem;
+      }
+      .chip button {
+        background: transparent;
+        border: none;
+        color: #c72b60;
+        font-size: 1rem;
+        cursor: pointer;
+        padding: 0;
+        line-height: 1;
+      }
+      .chip button:hover {
+        color: #e4447a;
+      }
+      .muted {
+        color: #6b7280;
+        font-size: 0.9rem;
+      }
+      .hidden {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Painel Pinklovers – Influenciadora</h1>
+      <p>Acompanhe seu ciclo mensal, organize as datas de stories e monitore as validações.</p>
+    </header>
+    <main>
+      <section id="status">
+        <h2>Resumo do Ciclo</h2>
+        <div class="grid two-columns">
+          <div>
+            <strong>Período:</strong>
+            <div id="cycle-period" class="muted">–</div>
+          </div>
+          <div>
+            <strong>Multiplicador atual:</strong>
+            <div id="cycle-multiplier" class="muted">–</div>
+          </div>
+          <div>
+            <strong>Dias planejados:</strong>
+            <div id="cycle-planned" class="muted">–</div>
+          </div>
+          <div>
+            <strong>Dias validados:</strong>
+            <div id="cycle-validated" class="muted">–</div>
+          </div>
+          <div>
+            <strong>Dias aguardando validação:</strong>
+            <div id="cycle-pending" class="muted">–</div>
+          </div>
+          <div>
+            <strong>Comissão estimada:</strong>
+            <div id="cycle-commission" class="muted">–</div>
+          </div>
+        </div>
+        <div id="alerts" class="grid" style="margin-top: 1.25rem"></div>
+      </section>
+
+      <section>
+        <h2>Agenda do Mês</h2>
+        <p class="muted">
+          Escolha cada data em que pretende postar stories neste ciclo. Você pode adicionar várias datas antes de salvar.
+        </p>
+        <form id="plan-form">
+          <div class="planner-actions">
+            <label style="flex: 1 1 220px">
+              Selecionar dia
+              <input id="plan-date" type="date" />
+            </label>
+            <button type="button" id="add-day" class="button-secondary">Adicionar dia</button>
+          </div>
+          <div id="selected-days" class="chip-list muted">Nenhuma data selecionada.</div>
+          <button type="submit">Salvar agenda</button>
+          <span id="plan-feedback" class="muted"></span>
+        </form>
+        <table>
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Status</th>
+              <th>Roteiro</th>
+            </tr>
+          </thead>
+          <tbody id="plan-table">
+            <tr><td colspan="3" class="muted">Nenhum agendamento encontrado.</td></tr>
+          </tbody>
+        </table>
+      </section>
+    </main>
+
+    <script>
+      const token = sessionStorage.getItem('token');
+      if (!token) {
+        document.body.innerHTML = '<main><section><h2>Faça login</h2><p>Entre pelo painel para carregar seus dados.</p></section></main>';
+      }
+
+      const state = {
+        cycle: null,
+        plans: [],
+        draftDays: []
+      };
+
+      const headers = () => ({
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      });
+
+      const formatDate = (value) => {
+        if (!value) return '-';
+        const [year, month, day] = value.split('-');
+        return `${day}/${month}/${year}`;
+      };
+
+      const statusLabels = {
+        scheduled: 'Pendente',
+        validated: 'Validado',
+        posted: 'Em validação',
+        missed: 'Não entregue'
+      };
+      const formatStatus = (status) => statusLabels[status] || status;
+
+      const setText = (id, text) => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.textContent = text;
+        }
+      };
+
+      const getCyclePrefix = () => {
+        if (!state.cycle) return null;
+        const month = String(state.cycle.cycle_month).padStart(2, '0');
+        return `${state.cycle.cycle_year}-${month}-`;
+      };
+
+      function removeDay(day) {
+        state.draftDays = state.draftDays.filter((value) => value !== day);
+        renderSelectedDays();
+      }
+
+      function renderSelectedDays() {
+        const container = document.getElementById('selected-days');
+        if (!container) return;
+        container.innerHTML = '';
+        if (!state.draftDays.length) {
+          container.classList.add('muted');
+          container.textContent = 'Nenhuma data selecionada.';
+          return;
+        }
+        container.classList.remove('muted');
+        state.draftDays.forEach((day) => {
+          const chip = document.createElement('span');
+          chip.className = 'chip';
+          const label = document.createElement('span');
+          label.textContent = formatDate(day);
+          const removeButton = document.createElement('button');
+          removeButton.type = 'button';
+          removeButton.setAttribute('aria-label', `Remover ${formatDate(day)}`);
+          removeButton.textContent = '×';
+          removeButton.addEventListener('click', () => removeDay(day));
+          chip.append(label, removeButton);
+          container.appendChild(chip);
+        });
+      }
+
+      function syncDraftFromPlans() {
+        state.draftDays = state.plans
+          .filter((plan) => plan.status === 'scheduled')
+          .map((plan) => plan.scheduled_date);
+        state.draftDays.sort();
+        renderSelectedDays();
+      }
+
+      function renderPlans() {
+        const table = document.getElementById('plan-table');
+        if (!table) return;
+        table.innerHTML = '';
+        if (!state.plans.length) {
+          table.innerHTML = '<tr><td colspan="3" class="muted">Nenhum agendamento cadastrado.</td></tr>';
+          return;
+        }
+        state.plans.forEach((plan) => {
+          const row = document.createElement('tr');
+          const statusText = formatStatus(plan.status);
+          row.innerHTML = `
+            <td>${formatDate(plan.scheduled_date)}</td>
+            <td><span class="status-chip">${statusText}</span></td>
+            <td>${plan.script_title || '-'}</td>
+          `;
+          table.appendChild(row);
+        });
+      }
+
+      const renderStatus = (dashboard) => {
+        state.cycle = dashboard.cycle;
+        state.plans = dashboard.plans || [];
+        syncDraftFromPlans();
+
+        setText('cycle-period', `${dashboard.cycle.cycle_month}/${dashboard.cycle.cycle_year}`);
+        setText('cycle-multiplier', `${dashboard.progress.multiplier}x – ${dashboard.progress.multiplierLabel}`);
+        setText('cycle-planned', String(dashboard.progress.plannedDays));
+        setText('cycle-validated', String(dashboard.progress.validatedDays));
+        setText('cycle-pending', String(dashboard.progress.pendingValidations));
+        setText(
+          'cycle-commission',
+          dashboard.commission ? `R$ ${dashboard.commission.total.toFixed(2)}` : '–'
+        );
+
+        const alerts = document.getElementById('alerts');
+        alerts.innerHTML = '';
+        (dashboard.alerts || []).forEach((alert) => {
+          const element = document.createElement('div');
+          element.className = 'alert';
+          element.innerHTML = `<strong>Atenção:</strong> story de ${formatDate(alert.date)} ainda não foi validado.`;
+          alerts.appendChild(element);
+        });
+
+        renderPlans();
+      };
+
+      const loadDashboard = async () => {
+        const response = await fetch('/influencer/dashboard', { headers: headers() });
+        if (!response.ok) {
+          throw new Error('Falha ao carregar painel');
+        }
+        const data = await response.json();
+        renderStatus(data);
+      };
+
+      const planForm = document.getElementById('plan-form');
+      const addDayButton = document.getElementById('add-day');
+      const planFeedback = document.getElementById('plan-feedback');
+      const planDateInput = document.getElementById('plan-date');
+      const setFeedback = (message) => {
+        if (planFeedback) {
+          planFeedback.textContent = message;
+        }
+      };
+
+      addDayButton.addEventListener('click', () => {
+        setFeedback('');
+        if (!state.cycle) {
+          setFeedback('Carregando ciclo atual...');
+          return;
+        }
+        const rawValue = planDateInput.value;
+        if (!rawValue) {
+          setFeedback('Selecione uma data.');
+          return;
+        }
+        const normalized = rawValue.trim();
+        const prefix = getCyclePrefix();
+        if (prefix && !normalized.startsWith(prefix)) {
+          const month = String(state.cycle.cycle_month).padStart(2, '0');
+          setFeedback(`Escolha uma data dentro de ${month}/${state.cycle.cycle_year}.`);
+          return;
+        }
+        if (state.draftDays.includes(normalized)) {
+          setFeedback('Esta data já foi adicionada.');
+          return;
+        }
+        const alreadyValidated = state.plans.some(
+          (plan) => plan.scheduled_date === normalized && plan.status === 'validated'
+        );
+        if (alreadyValidated) {
+          setFeedback('Este dia já foi validado e não pode ser alterado.');
+          return;
+        }
+        state.draftDays.push(normalized);
+        state.draftDays.sort();
+        renderSelectedDays();
+        planDateInput.value = '';
+      });
+
+      planForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        setFeedback('Salvando...');
+        if (!state.draftDays.length) {
+          setFeedback('Adicione ao menos uma data antes de salvar.');
+          return;
+        }
+        const response = await fetch('/influencer/plan', {
+          method: 'POST',
+          headers: headers(),
+          body: JSON.stringify({ days: state.draftDays })
+        });
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({}));
+          setFeedback(error.error || 'Não foi possível salvar a agenda.');
+          return;
+        }
+        setFeedback('Agenda atualizada com sucesso!');
+        await loadDashboard();
+      });
+      loadDashboard().catch((error) => {
+        console.error(error);
+        document.body.innerHTML = '<main><section><h2>Erro ao carregar painel</h2><p>Tente novamente mais tarde.</p></section></main>';
+      });
+    </script>
+  </body>
+</html>
