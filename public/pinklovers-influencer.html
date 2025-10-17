@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Painel Pinklovers – Influenciadora</title>
+    <link rel="stylesheet" href="/style.css" />
+    <style>
+      body {
+        font-family: 'Outfit', 'Segoe UI', sans-serif;
+        margin: 0;
+        background: linear-gradient(180deg, #ffe0ec 0%, #ffffff 100%);
+        color: #333;
+      }
+      header {
+        background: #e4447a;
+        color: #fff;
+        padding: 1.5rem;
+        text-align: center;
+      }
+      main {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 1.5rem;
+        display: grid;
+        gap: 1.5rem;
+      }
+      section {
+        background: #fff;
+        border-radius: 16px;
+        padding: 1.5rem;
+        box-shadow: 0 12px 24px rgba(228, 68, 122, 0.12);
+      }
+      h2 {
+        margin-top: 0;
+        color: #e4447a;
+      }
+      .grid {
+        display: grid;
+        gap: 1rem;
+      }
+      @media (min-width: 900px) {
+        .grid.two-columns {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 1rem;
+      }
+      th,
+      td {
+        padding: 0.65rem 0.75rem;
+        text-align: left;
+        border-bottom: 1px solid #f3a6c2;
+      }
+      th {
+        background: rgba(228, 68, 122, 0.08);
+        color: #c72b60;
+        font-weight: 600;
+      }
+      button,
+      input,
+      textarea,
+      select {
+        font: inherit;
+      }
+      button {
+        background: #e4447a;
+        color: #fff;
+        border: none;
+        border-radius: 999px;
+        padding: 0.75rem 1.5rem;
+        cursor: pointer;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+      }
+      button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 10px 20px rgba(228, 68, 122, 0.25);
+      }
+      textarea,
+      input,
+      select {
+        width: 100%;
+        border-radius: 12px;
+        border: 1px solid #f3a6c2;
+        padding: 0.75rem;
+        margin-top: 0.4rem;
+        margin-bottom: 0.9rem;
+      }
+      .status-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        background: rgba(228, 68, 122, 0.12);
+        color: #c72b60;
+        border-radius: 999px;
+        padding: 0.35rem 0.9rem;
+        font-size: 0.85rem;
+      }
+      .alert {
+        border-left: 4px solid #f97316;
+        background: rgba(249, 115, 22, 0.15);
+        padding: 0.75rem 1rem;
+        border-radius: 12px;
+      }
+      .muted {
+        color: #6b7280;
+        font-size: 0.9rem;
+      }
+      .hidden {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Painel Pinklovers – Influenciadora</h1>
+      <p>Acompanhe seu ciclo mensal, organize stories e envie comprovantes.</p>
+    </header>
+    <main>
+      <section id="status">
+        <h2>Resumo do Ciclo</h2>
+        <div class="grid two-columns">
+          <div>
+            <strong>Período:</strong>
+            <div id="cycle-period" class="muted">–</div>
+          </div>
+          <div>
+            <strong>Multiplicador atual:</strong>
+            <div id="cycle-multiplier" class="muted">–</div>
+          </div>
+          <div>
+            <strong>Dias planejados:</strong>
+            <div id="cycle-planned" class="muted">–</div>
+          </div>
+          <div>
+            <strong>Dias validados:</strong>
+            <div id="cycle-validated" class="muted">–</div>
+          </div>
+          <div>
+            <strong>Comissão estimada:</strong>
+            <div id="cycle-commission" class="muted">–</div>
+          </div>
+        </div>
+        <div id="alerts" class="grid" style="margin-top: 1.25rem"></div>
+      </section>
+
+      <section>
+        <h2>Agenda do Mês</h2>
+        <p class="muted">Informe as datas (YYYY-MM-DD) separadas por linha para agendar seus stories.</p>
+        <form id="plan-form">
+          <textarea id="plan-days" rows="4" placeholder="2024-08-01&#10;2024-08-05"></textarea>
+          <button type="submit">Salvar agenda</button>
+          <span id="plan-feedback" class="muted"></span>
+        </form>
+        <table>
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Status</th>
+              <th>Roteiro</th>
+            </tr>
+          </thead>
+          <tbody id="plan-table">
+            <tr><td colspan="3" class="muted">Nenhum agendamento encontrado.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>Enviar Story</h2>
+        <form id="submission-form" class="grid">
+          <label>
+            Selecionar dia agendado
+            <select id="submission-plan"></select>
+          </label>
+          <label>
+            Link ou comprovante (opcional em validação automática)
+            <input id="submission-proof" type="url" placeholder="https://" />
+          </label>
+          <label>
+            Observações
+            <textarea id="submission-notes" rows="2" placeholder="Informações adicionais"></textarea>
+          </label>
+          <label>
+            <input id="submission-auto" type="checkbox" /> Story identificado automaticamente (marcou @hidrapink)
+          </label>
+          <button type="submit">Enviar story</button>
+          <span id="submission-feedback" class="muted"></span>
+        </form>
+
+        <h3>Histórico de Submissões</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Status</th>
+              <th>Última atualização</th>
+            </tr>
+          </thead>
+          <tbody id="submission-table">
+            <tr><td colspan="3" class="muted">Nenhum story enviado ainda.</td></tr>
+          </tbody>
+        </table>
+      </section>
+    </main>
+
+    <script>
+      const token = sessionStorage.getItem('token');
+      if (!token) {
+        document.body.innerHTML = '<main><section><h2>Faça login</h2><p>Entre pelo painel para carregar seus dados.</p></section></main>';
+      }
+
+      const state = {
+        cycle: null,
+        plans: [],
+        submissions: []
+      };
+
+      const headers = () => ({
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      });
+
+      const formatDate = (value) => {
+        if (!value) return '-';
+        const [year, month, day] = value.split('-');
+        return `${day}/${month}/${year}`;
+      };
+
+      const setText = (id, text) => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.textContent = text;
+        }
+      };
+
+      const renderPlans = () => {
+        const table = document.getElementById('plan-table');
+        const select = document.getElementById('submission-plan');
+        table.innerHTML = '';
+        select.innerHTML = '';
+
+        if (!state.plans.length) {
+          table.innerHTML = '<tr><td colspan="3" class="muted">Nenhum agendamento cadastrado.</td></tr>';
+          select.innerHTML = '<option value="">Nenhum agendamento disponível</option>';
+          return;
+        }
+
+        state.plans.forEach((plan) => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${formatDate(plan.scheduled_date)}</td>
+            <td><span class="status-chip">${plan.status}</span></td>
+            <td>${plan.script_title || '-'}</td>
+          `;
+          table.appendChild(row);
+
+          const option = document.createElement('option');
+          option.value = plan.id;
+          option.textContent = `${formatDate(plan.scheduled_date)} – ${plan.status}`;
+          select.appendChild(option);
+        });
+      };
+
+      const renderSubmissions = () => {
+        const table = document.getElementById('submission-table');
+        table.innerHTML = '';
+        if (!state.submissions.length) {
+          table.innerHTML = '<tr><td colspan="3" class="muted">Nenhum story enviado ainda.</td></tr>';
+          return;
+        }
+        state.submissions.forEach((submission) => {
+          const row = document.createElement('tr');
+          const updated = submission.validated_at || submission.submitted_at;
+          row.innerHTML = `
+            <td>${formatDate(submission.scheduled_date)}</td>
+            <td><span class="status-chip">${submission.status}</span></td>
+            <td class="muted">${updated || '-'}</td>
+          `;
+          table.appendChild(row);
+        });
+      };
+
+      const renderStatus = (dashboard) => {
+        state.cycle = dashboard.cycle;
+        state.plans = dashboard.plans || [];
+        state.submissions = dashboard.submissions || [];
+
+        setText('cycle-period', `${dashboard.cycle.cycle_month}/${dashboard.cycle.cycle_year}`);
+        setText('cycle-multiplier', `${dashboard.progress.multiplier}x – ${dashboard.progress.multiplierLabel}`);
+        setText('cycle-planned', String(dashboard.progress.plannedDays));
+        setText('cycle-validated', String(dashboard.progress.validatedDays));
+        setText(
+          'cycle-commission',
+          dashboard.commission ? `R$ ${dashboard.commission.total.toFixed(2)}` : '–'
+        );
+
+        const alerts = document.getElementById('alerts');
+        alerts.innerHTML = '';
+        (dashboard.alerts || []).forEach((alert) => {
+          const element = document.createElement('div');
+          element.className = 'alert';
+          element.innerHTML = `<strong>Atenção:</strong> story de ${formatDate(alert.date)} ainda não foi validado.`;
+          alerts.appendChild(element);
+        });
+
+        const textarea = document.getElementById('plan-days');
+        textarea.value = state.plans.map((plan) => plan.scheduled_date).join('\n');
+
+        renderPlans();
+        renderSubmissions();
+      };
+
+      const loadDashboard = async () => {
+        const response = await fetch('/influencer/dashboard', { headers: headers() });
+        if (!response.ok) {
+          throw new Error('Falha ao carregar painel');
+        }
+        const data = await response.json();
+        renderStatus(data);
+      };
+
+      document.getElementById('plan-form').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const feedback = document.getElementById('plan-feedback');
+        feedback.textContent = 'Salvando...';
+        const days = document
+          .getElementById('plan-days')
+          .value.split(/\s+/)
+          .map((day) => day.trim())
+          .filter((day) => day);
+        const response = await fetch('/influencer/plan', {
+          method: 'POST',
+          headers: headers(),
+          body: JSON.stringify({ days })
+        });
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({}));
+          feedback.textContent = error.error || 'Não foi possível salvar a agenda.';
+          return;
+        }
+        feedback.textContent = 'Agenda atualizada com sucesso!';
+        const data = await response.json();
+        state.plans = data.plans || [];
+        renderPlans();
+        loadDashboard();
+      });
+
+      document.getElementById('submission-form').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const feedback = document.getElementById('submission-feedback');
+        feedback.textContent = 'Enviando story...';
+        const planId = document.getElementById('submission-plan').value;
+        if (!planId) {
+          feedback.textContent = 'Selecione um dia agendado.';
+          return;
+        }
+        const payload = {
+          planId: Number(planId),
+          proofUrl: document.getElementById('submission-proof').value.trim() || undefined,
+          proofNotes: document.getElementById('submission-notes').value.trim() || undefined,
+          autoDetected: document.getElementById('submission-auto').checked
+        };
+        const response = await fetch('/influencer/submissions', {
+          method: 'POST',
+          headers: headers(),
+          body: JSON.stringify(payload)
+        });
+        const message = response.ok ? 'Story enviado com sucesso!' : 'Não foi possível enviar o story.';
+        feedback.textContent = message;
+        document.getElementById('submission-proof').value = '';
+        document.getElementById('submission-notes').value = '';
+        document.getElementById('submission-auto').checked = false;
+        await loadDashboard();
+      });
+
+      loadDashboard().catch((error) => {
+        console.error(error);
+        document.body.innerHTML = '<main><section><h2>Erro ao carregar painel</h2><p>Tente novamente mais tarde.</p></section></main>';
+      });
+    </script>
+  </body>
+</html>

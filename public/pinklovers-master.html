@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Painel Pinklovers – Master</title>
+    <link rel="stylesheet" href="/style.css" />
+    <style>
+      body {
+        font-family: 'Outfit', 'Segoe UI', sans-serif;
+        margin: 0;
+        background: linear-gradient(180deg, #fff0f6 0%, #ffffff 100%);
+        color: #333;
+      }
+      header {
+        background: #c72b60;
+        color: #fff;
+        padding: 1.4rem 1rem;
+        text-align: center;
+      }
+      main {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 1.5rem;
+        display: grid;
+        gap: 1.5rem;
+      }
+      section {
+        background: #fff;
+        border-radius: 18px;
+        padding: 1.5rem;
+        box-shadow: 0 16px 28px rgba(199, 43, 96, 0.12);
+      }
+      h2 {
+        margin-top: 0;
+        color: #c72b60;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 1rem;
+      }
+      th,
+      td {
+        padding: 0.65rem 0.75rem;
+        text-align: left;
+        border-bottom: 1px solid rgba(199, 43, 96, 0.18);
+      }
+      th {
+        background: rgba(199, 43, 96, 0.08);
+        color: #c72b60;
+        font-weight: 600;
+      }
+      button {
+        font: inherit;
+        border: none;
+        border-radius: 999px;
+        padding: 0.6rem 1.2rem;
+        margin-right: 0.5rem;
+        cursor: pointer;
+        transition: transform 0.2s ease;
+      }
+      button.primary {
+        background: #c72b60;
+        color: #fff;
+      }
+      button.secondary {
+        background: rgba(199, 43, 96, 0.12);
+        color: #c72b60;
+      }
+      button:hover {
+        transform: translateY(-1px);
+      }
+      .muted {
+        color: #6b7280;
+        font-size: 0.9rem;
+      }
+      .grid {
+        display: grid;
+        gap: 1rem;
+      }
+      @media (min-width: 900px) {
+        .grid.two-columns {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+      textarea {
+        width: 100%;
+        min-height: 60px;
+        border-radius: 12px;
+        border: 1px solid rgba(199, 43, 96, 0.3);
+        padding: 0.65rem;
+      }
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        background: rgba(199, 43, 96, 0.14);
+        color: #c72b60;
+        border-radius: 999px;
+        padding: 0.3rem 0.8rem;
+        font-size: 0.85rem;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Painel Pinklovers – Administração</h1>
+      <p>Gerencie ciclos, agendas das influenciadoras e validação dos stories.</p>
+    </header>
+    <main>
+      <section id="cycle">
+        <h2>Resumo do Ciclo</h2>
+        <div class="grid two-columns">
+          <div>
+            <strong>Mês em andamento</strong>
+            <div id="cycle-period" class="muted">–</div>
+          </div>
+          <div>
+            <strong>Stories planejados</strong>
+            <div id="cycle-planned" class="muted">–</div>
+          </div>
+          <div>
+            <strong>Stories validados</strong>
+            <div id="cycle-validated" class="muted">–</div>
+          </div>
+          <div>
+            <strong>Stories pendentes</strong>
+            <div id="cycle-pending" class="muted">–</div>
+          </div>
+        </div>
+        <button id="close-cycle" class="primary" style="margin-top: 1rem">Fechar ciclo e calcular comissões</button>
+        <span id="close-feedback" class="muted"></span>
+      </section>
+
+      <section>
+        <h2>Stories aguardando validação</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Influenciadora</th>
+              <th>Data</th>
+              <th>Comprovante</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="pending-table">
+            <tr><td colspan="4" class="muted">Nenhum story pendente.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>Agenda das influenciadoras</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Influenciadora</th>
+              <th>Status</th>
+              <th>Roteiro</th>
+            </tr>
+          </thead>
+          <tbody id="agenda-table">
+            <tr><td colspan="4" class="muted">Nenhum agendamento encontrado.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>Ranking de desempenho</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Influenciadora</th>
+              <th>Mês</th>
+              <th>Stories validados</th>
+              <th>Multiplicador</th>
+              <th>Comissão final</th>
+            </tr>
+          </thead>
+          <tbody id="ranking-table">
+            <tr><td colspan="5" class="muted">Nenhum histórico disponível.</td></tr>
+          </tbody>
+        </table>
+      </section>
+    </main>
+
+    <script>
+      const token = sessionStorage.getItem('token');
+      const role = sessionStorage.getItem('role');
+      if (!token || role !== 'master') {
+        document.body.innerHTML = '<main><section><h2>Acesso restrito</h2><p>Faça login como master para visualizar este painel.</p></section></main>';
+      }
+
+      const headers = () => ({
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      });
+
+      const formatDate = (value) => {
+        if (!value) return '-';
+        const [year, month, day] = value.split('-');
+        return `${day}/${month}/${year}`;
+      };
+
+      const state = {
+        cycle: null,
+        pending: [],
+        agenda: [],
+        ranking: []
+      };
+
+      const renderCycle = (data) => {
+        state.cycle = data.cycle;
+        document.getElementById('cycle-period').textContent = `${data.cycle.cycle_month}/${data.cycle.cycle_year}`;
+        document.getElementById('cycle-planned').textContent = String(data.stats.plannedPosts);
+        document.getElementById('cycle-validated').textContent = String(data.stats.validatedPosts);
+        document.getElementById('cycle-pending').textContent = String(data.stats.pendingValidations);
+      };
+
+      const renderPending = () => {
+        const table = document.getElementById('pending-table');
+        table.innerHTML = '';
+        if (!state.pending.length) {
+          table.innerHTML = '<tr><td colspan="4" class="muted">Nenhum story pendente.</td></tr>';
+          return;
+        }
+        state.pending.forEach((submission) => {
+          const row = document.createElement('tr');
+          const proofLink = submission.proof_url
+            ? `<a href="${submission.proof_url}" target="_blank">Abrir</a>`
+            : '<span class="muted">Não enviado</span>';
+          row.innerHTML = `
+            <td>${submission.influencer_name}</td>
+            <td>${formatDate(submission.scheduled_date)}</td>
+            <td>${proofLink}</td>
+            <td>
+              <button class="primary" data-action="approve" data-id="${submission.id}">Aprovar</button>
+              <button class="secondary" data-action="reject" data-id="${submission.id}">Rejeitar</button>
+            </td>
+          `;
+          table.appendChild(row);
+        });
+      };
+
+      const renderAgenda = () => {
+        const table = document.getElementById('agenda-table');
+        table.innerHTML = '';
+        if (!state.agenda.length) {
+          table.innerHTML = '<tr><td colspan="4" class="muted">Nenhum agendamento encontrado.</td></tr>';
+          return;
+        }
+        state.agenda.forEach((plan) => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${formatDate(plan.scheduled_date)}</td>
+            <td>${plan.influencer_name} <span class="muted">${plan.instagram || ''}</span></td>
+            <td><span class="chip">${plan.status}</span></td>
+            <td>${plan.script_title || '-'}</td>
+          `;
+          table.appendChild(row);
+        });
+      };
+
+      const renderRanking = () => {
+        const table = document.getElementById('ranking-table');
+        table.innerHTML = '';
+        if (!state.ranking.length) {
+          table.innerHTML = '<tr><td colspan="5" class="muted">Nenhum histórico disponível.</td></tr>';
+          return;
+        }
+        state.ranking.forEach((row) => {
+          const formattedMonth = `${row.cycle_month}/${row.cycle_year}`;
+          table.innerHTML += `
+            <tr>
+              <td>${row.nome} <span class="muted">${row.instagram || ''}</span></td>
+              <td>${formattedMonth}</td>
+              <td>${row.validated_days}</td>
+              <td>${row.multiplier}x</td>
+              <td>R$ ${Number(row.total_commission).toFixed(2)}</td>
+            </tr>
+          `;
+        });
+      };
+
+      const loadDashboard = async () => {
+        const response = await fetch('/master/dashboard', { headers: headers() });
+        if (!response.ok) {
+          throw new Error('Falha ao carregar dashboard');
+        }
+        const data = await response.json();
+        state.pending = data.pendingValidations || [];
+        state.agenda = data.plans || [];
+        renderCycle(data);
+        renderPending();
+        renderAgenda();
+      };
+
+      const loadRanking = async () => {
+        const cycleId = state.cycle ? state.cycle.id : null;
+        const url = cycleId ? `/master/ranking?cycleId=${cycleId}` : '/master/ranking';
+        const response = await fetch(url, { headers: headers() });
+        if (!response.ok) return;
+        const data = await response.json();
+        state.ranking = data.ranking || [];
+        renderRanking();
+      };
+
+      document.getElementById('pending-table').addEventListener('click', async (event) => {
+        const button = event.target.closest('button');
+        if (!button) return;
+        const id = button.dataset.id;
+        const action = button.dataset.action;
+        if (!id || !action) return;
+        if (action === 'approve') {
+          const response = await fetch(`/master/validations/${id}/approve`, {
+            method: 'POST',
+            headers: headers()
+          });
+          if (response.ok) {
+            state.pending = state.pending.filter((item) => String(item.id) !== String(id));
+            renderPending();
+            loadDashboard();
+          }
+        } else if (action === 'reject') {
+          const reason = prompt('Informe o motivo da rejeição:');
+          const response = await fetch(`/master/validations/${id}/reject`, {
+            method: 'POST',
+            headers: headers(),
+            body: JSON.stringify({ reason })
+          });
+          if (response.ok) {
+            state.pending = state.pending.filter((item) => String(item.id) !== String(id));
+            renderPending();
+            loadDashboard();
+          }
+        }
+      });
+
+      document.getElementById('close-cycle').addEventListener('click', async () => {
+        if (!state.cycle) return;
+        const feedback = document.getElementById('close-feedback');
+        feedback.textContent = 'Processando fechamento...';
+        const response = await fetch(`/master/cycles/${state.cycle.id}/close`, {
+          method: 'POST',
+          headers: headers()
+        });
+        if (!response.ok) {
+          feedback.textContent = 'Não foi possível fechar o ciclo.';
+          return;
+        }
+        feedback.textContent = 'Ciclo fechado e comissões recalculadas.';
+        await loadDashboard();
+        await loadRanking();
+      });
+
+      Promise.all([loadDashboard(), loadRanking()]).catch((error) => {
+        console.error(error);
+        document.body.innerHTML = '<main><section><h2>Erro ao carregar painel</h2><p>Tente novamente mais tarde.</p></section></main>';
+      });
+    </script>
+  </body>
+</html>
