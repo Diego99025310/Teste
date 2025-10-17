@@ -23,6 +23,10 @@ const MASTER_EMAIL = process.env.MASTER_EMAIL || 'master@example.com';
 const MASTER_PASSWORD = process.env.MASTER_PASSWORD || 'master123';
 
 const resetDb = () => {
+  db.exec('DELETE FROM story_submissions;');
+  db.exec('DELETE FROM influencer_plans;');
+  db.exec('DELETE FROM monthly_commissions;');
+  db.exec('DELETE FROM monthly_cycles;');
   db.exec('DELETE FROM sales;');
   db.exec('DELETE FROM aceite_termos;');
   db.exec('DELETE FROM influenciadoras;');
@@ -353,6 +357,146 @@ test('dispensa de contrato permite acesso sem aceite', async () => {
   assert.strictEqual(pendingAcceptance.status, 200);
   assert.strictEqual(pendingAcceptance.body.aceito, false);
   assert.ok(!pendingAcceptance.body.dispensado);
+});
+
+test('fluxo completo de ciclo mensal com agendamento, submissao e fechamento', async () => {
+  resetDb();
+
+  const masterToken = await authenticateMaster();
+
+  const createResponse = await request(app)
+    .post('/influenciadora')
+    .set('Authorization', `Bearer ${masterToken}`)
+    .send({
+      ...influencerPayload,
+      cupom: 'CICLOPINK',
+      email: 'ciclo@example.com',
+      loginEmail: 'ciclo.login@example.com'
+    });
+
+  assert.strictEqual(createResponse.status, 201);
+  const influencerId = createResponse.body.id;
+  const provisionalPassword = createResponse.body.senha_provisoria;
+  const loginEmail = createResponse.body.login_email;
+  assert.ok(influencerId);
+
+  const influencerLogin = await login(loginEmail, provisionalPassword);
+  assert.strictEqual(influencerLogin.status, 200);
+  const influencerToken = influencerLogin.body.token;
+  const influencerUserId = influencerLogin.body.user.id;
+  assert.ok(influencerToken);
+
+  registrarAceiteTeste(influencerUserId);
+
+  const planOverview = await request(app)
+    .get('/influencer/plan')
+    .set('Authorization', `Bearer ${influencerToken}`);
+
+  assert.strictEqual(planOverview.status, 200);
+  const cycle = planOverview.body.cycle;
+  assert.ok(cycle);
+  const cycleMonth = String(cycle.cycle_month).padStart(2, '0');
+  const dates = [1, 2, 3, 4, 5].map((day) =>
+    `${cycle.cycle_year}-${cycleMonth}-${String(day).padStart(2, '0')}`
+  );
+
+  const planCreate = await request(app)
+    .post('/influencer/plan')
+    .set('Authorization', `Bearer ${influencerToken}`)
+    .send({ days: dates });
+
+  assert.strictEqual(planCreate.status, 201);
+  assert.strictEqual(planCreate.body.plans.length, dates.length);
+  const plans = planCreate.body.plans;
+
+  for (let index = 0; index < 3; index += 1) {
+    const plan = plans[index];
+    const response = await request(app)
+      .post('/influencer/submissions')
+      .set('Authorization', `Bearer ${influencerToken}`)
+      .send({
+        planId: plan.id,
+        proofUrl: `https://example.com/comprovante-${index + 1}.jpg`
+      });
+    assert.strictEqual(response.status, 202);
+  }
+
+  for (let index = 3; index < plans.length; index += 1) {
+    const plan = plans[index];
+    const response = await request(app)
+      .post('/influencer/submissions')
+      .set('Authorization', `Bearer ${influencerToken}`)
+      .send({ planId: plan.id, autoDetected: true });
+    assert.strictEqual(response.status, 200);
+  }
+
+  const pendingValidations = await request(app)
+    .get('/master/validations')
+    .set('Authorization', `Bearer ${masterToken}`);
+
+  assert.strictEqual(pendingValidations.status, 200);
+  assert.strictEqual(pendingValidations.body.pending.length, 3);
+
+  for (const submission of pendingValidations.body.pending) {
+    const approve = await request(app)
+      .post(`/master/validations/${submission.id}/approve`)
+      .set('Authorization', `Bearer ${masterToken}`)
+      .send();
+    assert.strictEqual(approve.status, 200);
+  }
+
+  const dashboard = await request(app)
+    .get('/influencer/dashboard')
+    .set('Authorization', `Bearer ${influencerToken}`);
+
+  assert.strictEqual(dashboard.status, 200);
+  assert.strictEqual(dashboard.body.progress.validatedDays, 5);
+  assert.strictEqual(dashboard.body.progress.multiplier, 1.25);
+
+  const saleResponse = await request(app)
+    .post('/sales')
+    .set('Authorization', `Bearer ${masterToken}`)
+    .send({
+      orderNumber: 'PINK-001',
+      cupom: 'CICLOPINK',
+      date: dates[0],
+      grossValue: 1000,
+      discount: 0
+    });
+
+  assert.strictEqual(saleResponse.status, 201);
+
+  const closeResponse = await request(app)
+    .post(`/master/cycles/${cycle.id}/close`)
+    .set('Authorization', `Bearer ${masterToken}`)
+    .send();
+
+  assert.strictEqual(closeResponse.status, 200);
+  const summary = closeResponse.body.summaries.find(
+    (row) => Number(row.influencer_id) === Number(influencerId)
+  );
+  assert.ok(summary);
+  assert.strictEqual(Number(summary.validated_days), 5);
+  assert.strictEqual(Number(summary.multiplier), 1.25);
+  assert.strictEqual(Number(summary.deliveries_planned), 5);
+  assert.strictEqual(Number(summary.deliveries_completed), 5);
+  assert.strictEqual(Number(summary.base_commission) > 0, true);
+  assert.strictEqual(Number(summary.total_commission) > Number(summary.base_commission), true);
+
+  const historyResponse = await request(app)
+    .get('/influencer/history')
+    .set('Authorization', `Bearer ${influencerToken}`);
+  assert.strictEqual(historyResponse.status, 200);
+  assert.ok(historyResponse.body.history.length >= 1);
+
+  const rankingResponse = await request(app)
+    .get('/master/ranking')
+    .set('Authorization', `Bearer ${masterToken}`);
+  assert.strictEqual(rankingResponse.status, 200);
+  const rankingMatch = rankingResponse.body.ranking.find(
+    (row) => Number(row.influencer_id) === Number(influencerId)
+  );
+  assert.ok(rankingMatch);
 });
 
 test('gestao de vendas vinculada a influenciadora', async () => {
