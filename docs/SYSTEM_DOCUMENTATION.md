@@ -71,13 +71,15 @@ Master -> POST /sales/import/preview -> valida linhas -> POST /confirm -> grava 
 - Para validações off-line, utilize `scripts/filter_orders.py`, que reaproveita as mesmas regras do backend.【F:scripts/filter_orders.py†L1-L160】
 
 ### Planejamento de conteúdos, validações e comissões
-```
-Influencer -> GET/POST/PUT /influencer/plan -> agenda stories do ciclo vigente
-Master -> /master/validations aprova/rejeita -> atualiza status -> dashboard consolida métricas
+-```
+Influencer -> GET /influencer/plan (lista ciclo vigente + roteiros recentes)
+Influencer -> seleciona roteiro sugerido -> aciona botão “+” para definir data -> POST /influencer/plan
+Influencer -> ajustes pontuais (trocar data/roteiro) -> PUT /influencer/plan/:id
+Master -> /master/validations aprova/rejeita -> dashboard consolida métricas
 Fechamento -> POST /master/cycles/:id/close -> calcula multiplicadores e grava monthly_commissions
 ```
-- O sistema mantém ciclos mensais (`monthly_cycles`), planos por influenciadora e scripts de conteúdo. Influenciadoras registram agendas e acompanham progresso/dashboards com multiplicador estimado, enquanto o master vê pendências, estatísticas agregadas, ranking e histórico. Ao fechar um ciclo, o backend calcula comissões usando `summarizeCommission`, marca entregas perdidas e persiste um resumo consolidado por influenciadora.【F:src/server.js†L2552-L2923】
-- Funções utilitárias garantem coerência (ex.: impedir datas fora do ciclo ou validações duplicadas) e mantêm registros sincronizados ao aprovar/rejeitar stories.【F:src/server.js†L2552-L2923】
+- O sistema mantém ciclos mensais (`monthly_cycles`), planos por influenciadora e scripts de conteúdo reutilizáveis. A tela de planejamento consome `/influencer/plan`, que entrega os roteiros mais recentes; dali, a influenciadora escolhe o roteiro desejado e, pelo botão “+”, seleciona a data correspondente antes de confirmar o envio em lote para o ciclo corrente (POST). Edições posteriores permitem trocar o roteiro vinculado ou reagendar diretamente pela mesma tela via `PUT /influencer/plan/:id`.【F:src/server.js†L2552-L2698】
+- Funções utilitárias garantem coerência (ex.: impedir datas fora do ciclo, verificar conflito de agenda e validar existência do roteiro) e mantêm registros sincronizados ao aprovar/rejeitar stories.【F:src/server.js†L2616-L2698】【F:src/server.js†L2776-L2854】
 
 ### Gestão de roteiros e vendas pontuais
 - Masters podem cadastrar novos roteiros de conteúdo com HTML sanitizado, e ambos (masters/influenciadoras) podem listá-los para sugestão de posts.【F:src/server.js†L2926-L2959】

@@ -379,6 +379,150 @@
         gap: 1.25rem;
       }
 
+      .plan-overview {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.75rem;
+        padding: 1.25rem 1.5rem;
+        border-radius: 1.25rem;
+        background: rgba(228, 68, 122, 0.08);
+        border: 1px solid rgba(228, 68, 122, 0.18);
+      }
+
+      .plan-stat {
+        display: grid;
+        gap: 0.25rem;
+      }
+
+      .plan-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: rgba(51, 51, 51, 0.6);
+      }
+
+      .plan-value {
+        font-size: 1.35rem;
+        font-weight: 600;
+        color: var(--color-primary);
+      }
+
+      .plan-list-wrapper {
+        margin-bottom: 2rem;
+        padding: 1.5rem;
+        border-radius: 1.25rem;
+        border: 1px solid rgba(228, 68, 122, 0.18);
+        background: linear-gradient(145deg, rgba(255, 255, 255, 0.95), #fff5f8);
+        box-shadow: 0 1.25rem 2.5rem rgba(228, 68, 122, 0.12);
+      }
+
+      .plan-list-header {
+        display: grid;
+        gap: 0.5rem;
+        margin-bottom: 1.25rem;
+      }
+
+      .plan-list-header h3 {
+        margin: 0;
+        font-size: 1.35rem;
+        color: var(--color-primary);
+      }
+
+      .plan-list-header p {
+        margin: 0;
+        font-size: 0.95rem;
+        color: rgba(51, 51, 51, 0.7);
+      }
+
+      .plan-entries {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        gap: 1.25rem;
+      }
+
+      .plan-entry {
+        display: grid;
+        gap: 0.75rem;
+        padding-bottom: 1.25rem;
+        border-bottom: 1px solid rgba(228, 68, 122, 0.12);
+      }
+
+      .plan-entry:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+      }
+
+      .plan-entry.empty {
+        padding: 0;
+        border: none;
+        color: rgba(51, 51, 51, 0.6);
+        text-align: center;
+      }
+
+      .plan-entry-header {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        align-items: center;
+      }
+
+      .plan-entry-date {
+        font-size: 1.15rem;
+        font-weight: 600;
+        color: var(--color-primary);
+      }
+
+      .plan-entry-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.35rem 0.75rem;
+        border-radius: 999px;
+        background: rgba(228, 68, 122, 0.16);
+        color: var(--color-primary);
+        font-size: 0.75rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .plan-entry-script {
+        font-size: 0.95rem;
+        color: rgba(51, 51, 51, 0.78);
+      }
+
+      .plan-entry-note {
+        font-size: 0.9rem;
+        color: rgba(51, 51, 51, 0.65);
+        background: rgba(228, 68, 122, 0.08);
+        border-radius: 0.85rem;
+        padding: 0.75rem 1rem;
+      }
+
+      .plan-entry-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+      }
+
+      .link-button {
+        background: none;
+        border: none;
+        color: var(--color-primary);
+        font-weight: 600;
+        cursor: pointer;
+        padding: 0;
+        text-decoration: underline;
+      }
+
+      .link-button:hover,
+      .link-button:focus-visible {
+        color: var(--color-secondary);
+        outline: none;
+      }
+
       .script-item {
         border: 1px solid rgba(228, 68, 122, 0.18);
         border-radius: 1rem;
@@ -423,6 +567,104 @@
         display: grid;
         gap: 1rem;
         padding: 1rem 1.5rem 1.5rem;
+      }
+
+      .script-actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.75rem;
+      }
+
+      .script-schedule-button {
+        background: linear-gradient(145deg, var(--color-primary), var(--color-secondary));
+        color: #fff;
+        border: none;
+        border-radius: 999px;
+        padding: 0.65rem 1.5rem;
+        font-size: 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: var(--transition);
+        box-shadow: 0 0.75rem 1.75rem rgba(228, 68, 122, 0.2);
+      }
+
+      .script-schedule-button:hover,
+      .script-schedule-button:focus-visible {
+        transform: translateY(-2px);
+        outline: none;
+      }
+
+      .script-schedule-form,
+      .plan-edit-form {
+        display: grid;
+        gap: 0.75rem;
+        padding: 1rem;
+        border-radius: 1rem;
+        background: rgba(228, 68, 122, 0.08);
+      }
+
+      .script-schedule-form label,
+      .plan-edit-form label {
+        display: grid;
+        gap: 0.35rem;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: rgba(51, 51, 51, 0.7);
+      }
+
+      .script-schedule-form input[type='date'],
+      .script-schedule-form textarea,
+      .plan-edit-form input[type='date'],
+      .plan-edit-form textarea,
+      .plan-edit-form select {
+        border: 1px solid rgba(228, 68, 122, 0.25);
+        border-radius: 0.85rem;
+        padding: 0.75rem 1rem;
+        font-size: 1rem;
+        font-family: inherit;
+        background: #fff;
+        color: inherit;
+      }
+
+      .form-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+      }
+
+      .form-actions button[type='submit'] {
+        background: var(--color-primary);
+        color: #fff;
+        border: none;
+        border-radius: 999px;
+        padding: 0.6rem 1.5rem;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      .form-actions button[type='submit']:hover,
+      .form-actions button[type='submit']:focus-visible {
+        transform: translateY(-1px);
+        outline: none;
+      }
+
+      .script-scheduled-dates {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        font-size: 0.9rem;
+        color: rgba(51, 51, 51, 0.7);
+      }
+
+      .script-scheduled-dates .chip {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.35rem 0.75rem;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.9);
+        border: 1px solid rgba(228, 68, 122, 0.2);
       }
 
       .rich-text {
@@ -528,6 +770,34 @@
           align-items: flex-start;
         }
 
+        .plan-overview {
+          grid-template-columns: 1fr;
+        }
+
+        .plan-entry-header {
+          align-items: flex-start;
+        }
+
+        .plan-entry-actions {
+          flex-direction: column;
+          align-items: stretch;
+        }
+
+        .form-actions {
+          flex-direction: column;
+          align-items: stretch;
+        }
+
+        .form-actions button,
+        .script-schedule-button {
+          width: 100%;
+        }
+
+        .script-actions {
+          flex-direction: column;
+          align-items: stretch;
+        }
+
         th,
         td {
           font-size: 0.9rem;
@@ -626,6 +896,30 @@
         <div class="card-headline">
           <h2 id="scripts-title">🎥 Roteiros de Conteúdo</h2>
           <p>Ideias e orientações preparadas especialmente para você.</p>
+        </div>
+
+        <div class="plan-overview" aria-live="polite">
+          <div class="plan-stat">
+            <span class="plan-label">Período do ciclo</span>
+            <span class="plan-value" id="planCyclePeriod">–</span>
+          </div>
+          <div class="plan-stat">
+            <span class="plan-label">Dias agendados</span>
+            <span class="plan-value" id="planScheduledCount">0</span>
+          </div>
+          <div class="plan-stat">
+            <span class="plan-label">Dias validados</span>
+            <span class="plan-value" id="planValidatedCount">0</span>
+          </div>
+        </div>
+
+        <div class="plan-list-wrapper">
+          <div class="plan-list-header">
+            <h3>📅 Sua agenda</h3>
+            <p>Os dias planejados aparecem aqui. Clique em editar para reagendar ou ajustar o roteiro.</p>
+          </div>
+          <p id="planMessage" class="message" hidden data-auto-hide="true"></p>
+          <ul id="planEntriesList" class="plan-entries" aria-live="polite"></ul>
         </div>
 
         <p id="influencerScriptsMessage" class="message" hidden data-auto-hide="true"></p>
