@@ -2299,6 +2299,7 @@
     const reloadSalesButton = document.getElementById('reloadSalesButton');
     const salesTableBody = document.querySelector('#salesTable tbody');
     const salesSummaryEl = document.getElementById('salesSummary');
+    const salesImportFileInput = document.getElementById('salesImportFile');
     const salesImportTextarea = document.getElementById('salesImportInput');
     const analyzeSalesImportButton = document.getElementById('analyzeSalesImportButton');
     const clearSalesImportButton = document.getElementById('clearSalesImportButton');
@@ -2482,11 +2483,64 @@
       });
     };
 
+    const analyzeSalesImportText = async (text, { loadingMessage } = {}) => {
+      const normalizedText = (text || '').trim();
+      if (!normalizedText) {
+        resetSalesImport({ clearText: false, clearMessage: false });
+        setMessage(salesImportMessage, 'Cole os dados das vendas para analisar.', 'info');
+        return;
+      }
+
+      setMessage(salesImportMessage, loadingMessage || 'Analisando dados...', 'info');
+      updateImportConfirmState();
+
+      try {
+        const analysis = await apiFetch('/sales/import/preview', {
+          method: 'POST',
+          body: { text: normalizedText }
+        });
+        lastImportText = normalizedText;
+        lastImportAnalysis = analysis;
+        renderSalesImportTable(analysis.rows);
+        renderSalesImportSummary(analysis);
+        if (!analysis.totalCount) {
+          setMessage(salesImportMessage, 'Nenhuma linha de venda foi encontrada.', 'info');
+        } else if (analysis.hasErrors) {
+          const errorsCount = analysis.errorCount ?? Math.max(analysis.totalCount - analysis.validCount, 0);
+          setMessage(
+            salesImportMessage,
+            `Encontramos ${errorsCount} linha(s) com problema. Corrija antes de concluir a importacao.`,
+            'error'
+          );
+        } else {
+          setMessage(
+            salesImportMessage,
+            `Todos os ${analysis.validCount} pedidos estao prontos para importacao.`,
+            'success'
+          );
+        }
+      } catch (error) {
+        lastImportAnalysis = null;
+        renderSalesImportTable([]);
+        renderSalesImportSummary(null);
+        setMessage(
+          salesImportMessage,
+          error.message || 'Nao foi possivel analisar os dados para importacao.',
+          'error'
+        );
+      }
+
+      updateImportConfirmState();
+    };
+
     const resetSalesImport = ({ clearText = false, clearMessage = true } = {}) => {
       lastImportAnalysis = null;
       lastImportText = '';
       if (clearText && salesImportTextarea) {
         salesImportTextarea.value = '';
+      }
+      if (salesImportFileInput) {
+        salesImportFileInput.value = '';
       }
       if (clearMessage) {
         setMessage(salesImportMessage, '');
@@ -2715,55 +2769,38 @@
       loadSalesForInfluencer(currentSalesInfluencerId, { showStatus: true });
     });
 
-    analyzeSalesImportButton?.addEventListener('click', async () => {
+    analyzeSalesImportButton?.addEventListener('click', () => {
       if (!salesImportTextarea) return;
-      const text = salesImportTextarea.value.trim();
-      if (!text) {
-        resetSalesImport({ clearText: false, clearMessage: false });
-        setMessage(salesImportMessage, 'Cole os dados das vendas para analisar.', 'info');
+      analyzeSalesImportText(salesImportTextarea.value || '');
+    });
+
+    salesImportFileInput?.addEventListener('change', async (event) => {
+      if (!salesImportTextarea) return;
+      const file = event.target?.files?.[0];
+      if (!file) {
         return;
       }
 
-      setMessage(salesImportMessage, 'Analisando dados...', 'info');
-      updateImportConfirmState();
+      resetSalesImport({ clearText: true, clearMessage: false });
+      setMessage(salesImportMessage, 'Lendo arquivo selecionado...', 'info');
 
       try {
-        const analysis = await apiFetch('/sales/import/preview', {
-          method: 'POST',
-          body: { text }
-        });
-        lastImportText = text;
-        lastImportAnalysis = analysis;
-        renderSalesImportTable(analysis.rows);
-        renderSalesImportSummary(analysis);
-        if (!analysis.totalCount) {
-          setMessage(salesImportMessage, 'Nenhuma linha de venda foi encontrada.', 'info');
-        } else if (analysis.hasErrors) {
-          const errorsCount = analysis.errorCount ?? Math.max(analysis.totalCount - analysis.validCount, 0);
-          setMessage(
-            salesImportMessage,
-            `Encontramos ${errorsCount} linha(s) com problema. Corrija antes de concluir a importacao.`,
-            'error'
-          );
-        } else {
-          setMessage(
-            salesImportMessage,
-            `Todos os ${analysis.validCount} pedidos estao prontos para importacao.`,
-            'success'
-          );
+        const text = await file.text();
+        const normalized = text.replace(/\r\n/g, '\n');
+        if (!normalized.trim()) {
+          setMessage(salesImportMessage, 'O arquivo selecionado nao possui dados para analisar.', 'info');
+          return;
         }
+        salesImportTextarea.value = normalized;
+        await analyzeSalesImportText(normalized, {
+          loadingMessage: 'Analisando pedidos do arquivo...'
+        });
       } catch (error) {
-        lastImportAnalysis = null;
-        renderSalesImportTable([]);
-        renderSalesImportSummary(null);
-        setMessage(
-          salesImportMessage,
-          error.message || 'Nao foi possivel analisar os dados para importacao.',
-          'error'
-        );
+        console.error('Erro ao ler arquivo de importacao:', error);
+        setMessage(salesImportMessage, 'Nao foi possivel ler o arquivo selecionado.', 'error');
+      } finally {
+        event.target.value = '';
       }
-
-      updateImportConfirmState();
     });
 
     confirmSalesImportButton?.addEventListener('click', async () => {
