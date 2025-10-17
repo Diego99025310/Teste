@@ -141,7 +141,7 @@ Ambas utilizam o token armazenado em `sessionStorage` após o login nas páginas
 ### 3. Fluxo da influenciadora
 1. A influenciadora faz login em `http://localhost:3000/login.html` usando o e-mail/telefone disponibilizado pelo master e a senha provisória recebida.
 2. Após o primeiro acesso, recomenda-se alterar a senha em `http://localhost:3000/perfil.html` (página existente do sistema).
-3. Com o token carregado no navegador, acesse `http://localhost:3000/pinklovers-influencer.html` para abrir o painel:
+3. No painel principal da influenciadora (`influencer.html`), utilize o novo atalho **Painel Pinklovers** ou navegue diretamente até `http://localhost:3000/pinklovers-influencer.html` para abrir o painel:
    - **Agenda mensal**: selecione todos os dias planejados de uma só vez ou ajuste dias individuais antes da publicação.
    - **Envio de stories**: registre o link/comprovante logo após postar o story e marque se houve detecção automática.
    - **Progresso**: acompanhe o número de dias validados, multiplicador estimado e checklist de entregas obrigatórias.
