@@ -119,3 +119,36 @@ Duas páginas estáticas foram adicionadas em `public/`:
 - `public/pinklovers-master.html`: visão consolidada de agendas, pendências e fechamento do ciclo.
 
 Ambas utilizam o token armazenado em `sessionStorage` após o login nas páginas existentes do sistema.
+
+## Como acessar e operar os painéis
+
+### 1. Preparar o ambiente
+1. Instale as dependências com `npm install`.
+2. Defina as credenciais do usuário master via variáveis de ambiente `MASTER_EMAIL` e `MASTER_PASSWORD` se desejar sobrescrever os padrões (`master@example.com` / `master123`).
+3. (Opcional) Ajuste `DATABASE_PATH` para definir o arquivo SQLite desejado.
+4. Inicie o servidor com `npm start`. O Express levantará os painéis estáticos e a API na porta `3000` por padrão.
+
+### 2. Fluxo do administrador (master)
+1. Acesse `http://localhost:3000/login.html` e autentique-se com o login do master (e-mail + senha definidos acima).
+2. Ao efetuar login, o token JWT é salvo automaticamente em `sessionStorage`.
+3. Navegue até `http://localhost:3000/pinklovers-master.html` para abrir o painel:
+   - **Agenda consolidada**: exibe os agendamentos de todas as influenciadoras e permite filtrar por dia.
+   - **Validações pendentes**: lista stories que aguardam aprovação manual; use os botões Aprovar/Rejeitar para atualizar o status.
+   - **Roteiros**: utilize o formulário de cadastro/edição para gerir o cronograma de conteúdo.
+   - **Fechamento mensal**: acione o botão de fechamento para aplicar os multiplicadores, encerrar o ciclo vigente e gerar o histórico.
+4. Use o menu de cadastro de influenciadoras (páginas já existentes) para convidá-las. Ao salvar, cada influenciadora recebe um login (e-mail ou telefone) e uma senha provisória de 6 dígitos.
+
+### 3. Fluxo da influenciadora
+1. A influenciadora faz login em `http://localhost:3000/login.html` usando o e-mail/telefone disponibilizado pelo master e a senha provisória recebida.
+2. Após o primeiro acesso, recomenda-se alterar a senha em `http://localhost:3000/perfil.html` (página existente do sistema).
+3. Com o token carregado no navegador, acesse `http://localhost:3000/pinklovers-influencer.html` para abrir o painel:
+   - **Agenda mensal**: selecione todos os dias planejados de uma só vez ou ajuste dias individuais antes da publicação.
+   - **Envio de stories**: registre o link/comprovante logo após postar o story e marque se houve detecção automática.
+   - **Progresso**: acompanhe o número de dias validados, multiplicador estimado e checklist de entregas obrigatórias.
+4. Caso o story não seja reconhecido automaticamente, envie o comprovante manualmente pela mesma tela. O item aparecerá como pendente até a aprovação do master.
+
+### 4. Boas práticas operacionais
+- Efetue o agendamento logo no início do ciclo para que os alertas de pendências sejam precisos.
+- Oriente as influenciadoras a manter os comprovantes salvos até o fechamento do mês.
+- Utilize os relatórios de ranking no painel do master para identificar influenciadoras com melhor desempenho e preparar as premiações.
+- Antes de fechar o ciclo, verifique se todos os stories pendentes foram avaliados para garantir a aplicação correta do multiplicador.
