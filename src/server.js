@@ -1502,19 +1502,21 @@ const analyzeSalesImport = (rawText) => {
 
 const insertImportedSales = db.transaction((rows) => {
   const created = [];
-  rows.forEach((row) => {
-    const result = insertSaleStmt.run({
-      influencer_id: row.influencerId,
-      order_number: row.orderNumber,
-      date: row.date,
-      gross_value: row.grossValue,
-      discount: row.discount,
-      net_value: row.netValue,
-      commission: row.commission
+  rows
+    .filter((row) => row && !row.errors?.length && row.influencerId)
+    .forEach((row) => {
+      const result = insertSaleStmt.run({
+        influencer_id: row.influencerId,
+        order_number: row.orderNumber,
+        date: row.date,
+        gross_value: row.grossValue,
+        discount: row.discount,
+        net_value: row.netValue,
+        commission: row.commission
+      });
+      const sale = findSaleByIdStmt.get(result.lastInsertRowid);
+      created.push(formatSaleRow(sale));
     });
-    const sale = findSaleByIdStmt.get(result.lastInsertRowid);
-    created.push(formatSaleRow(sale));
-  });
   return created;
 });
 
@@ -2117,18 +2119,22 @@ app.post('/sales/import/confirm', authenticate, authorizeMaster, (req, res) => {
     return res.status(400).json({ error: analysis.error });
   }
   if (!analysis.totalCount) {
-    return res.status(400).json({ error: 'Nenhuma venda valida para importar.' });
+    return res.status(400).json({ error: 'Nenhuma venda encontrada para importar.' });
   }
-  if (analysis.hasErrors || analysis.validCount !== analysis.totalCount) {
+
+  const validRows = analysis.rows.filter((row) => !row.errors?.length && row.influencerId);
+  if (!validRows.length) {
     return res
       .status(409)
-      .json({ error: 'Nao foi possivel importar. Corrija os erros identificados e tente novamente.', analysis });
+      .json({ error: 'Nenhum pedido pronto para importacao.', analysis });
   }
 
   try {
-    const created = insertImportedSales(analysis.rows);
+    const created = insertImportedSales(validRows);
+    const ignored = Math.max(analysis.totalCount - validRows.length, 0);
     return res.status(201).json({
       inserted: created.length,
+      ignored,
       rows: created,
       summary: analysis.summary
     });

@@ -60,7 +60,7 @@ Os testes usam um banco SQLite isolado (`test.sqlite`) e garantem que o fluxo de
 
 ## 8. Importando pedidos de influenciadoras
 
-O painel master em `master-sales.html` permite carregar diretamente o CSV exportado do Shopify (`orders_export.csv`). Basta selecionar o arquivo em **Importar vendas em massa** – o frontend envia o conteúdo bruto para o backend, que aplica automaticamente as regras combinadas (pedido numerado, data de pagamento preenchida, cupom cadastrado e subtotal válido) antes de exibir a análise e concluir o salvamento.
+O painel master em `master-sales.html` permite carregar diretamente o CSV exportado do Shopify (`orders_export.csv`). Basta selecionar o arquivo em **Importar vendas em massa** – o frontend envia o conteúdo bruto para o backend, que aplica automaticamente as regras combinadas (pedido numerado, data de pagamento preenchida, cupom cadastrado e subtotal válido) antes de exibir a análise. Ao confirmar, apenas as linhas aprovadas são gravadas; as que permanecerem com erro são ignoradas.
 
 Se quiser validar o arquivo manualmente fora da interface (por exemplo, em pipelines de CI), utilize o script opcional `scripts/filter_orders.py`. Ele reutiliza a mesma lista de cupons (`data/valid_coupons.json`) e gera um CSV somente com pedidos aprovados:
 

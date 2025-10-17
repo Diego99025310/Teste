@@ -597,10 +597,20 @@ test('importacao em massa de vendas com validacao', async () => {
     'Mensagem deve indicar cupom nao cadastrado.'
   );
 
+  const confirmWithErrors = await request(app)
+    .post('/sales/import/confirm')
+    .set('Authorization', `Bearer ${masterToken}`)
+    .send({ text: textWithUnknownCoupon });
+
+  assert.strictEqual(confirmWithErrors.status, 201);
+  assert.strictEqual(confirmWithErrors.body.inserted, 2);
+  assert.strictEqual(confirmWithErrors.body.ignored, 1);
+  assert.strictEqual(confirmWithErrors.body.summary.count, 2);
+
   const validText = [
     'Pedido\tCupom\tData\tValor bruto\tDesconto',
-    '#1040\tBIA8\t02/08/2025 18:08\t62.47\t',
-    '#1041\tINGRID\t02/08/2025 22:25\t62.47\t0'
+    '#2040\tINGRID\t02/08/2025 18:08\t62.47\t',
+    '#2041\tINGRID\t02/08/2025 22:25\t62.47\t0'
   ].join('\n');
 
   const validPreview = await request(app)
@@ -620,6 +630,7 @@ test('importacao em massa de vendas com validacao', async () => {
 
   assert.strictEqual(confirmImport.status, 201);
   assert.strictEqual(confirmImport.body.inserted, 2);
+  assert.strictEqual(confirmImport.body.ignored, 0);
 
   const biaSales = await request(app)
     .get(`/sales/${biaResponse.body.id}`)

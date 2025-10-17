@@ -2388,7 +2388,8 @@
 
     const updateImportConfirmState = () => {
       if (!confirmSalesImportButton) return;
-      if (lastImportAnalysis && !lastImportAnalysis.hasErrors && lastImportAnalysis.validCount > 0) {
+      const canConfirm = lastImportAnalysis && lastImportAnalysis.validCount > 0;
+      if (canConfirm) {
         confirmSalesImportButton.removeAttribute('disabled');
       } else {
         confirmSalesImportButton.setAttribute('disabled', 'disabled');
@@ -2467,7 +2468,7 @@
         `Prontas: ${analysis.validCount}`
       ];
       if (analysis.errorCount) {
-        summaryItems.push(`Com erros: ${analysis.errorCount}`);
+        summaryItems.push(`Com erros (serao ignorados): ${analysis.errorCount}`);
       }
       if (analysis.validCount) {
         summaryItems.push(`Valor bruto: ${formatCurrency(analysis.summary?.totalGross)}`);
@@ -2509,8 +2510,8 @@
           const errorsCount = analysis.errorCount ?? Math.max(analysis.totalCount - analysis.validCount, 0);
           setMessage(
             salesImportMessage,
-            `Encontramos ${errorsCount} linha(s) com problema. Corrija antes de concluir a importacao.`,
-            'error'
+            `Encontramos ${errorsCount} linha(s) com problema. Elas serao ignoradas ao salvar os pedidos prontos.`,
+            'warning'
           );
         } else {
           setMessage(
@@ -2820,9 +2821,10 @@
           method: 'POST',
           body: { text }
         });
+        const ignoredMessage = result.ignored ? ` ${result.ignored} linha(s) foram ignoradas.` : '';
         setMessage(
           salesImportMessage,
-          `Importacao concluida! ${result.inserted} venda(s) foram cadastradas.`,
+          `Importacao concluida! ${result.inserted} venda(s) foram cadastradas.${ignoredMessage}`,
           'success'
         );
         resetSalesImport({ clearText: true, clearMessage: false });

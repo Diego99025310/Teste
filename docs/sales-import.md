@@ -26,8 +26,8 @@ scripts/filter_orders.py --stdin --output orders_valid.csv
 
 1. Acesse o painel master (`master-sales.html`).
 2. Na seção **Importar vendas em massa**, clique em **Arquivo CSV** e selecione o `orders_export.csv` exportado do Shopify.
-3. O sistema lê o arquivo, envia o conteúdo bruto para o backend e exibe o resultado da análise. Se alguma linha tiver problema, os erros aparecerão na tabela para correção.
-4. Quando todas as linhas estiverem válidas, clique em **Salvar pedidos importados** para concluir o cadastro.
+3. O sistema lê o arquivo, envia o conteúdo bruto para o backend e exibe o resultado da análise. Se alguma linha tiver problema, os erros aparecerão na tabela e o painel avisará que elas serão ignoradas ao salvar.
+4. Quando estiver satisfeito com os pedidos prontos, clique em **Salvar pedidos importados** para concluir o cadastro. As linhas com erro permanecem listadas apenas para consulta.
 
 ## 3. Autenticar como master
 
@@ -56,7 +56,7 @@ A resposta traz, para cada linha, os valores normalizados, o nome da influenciad
 
 ## 5. Confirmar a importacao (`/sales/import/confirm`)
 
-Quando a análise retornar `hasErrors: false` e `validCount` igual a `totalCount`, finalize a importação:
+Quando a análise indicar pelo menos um pedido pronto (`validCount > 0`), finalize a importação:
 
 ```bash
 curl -X POST http://localhost:3000/sales/import/confirm \
@@ -65,7 +65,7 @@ curl -X POST http://localhost:3000/sales/import/confirm \
   -d '{"text":"$(cat orders_export.csv)"}'
 ```
 
-Se algum erro estiver presente, o endpoint responde com HTTP 409 informando o motivo (pedido duplicado, cupom inexistente, etc.). Corrija o CSV e envie novamente.
+O endpoint grava apenas as linhas aprovadas e responde com o total de vendas importadas (`inserted`) e de linhas ignoradas (`ignored`). Se nenhuma linha estiver pronta (por exemplo, todos os pedidos com erro), ele retorna HTTP 409 informando o motivo.
 
 ## 6. Como o registro de vendas é calculado
 
@@ -76,7 +76,7 @@ Durante a análise e a confirmação, o backend executa as seguintes validaçõe
 3. **Normalização de valores**: o campo de data é convertido para ISO (`parseImportDate`) e os valores bruto/desconto passam por conversão numérica resiliente (`parseImportDecimal`).
 4. **Cálculo de totais**: a aplicação calcula o valor líquido `gross - discount` e aplica o percentual de comissão da influenciadora (`computeSaleTotals`).
 
-Somente os registros sem erros seguem para `insertImportedSales`, que grava a venda com número do pedido, cupom relacionado, valores líquido/bruto, desconto e comissão.
+Somente os registros sem erros seguem para `insertImportedSales`, que grava a venda com número do pedido, cupom relacionado, valores líquido/bruto, desconto e comissão. As linhas com erro são ignoradas automaticamente durante a confirmação.
 
 ## 7. Consultar as vendas importadas
 
