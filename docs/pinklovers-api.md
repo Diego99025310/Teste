@@ -131,7 +131,7 @@ Ambas utilizam o token armazenado em `sessionStorage` após o login nas páginas
 ### 2. Fluxo do administrador (master)
 1. Acesse `http://localhost:3000/login.html` e autentique-se com o login do master (e-mail + senha definidos acima).
 2. Ao efetuar login, o token JWT é salvo automaticamente em `sessionStorage`.
-3. Navegue até `http://localhost:3000/pinklovers-master.html` para abrir o painel:
+3. Clique no atalho **Painel Pinklovers** disponível na home do master (`master.html`) ou navegue diretamente até `http://localhost:3000/pinklovers-master.html` para abrir o painel:
    - **Agenda consolidada**: exibe os agendamentos de todas as influenciadoras e permite filtrar por dia.
    - **Validações pendentes**: lista stories que aguardam aprovação manual; use os botões Aprovar/Rejeitar para atualizar o status.
    - **Roteiros**: utilize o formulário de cadastro/edição para gerir o cronograma de conteúdo.
