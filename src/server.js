@@ -816,6 +816,42 @@ const splitDelimitedLine = (line, delimiter) => {
   return result.map((value) => stripBom(value).trim());
 };
 
+const parseDelimitedRows = (text, delimiter) => {
+  const rows = [];
+  let current = '';
+  let row = [];
+  let insideQuotes = false;
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index];
+    if (char === '"') {
+      if (insideQuotes && text[index + 1] === '"') {
+        current += '"';
+        index += 1;
+      } else {
+        insideQuotes = !insideQuotes;
+      }
+    } else if (!insideQuotes && char === delimiter) {
+      row.push(current);
+      current = '';
+    } else if (!insideQuotes && (char === '\n' || char === '\r')) {
+      if (char === '\r' && text[index + 1] === '\n') {
+        index += 1;
+      }
+      row.push(current);
+      rows.push(row);
+      row = [];
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  if (row.length || current) {
+    row.push(current);
+    rows.push(row);
+  }
+  return rows.map((cells) => cells.map((value) => stripBom(value).trim()));
+};
+
 const influencerImportColumnAliases = {
   nome: ['nome', 'name', 'nomecompleto'],
   instagram: ['instagram', 'perfil', 'usuarioinstagram', 'handle'],
@@ -1112,106 +1148,40 @@ const analyzeInfluencerImport = (rawText) => {
   };
 };
 
-const analyzeSalesImport = (rawText) => {
-  const text = stripBom(trimString(rawText || ''));
-  if (!text) {
-    return { error: 'Cole os dados das vendas para realizar a importacao.' };
+const buildSalesImportAnalysis = (entries) => {
+  if (!Array.isArray(entries) || !entries.length) {
+    return { error: 'Nenhuma venda encontrada nos dados informados.' };
   }
 
-  const lines = text
-    .replace(/\r\n/g, '\n')
-    .split('\n')
-    .map((line) =>
-      stripBom(line)
-        .replace(/[\u0000-\u0008\u000A-\u001F]+/g, '')
-        .trimEnd()
-    );
+  const rows = entries.map((entry) => ({
+    line: entry.line,
+    orderNumber: entry.orderNumber ?? '',
+    cupom: entry.cupom ?? '',
+    rawDate: entry.rawDate ?? '',
+    rawGross: entry.rawGross ?? '',
+    rawDiscount: entry.rawDiscount ?? '',
+    errors: []
+  }));
 
-  const columnAliases = {
-    orderNumber: ['pedido', 'numero', 'ordem', 'ordernumber', 'numeropedido'],
-    cupom: ['cupom', 'coupon'],
-    date: ['data', 'date'],
-    grossValue: ['valorbruto', 'bruto', 'gross', 'valor'],
-    discount: ['desconto', 'discount']
-  };
-
-  const columnIndexes = { orderNumber: 0, cupom: 1, date: 2, grossValue: 3, discount: 4 };
-  let delimiter = null;
-  let dataStarted = false;
-  let lineNumber = 0;
-
-  const rows = [];
-
-  for (const originalLine of lines) {
-    lineNumber += 1;
-    const line = originalLine.trim();
-    if (!line) {
-      continue;
-    }
-
-    if (!dataStarted) {
-      delimiter = detectImportDelimiter(line) || delimiter;
-      const tokens = delimiter ? line.split(delimiter) : line.split(/\s{2,}|\s/);
-      const normalizedTokens = tokens.map((token) => normalizeImportHeader(token));
-      const hasHeaderKeywords = normalizedTokens.some((token) => token.includes('pedido'));
-      if (hasHeaderKeywords) {
-        normalizedTokens.forEach((token, index) => {
-          for (const [key, aliases] of Object.entries(columnAliases)) {
-            if (aliases.includes(token)) {
-              columnIndexes[key] = index;
-              break;
-            }
-          }
-        });
-        dataStarted = true;
-        continue;
-      }
-      dataStarted = true;
-    }
-
-    delimiter = detectImportDelimiter(line) || delimiter;
-    const cells = delimiter ? line.split(delimiter) : line.split(/\s{2,}|\s/);
-
-    const getCell = (column) => {
-      const index = columnIndexes[column];
-      if (index == null || index >= cells.length) return '';
-      return stripBom(cells[index]).trim();
-    };
-
-    const orderCell = getCell('orderNumber');
-    const cupomCell = getCell('cupom');
-    const dateCell = getCell('date');
-    const grossCell = getCell('grossValue');
-    const discountCell = getCell('discount');
-
-    const row = {
-      line: lineNumber,
-      orderNumber: orderCell,
-      cupom: cupomCell,
-      rawDate: dateCell,
-      rawGross: grossCell,
-      rawDiscount: discountCell,
-      errors: []
-    };
-
-    const { value: isoDate, error: dateError } = parseImportDate(dateCell);
+  rows.forEach((row) => {
+    const { value: isoDate, error: dateError } = parseImportDate(row.rawDate);
     if (dateError) {
       row.errors.push(dateError);
     }
 
-    const grossParsed = parseImportDecimal(grossCell);
+    const grossParsed = parseImportDecimal(row.rawGross);
     if (grossParsed.error) {
       row.errors.push('Valor bruto invalido.');
     }
 
-    const discountParsed = parseImportDecimal(discountCell);
+    const discountParsed = parseImportDecimal(row.rawDiscount);
     if (discountParsed.error) {
       row.errors.push('Desconto invalido.');
     }
 
     const normalizedPayload = {
-      orderNumber: orderCell,
-      cupom: cupomCell,
+      orderNumber: row.orderNumber,
+      cupom: row.cupom,
       date: isoDate,
       grossValue: grossParsed.value,
       discount: discountParsed.value
@@ -1231,13 +1201,7 @@ const analyzeSalesImport = (rawText) => {
         row.normalized = data;
       }
     }
-
-    rows.push(row);
-  }
-
-  if (!rows.length) {
-    return { error: 'Nenhuma venda encontrada nos dados informados.' };
-  }
+  });
 
   const orderOccurrences = new Map();
   rows.forEach((row) => {
@@ -1327,21 +1291,232 @@ const analyzeSalesImport = (rawText) => {
   };
 };
 
+const parseManualSalesImport = (text) => {
+  const lines = text
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+    .map((line) =>
+      stripBom(line)
+        .replace(/[\u0000-\u0008\u000A-\u001F]+/g, '')
+        .trimEnd()
+    );
+
+  const columnAliases = {
+    orderNumber: ['pedido', 'numero', 'ordem', 'ordernumber', 'numeropedido'],
+    cupom: ['cupom', 'coupon'],
+    date: ['data', 'date'],
+    grossValue: ['valorbruto', 'bruto', 'gross', 'valor'],
+    discount: ['desconto', 'discount']
+  };
+
+  const columnIndexes = { orderNumber: 0, cupom: 1, date: 2, grossValue: 3, discount: 4 };
+  let delimiter = null;
+  let dataStarted = false;
+  let lineNumber = 0;
+
+  const rows = [];
+
+  for (const originalLine of lines) {
+    lineNumber += 1;
+    const line = originalLine.trim();
+    if (!line) {
+      continue;
+    }
+
+    if (!dataStarted) {
+      delimiter = detectImportDelimiter(line) || delimiter;
+      const tokens = delimiter ? line.split(delimiter) : line.split(/\s{2,}|\s/);
+      const normalizedTokens = tokens.map((token) => normalizeImportHeader(token));
+      const hasHeaderKeywords = normalizedTokens.some((token) => token.includes('pedido'));
+      if (hasHeaderKeywords) {
+        normalizedTokens.forEach((token, index) => {
+          for (const [key, aliases] of Object.entries(columnAliases)) {
+            if (aliases.includes(token)) {
+              columnIndexes[key] = index;
+              break;
+            }
+          }
+        });
+        dataStarted = true;
+        continue;
+      }
+      dataStarted = true;
+    }
+
+    delimiter = detectImportDelimiter(line) || delimiter;
+    const cells = delimiter ? line.split(delimiter) : line.split(/\s{2,}|\s/);
+
+    const getCell = (column) => {
+      const index = columnIndexes[column];
+      if (index == null || index >= cells.length) return '';
+      return stripBom(cells[index]).trim();
+    };
+
+    rows.push({
+      line: lineNumber,
+      orderNumber: getCell('orderNumber'),
+      cupom: getCell('cupom'),
+      rawDate: getCell('date'),
+      rawGross: getCell('grossValue'),
+      rawDiscount: getCell('discount')
+    });
+  }
+
+  return { rows };
+};
+
+const formatShopifyPaidAtDate = (value) => {
+  const trimmed = stripBom(String(value || '')).trim();
+  if (!trimmed) return '';
+  const isoMatch = trimmed.match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (!isoMatch) {
+    return trimmed;
+  }
+  const [, year, month, day] = isoMatch;
+  return `${day}/${month}/${year}`;
+};
+
+const tryParseShopifySalesImport = (text) => {
+  const firstLineBreak = text.indexOf('\n');
+  const headerLine = firstLineBreak >= 0 ? text.slice(0, firstLineBreak) : text;
+  const normalizedHeaderLine = normalizeImportHeader(headerLine);
+  const requiredHeaders = ['name', 'paidat', 'discountcode', 'subtotal'];
+  const isShopifyExport = requiredHeaders.every((header) => normalizedHeaderLine.includes(header));
+  if (!isShopifyExport) {
+    return null;
+  }
+
+  const delimiter = detectImportDelimiter(headerLine) || ',';
+  const rows = parseDelimitedRows(text, delimiter);
+  if (!rows.length) {
+    return { error: 'Arquivo CSV sem conteudo.' };
+  }
+
+  const header = rows[0];
+  const normalizedHeader = header.map((cell) => normalizeImportHeader(cell));
+
+  const resolveIndex = (aliases) => {
+    for (const alias of aliases) {
+      const index = normalizedHeader.indexOf(alias);
+      if (index >= 0) {
+        return index;
+      }
+    }
+    return -1;
+  };
+
+  const nameIndex = resolveIndex(['name']);
+  const paidAtIndex = resolveIndex(['paidat']);
+  const couponIndex = resolveIndex(['discountcode']);
+  const subtotalIndex = resolveIndex(['subtotal']);
+  const discountIndex = resolveIndex(['discountamount', 'discount', 'discountvalue']);
+
+  if (nameIndex < 0 || paidAtIndex < 0 || couponIndex < 0 || subtotalIndex < 0) {
+    return { error: 'Nao foi possivel identificar as colunas obrigatorias do CSV.' };
+  }
+
+  const entries = [];
+  for (let rowIndex = 1; rowIndex < rows.length; rowIndex += 1) {
+    const cells = rows[rowIndex];
+    if (!cells || !cells.length) {
+      continue;
+    }
+
+    const hasData = cells.some((cell) => stripBom(cell || '').trim().length > 0);
+    if (!hasData) {
+      continue;
+    }
+
+    const orderRaw = stripBom(cells[nameIndex] || '').trim();
+    if (!orderRaw || !orderRaw.startsWith('#')) {
+      continue;
+    }
+
+    const paidAtRaw = stripBom(cells[paidAtIndex] || '').trim();
+    if (!paidAtRaw) {
+      continue;
+    }
+
+    const couponRaw = stripBom(cells[couponIndex] || '').trim();
+    if (!couponRaw) {
+      continue;
+    }
+
+    const influencer = findInfluencerByCouponStmt.get(couponRaw);
+    if (!influencer) {
+      continue;
+    }
+
+    const subtotalRaw = stripBom(cells[subtotalIndex] || '').trim();
+    const subtotalParsed = parseImportDecimal(subtotalRaw);
+    if (subtotalParsed.error || subtotalParsed.value <= 0) {
+      continue;
+    }
+
+    let discountValue = 0;
+    let discountRaw = '';
+    if (discountIndex >= 0 && discountIndex < cells.length) {
+      discountRaw = stripBom(cells[discountIndex] || '').trim();
+      const parsed = parseImportDecimal(discountRaw);
+      if (!parsed.error) {
+        discountValue = Math.abs(parsed.value);
+      }
+    }
+
+    const grossValue = roundCurrency(subtotalParsed.value + discountValue);
+
+    entries.push({
+      line: rowIndex + 1,
+      orderNumber: orderRaw,
+      cupom: couponRaw,
+      rawDate: formatShopifyPaidAtDate(paidAtRaw),
+      rawGross: String(grossValue),
+      rawDiscount: discountValue ? String(discountValue) : '0'
+    });
+  }
+
+  if (!entries.length) {
+    return { error: 'Nenhum pedido valido foi encontrado no arquivo CSV informado.' };
+  }
+
+  return { rows: entries };
+};
+
+const analyzeSalesImport = (rawText) => {
+  const text = stripBom(trimString(rawText || ''));
+  if (!text) {
+    return { error: 'Cole os dados das vendas para realizar a importacao.' };
+  }
+
+  const shopifyResult = tryParseShopifySalesImport(text);
+  if (shopifyResult) {
+    if (shopifyResult.error) {
+      return shopifyResult;
+    }
+    return buildSalesImportAnalysis(shopifyResult.rows);
+  }
+
+  const manualResult = parseManualSalesImport(text);
+  return buildSalesImportAnalysis(manualResult.rows);
+};
+
 const insertImportedSales = db.transaction((rows) => {
   const created = [];
-  rows.forEach((row) => {
-    const result = insertSaleStmt.run({
-      influencer_id: row.influencerId,
-      order_number: row.orderNumber,
-      date: row.date,
-      gross_value: row.grossValue,
-      discount: row.discount,
-      net_value: row.netValue,
-      commission: row.commission
+  rows
+    .filter((row) => row && !row.errors?.length && row.influencerId)
+    .forEach((row) => {
+      const result = insertSaleStmt.run({
+        influencer_id: row.influencerId,
+        order_number: row.orderNumber,
+        date: row.date,
+        gross_value: row.grossValue,
+        discount: row.discount,
+        net_value: row.netValue,
+        commission: row.commission
+      });
+      const sale = findSaleByIdStmt.get(result.lastInsertRowid);
+      created.push(formatSaleRow(sale));
     });
-    const sale = findSaleByIdStmt.get(result.lastInsertRowid);
-    created.push(formatSaleRow(sale));
-  });
   return created;
 });
 
@@ -1944,18 +2119,22 @@ app.post('/sales/import/confirm', authenticate, authorizeMaster, (req, res) => {
     return res.status(400).json({ error: analysis.error });
   }
   if (!analysis.totalCount) {
-    return res.status(400).json({ error: 'Nenhuma venda valida para importar.' });
+    return res.status(400).json({ error: 'Nenhuma venda encontrada para importar.' });
   }
-  if (analysis.hasErrors || analysis.validCount !== analysis.totalCount) {
+
+  const validRows = analysis.rows.filter((row) => !row.errors?.length && row.influencerId);
+  if (!validRows.length) {
     return res
       .status(409)
-      .json({ error: 'Nao foi possivel importar. Corrija os erros identificados e tente novamente.', analysis });
+      .json({ error: 'Nenhum pedido pronto para importacao.', analysis });
   }
 
   try {
-    const created = insertImportedSales(analysis.rows);
+    const created = insertImportedSales(validRows);
+    const ignored = Math.max(analysis.totalCount - validRows.length, 0);
     return res.status(201).json({
       inserted: created.length,
+      ignored,
       rows: created,
       summary: analysis.summary
     });

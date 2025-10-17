@@ -597,10 +597,20 @@ test('importacao em massa de vendas com validacao', async () => {
     'Mensagem deve indicar cupom nao cadastrado.'
   );
 
+  const confirmWithErrors = await request(app)
+    .post('/sales/import/confirm')
+    .set('Authorization', `Bearer ${masterToken}`)
+    .send({ text: textWithUnknownCoupon });
+
+  assert.strictEqual(confirmWithErrors.status, 201);
+  assert.strictEqual(confirmWithErrors.body.inserted, 2);
+  assert.strictEqual(confirmWithErrors.body.ignored, 1);
+  assert.strictEqual(confirmWithErrors.body.summary.count, 2);
+
   const validText = [
     'Pedido\tCupom\tData\tValor bruto\tDesconto',
-    '#1040\tBIA8\t02/08/2025 18:08\t62.47\t',
-    '#1041\tINGRID\t02/08/2025 22:25\t62.47\t0'
+    '#2040\tINGRID\t02/08/2025 18:08\t62.47\t',
+    '#2041\tINGRID\t02/08/2025 22:25\t62.47\t0'
   ].join('\n');
 
   const validPreview = await request(app)
@@ -620,6 +630,7 @@ test('importacao em massa de vendas com validacao', async () => {
 
   assert.strictEqual(confirmImport.status, 201);
   assert.strictEqual(confirmImport.body.inserted, 2);
+  assert.strictEqual(confirmImport.body.ignored, 0);
 
   const biaSales = await request(app)
     .get(`/sales/${biaResponse.body.id}`)
@@ -644,6 +655,94 @@ test('importacao em massa de vendas com validacao', async () => {
     .send({ text: validText });
 
   assert.strictEqual(duplicateConfirm.status, 409);
+});
+
+test('importacao de vendas a partir de csv do shopify', async () => {
+  resetDb();
+
+  const masterToken = await authenticateMaster();
+
+  const deboraPayload = {
+    ...influencerPayload,
+    nome: 'Débora',
+    instagram: '@debora',
+    email: 'debora@example.com',
+    contato: '11988880000',
+    cupom: 'debora',
+    cpf: '15350946056',
+    loginEmail: 'debora.login@example.com',
+    loginPassword: 'SenhaDebora123'
+  };
+
+  const ingridPayload = {
+    ...influencerPayload,
+    nome: 'Ingrid',
+    instagram: '@ingrid',
+    email: 'ingrid@example.com',
+    contato: '11988880001',
+    cupom: 'INGRID',
+    cpf: '39053344705',
+    loginEmail: 'ingrid.login@example.com',
+    loginPassword: 'SenhaIngrid123'
+  };
+
+  const deboraResponse = await request(app)
+    .post('/influenciadora')
+    .set('Authorization', `Bearer ${masterToken}`)
+    .send(deboraPayload);
+  assert.strictEqual(deboraResponse.status, 201);
+
+  const ingridResponse = await request(app)
+    .post('/influenciadora')
+    .set('Authorization', `Bearer ${masterToken}`)
+    .send(ingridPayload);
+  assert.strictEqual(ingridResponse.status, 201);
+
+  const csvLines = [
+    'Name,Paid at,Subtotal,Discount Code,Discount Amount,Note Attributes',
+    '#2001,2025-08-08 13:35:24 -0300,62.47,debora,5.43,"shipping_street_name: Rua Ciro Fernandes\\nshipping_street_number: 715"',
+    '#2002,,67.90,debora,5.43,"linha ignorada sem pagamento"',
+    '#2003,2025-08-09 15:56:55 -0300,62.47,NAOEXISTE,0,"linha ignorada cupom desconhecido"',
+    '#2004,2025-08-10 10:00:00 -0300,50.00,INGRID,0,"linha valida sem desconto"'
+  ];
+
+  const csvContent = csvLines.join('\n');
+
+  const preview = await request(app)
+    .post('/sales/import/preview')
+    .set('Authorization', `Bearer ${masterToken}`)
+    .send({ text: csvContent });
+
+  assert.strictEqual(preview.status, 200);
+  assert.strictEqual(preview.body.hasErrors, false);
+  assert.strictEqual(preview.body.totalCount, 2);
+  assert.strictEqual(preview.body.validCount, 2);
+  assert.strictEqual(Number(preview.body.summary.totalGross), 117.9);
+  assert.strictEqual(Number(preview.body.summary.totalDiscount), 5.43);
+  assert.strictEqual(Number(preview.body.summary.totalNet), 112.47);
+
+  const row2001 = preview.body.rows.find((row) => row.orderNumber === '#2001');
+  assert.ok(row2001, 'Pedido #2001 deve estar presente.');
+  assert.strictEqual(row2001.cupom, 'debora');
+  assert.strictEqual(Number(row2001.grossValue), 67.9);
+  assert.strictEqual(Number(row2001.discount), 5.43);
+  assert.strictEqual(row2001.date, '2025-08-08');
+
+  const row2004 = preview.body.rows.find((row) => row.orderNumber === '#2004');
+  assert.ok(row2004, 'Pedido #2004 deve estar presente.');
+  assert.strictEqual(row2004.cupom, 'INGRID');
+  assert.strictEqual(Number(row2004.grossValue), 50);
+  assert.strictEqual(Number(row2004.discount), 0);
+  assert.strictEqual(row2004.date, '2025-08-10');
+
+  const confirm = await request(app)
+    .post('/sales/import/confirm')
+    .set('Authorization', `Bearer ${masterToken}`)
+    .send({ text: csvContent });
+
+  assert.strictEqual(confirm.status, 201);
+  assert.strictEqual(confirm.body.inserted, 2);
+  assert.strictEqual(confirm.body.summary.count, 2);
 });
 
 after(() => {

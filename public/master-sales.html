@@ -71,9 +71,14 @@
       <section class="card" id="bulkSalesSection">
         <h2>Importar vendas em massa</h2>
         <p class="note">
-          Cole os dados seguindo as colunas: Pedido, Cupom, Data, Valor bruto, Desconto. Em seguida, analise os
-          resultados e confirme o salvamento quando estiver tudo certo.
+          Importe o arquivo CSV exportado do Shopify ou cole os dados seguindo as colunas: Pedido, Cupom, Data,
+          Valor bruto, Desconto. Em seguida, analise os resultados e confirme o salvamento quando estiver tudo
+          certo.
         </p>
+        <label>
+          Arquivo CSV
+          <input id="salesImportFile" type="file" accept=".csv,text/csv" />
+        </label>
         <label class="stacked">
           Dados das vendas
           <textarea
