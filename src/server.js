@@ -2165,6 +2165,105 @@ const buildExtendedPlanResponse = (cycle, influencer, options = {}) => {
   };
 };
 
+const stripHtmlToPlainText = (value = '') => {
+  if (!value) return '';
+  return String(value)
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
+const buildScriptPreview = (html = '', maxLength = 200) => {
+  const plain = stripHtmlToPlainText(html);
+  if (!plain) return '';
+  if (plain.length <= maxLength) {
+    return plain;
+  }
+  return `${plain.slice(0, maxLength - 1).trim()}…`;
+};
+
+const buildCycleSummary = (cycle) => {
+  if (!cycle) return null;
+  const year = Number(cycle.cycle_year ?? cycle.year ?? new Date().getFullYear());
+  const month = Number(cycle.cycle_month ?? cycle.month ?? new Date().getMonth() + 1);
+  const monthLabel = String(month).padStart(2, '0');
+  const startDateSource = cycle.startDate ?? cycle.started_at ?? formatCycleMonthStart(year, month);
+  const startDate = typeof startDateSource === 'string' ? startDateSource.slice(0, 10) : formatCycleMonthStart(year, month);
+  const endDate = computeCycleEndDate({ ...cycle, cycle_year: year, cycle_month: month }) || startDate;
+
+  return {
+    id: cycle.id ?? null,
+    year,
+    month,
+    status: cycle.status ?? 'open',
+    label: `${monthLabel}/${year}`,
+    startDate,
+    endDate
+  };
+};
+
+const collectInfluencerPlanData = (cycle, influencer, { scriptLimit = 15 } = {}) => {
+  const scripts = listContentScriptsStmt
+    .all()
+    .slice(0, scriptLimit);
+  const plans = listPlansByInfluencerStmt.all(cycle.id, influencer.id);
+  return { cycle, influencer, scripts, plans };
+};
+
+const serializePlanForExtendedResponse = (plan) => {
+  if (!plan) return null;
+  return {
+    id: plan.id,
+    cycleId: plan.cycle_id,
+    influencerId: plan.influencer_id,
+    date: plan.scheduled_date,
+    status: plan.status,
+    notes: plan.notes,
+    scriptId: plan.content_script_id,
+    scriptTitle: plan.script_title,
+    scriptDescription: plan.script_description,
+    createdAt: plan.created_at,
+    updatedAt: plan.updated_at,
+    canEdit: plan.status === 'scheduled' || plan.status === 'posted',
+    script: plan.content_script_id
+      ? {
+          id: plan.content_script_id,
+          title: plan.script_title,
+          description: plan.script_description
+        }
+      : null
+  };
+};
+
+const serializeScriptForExtendedResponse = (script) => {
+  if (!script) return null;
+  return {
+    id: script.id,
+    title: script.titulo,
+    description: script.descricao,
+    preview: buildScriptPreview(script.descricao),
+    createdAt: script.created_at,
+    updatedAt: script.updated_at
+  };
+};
+
+const buildExtendedPlanResponse = (cycle, influencer, options = {}) => {
+  const { scripts, plans } = collectInfluencerPlanData(cycle, influencer, options);
+  const extendedScripts = scripts.map((script) => serializeScriptForExtendedResponse(script)).filter(Boolean);
+  const extendedPlans = plans.map((plan) => serializePlanForExtendedResponse(plan)).filter(Boolean);
+
+  return {
+    cycle: buildCycleSummary(cycle),
+    influencer: {
+      id: influencer.id,
+      name: influencer.nome
+    },
+    scripts: extendedScripts,
+    plans: extendedPlans
+  };
+};
+
 const normalizeSaleBody = (body) => {
   const orderNumberRaw = body?.orderNumber ?? body?.order_number ?? body?.pedido ?? body?.order;
   const orderNumber = orderNumberRaw == null ? '' : String(trimString(orderNumberRaw)).trim();
