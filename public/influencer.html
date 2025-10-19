@@ -116,6 +116,25 @@
         gap: 1rem;
       }
 
+      @media (min-width: 768px) {
+        .plan-list-header {
+          flex-direction: row;
+          align-items: center;
+          justify-content: space-between;
+        }
+
+        .plan-open-button {
+          align-self: center;
+        }
+      }
+
+      @media (max-width: 640px) {
+        .plan-open-button {
+          width: 100%;
+          justify-content: center;
+        }
+      }
+
       @media (min-width: 900px) {
         .info-grid {
           grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -418,9 +437,16 @@
       }
 
       .plan-list-header {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .plan-list-header__content {
         display: grid;
         gap: 0.5rem;
-        margin-bottom: 1.25rem;
       }
 
       .plan-list-header h3 {
@@ -433,6 +459,36 @@
         margin: 0;
         font-size: 0.95rem;
         color: rgba(51, 51, 51, 0.7);
+      }
+
+      .plan-open-button {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.5rem;
+        border-radius: 999px;
+        background: var(--color-primary);
+        color: #fff;
+        font-weight: 600;
+        text-decoration: none;
+        box-shadow: var(--shadow-soft);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      .plan-open-button::before {
+        content: '📱';
+        font-size: 1.15rem;
+      }
+
+      .plan-open-button:hover,
+      .plan-open-button:focus-visible {
+        transform: translateY(-1px);
+        box-shadow: 0 1.75rem 3rem rgba(228, 68, 122, 0.2);
+      }
+
+      .plan-open-button:focus-visible {
+        outline: 3px solid rgba(255, 255, 255, 0.6);
+        outline-offset: 2px;
       }
 
       .plan-entries {
@@ -915,8 +971,11 @@
 
         <div class="plan-list-wrapper">
           <div class="plan-list-header">
-            <h3>📅 Sua agenda</h3>
-            <p>Os dias planejados aparecem aqui. Clique em editar para reagendar ou ajustar o roteiro.</p>
+            <div class="plan-list-header__content">
+              <h3>📅 Sua agenda</h3>
+              <p>Os dias planejados aparecem aqui. Clique em editar para reagendar ou ajustar o roteiro.</p>
+            </div>
+            <a class="plan-open-button" href="influencer-plan.html">Abrir novo planejador</a>
           </div>
           <p id="planMessage" class="message" hidden data-auto-hide="true"></p>
           <ul id="planEntriesList" class="plan-entries" aria-live="polite"></ul>
