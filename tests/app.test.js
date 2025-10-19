@@ -484,6 +484,79 @@ test('fluxo completo de ciclo mensal com agendamento, validacao e fechamento', a
   assert.ok(rankingMatch);
 });
 
+test('endpoints mobile-first de agendamento retornam dados completos', async () => {
+  resetDb();
+
+  const masterToken = await authenticateMaster();
+
+  const scriptResponse = await request(app)
+    .post('/scripts')
+    .set('Authorization', `Bearer ${masterToken}`)
+    .send({ title: 'Roteiro Mobile', description: 'Demonstre o uso do HidraPink em uma rotina diária.' });
+
+  assert.strictEqual(scriptResponse.status, 201);
+  const scriptId = scriptResponse.body.id;
+  assert.ok(scriptId);
+
+  const createResponse = await request(app)
+    .post('/influenciadora')
+    .set('Authorization', `Bearer ${masterToken}`)
+    .send({
+      ...influencerPayload,
+      cupom: 'PLANPINK',
+      email: 'planner@example.com',
+      loginEmail: 'planner.login@example.com'
+    });
+
+  assert.strictEqual(createResponse.status, 201);
+  const provisionalPassword = createResponse.body.senha_provisoria;
+  const loginEmail = createResponse.body.login_email;
+  assert.ok(loginEmail);
+
+  const influencerLogin = await login(loginEmail, provisionalPassword);
+  assert.strictEqual(influencerLogin.status, 200);
+  const influencerToken = influencerLogin.body.token;
+  const influencerUserId = influencerLogin.body.user.id;
+  assert.ok(influencerToken);
+
+  registrarAceiteTeste(influencerUserId);
+
+  const planOverview = await request(app)
+    .get('/api/influencer/plan')
+    .set('Authorization', `Bearer ${influencerToken}`);
+
+  assert.strictEqual(planOverview.status, 200);
+  assert.ok(planOverview.body.cycle);
+  assert.ok(Array.isArray(planOverview.body.scripts));
+  assert.ok(Array.isArray(planOverview.body.plans));
+  const availableScript = planOverview.body.scripts.find((item) => Number(item.id) === Number(scriptId));
+  assert.ok(availableScript, 'roteiro criado deve aparecer na listagem');
+
+  const cycleInfo = planOverview.body.cycle;
+  const scheduleDate = cycleInfo.startDate
+    || `${cycleInfo.year}-${String(cycleInfo.month).padStart(2, '0')}-01`;
+
+  const saveResponse = await request(app)
+    .post('/api/influencer/plan')
+    .set('Authorization', `Bearer ${influencerToken}`)
+    .send({ schedules: [{ scriptId, date: scheduleDate }] });
+
+  assert.strictEqual(saveResponse.status, 201);
+  assert.ok(Array.isArray(saveResponse.body.plans));
+  const savedPlan = saveResponse.body.plans.find((plan) => Number(plan.scriptId) === Number(scriptId));
+  assert.ok(savedPlan);
+  assert.strictEqual(savedPlan.date, scheduleDate);
+
+  const refreshed = await request(app)
+    .get('/api/influencer/plan')
+    .set('Authorization', `Bearer ${influencerToken}`);
+
+  assert.strictEqual(refreshed.status, 200);
+  const scheduledPlan = refreshed.body.plans.find((plan) => Number(plan.scriptId) === Number(scriptId));
+  assert.ok(scheduledPlan);
+  assert.strictEqual(scheduledPlan.date, scheduleDate);
+});
+
 test('gestao de vendas vinculada a influenciadora', async () => {
   resetDb();
 
