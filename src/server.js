@@ -410,6 +410,9 @@ const touchCycleStmt = db.prepare('UPDATE monthly_cycles SET updated_at = CURREN
 const deletePendingPlansStmt = db.prepare(
   "DELETE FROM influencer_plans WHERE cycle_id = ? AND influencer_id = ? AND status IN ('scheduled', 'posted')"
 );
+const deletePlanByScriptStmt = db.prepare(
+  'DELETE FROM influencer_plans WHERE cycle_id = ? AND influencer_id = ? AND content_script_id = ?'
+);
 const insertInfluencerPlanStmt = db.prepare(
   `INSERT INTO influencer_plans (cycle_id, influencer_id, scheduled_date, content_script_id, notes, status, created_at, updated_at)
    VALUES (@cycle_id, @influencer_id, @scheduled_date, @content_script_id, @notes, COALESCE(@status, 'scheduled'), CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
@@ -424,6 +427,13 @@ const updateInfluencerPlanStmt = db.prepare(
 );
 const updateInfluencerPlanStatusStmt = db.prepare(
   "UPDATE influencer_plans SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+);
+const findPlanByScriptStmt = db.prepare(
+  `SELECT id, status
+     FROM influencer_plans
+    WHERE cycle_id = ? AND influencer_id = ? AND content_script_id = ?
+ ORDER BY updated_at DESC, id DESC
+    LIMIT 1`
 );
 const markMissedPlansStmt = db.prepare(
   `UPDATE influencer_plans
@@ -1950,15 +1960,41 @@ const normalizePlanEntriesPayload = (body, cycle) => {
     return { error: 'Ciclo mensal nao encontrado.' };
   }
 
-  const candidates = Array.isArray(body?.entries)
-    ? body.entries
-    : Array.isArray(body?.days)
-      ? body.days
-      : Array.isArray(body?.dates)
-        ? body.dates
-        : [];
+  const candidateArrays = [
+    body?.entries,
+    body?.schedules,
+    body?.agendamentos,
+    body?.days,
+    body?.dates
+  ];
 
-  if (!candidates.length) {
+  const removalSources = [
+    body?.removedScripts,
+    body?.removedScriptIds,
+    body?.removed_ids,
+    body?.removed,
+    body?.removals
+  ];
+  const removedScriptsSet = new Set();
+  removalSources.forEach((source) => {
+    if (Array.isArray(source)) {
+      source.forEach((value) => {
+        const parsed = Number(value);
+        if (Number.isInteger(parsed) && parsed > 0) {
+          removedScriptsSet.add(parsed);
+        }
+      });
+    } else if (source != null && source !== '') {
+      const parsed = Number(source);
+      if (Number.isInteger(parsed) && parsed > 0) {
+        removedScriptsSet.add(parsed);
+      }
+    }
+  });
+
+  const candidates = candidateArrays.find((value) => Array.isArray(value)) || [];
+
+  if (!candidates.length && removedScriptsSet.size === 0) {
     return { error: 'Informe ao menos um dia para agendar.' };
   }
 
@@ -1978,7 +2014,15 @@ const normalizePlanEntriesPayload = (body, cycle) => {
       dateValue = entry;
     } else if (entry && typeof entry === 'object') {
       dateValue = entry.date ?? entry.day ?? entry.scheduled_date ?? entry.scheduledDate ?? entry.data;
-      scriptId = entry.scriptId ?? entry.contentScriptId ?? entry.content_script_id ?? null;
+      scriptId =
+        entry.scriptId ??
+        entry.contentScriptId ??
+        entry.content_script_id ??
+        entry.roteiro_id ??
+        entry.roteiroId ??
+        entry.script?.id ??
+        entry.roteiro?.id ??
+        null;
       notes = trimString(entry.notes ?? entry.observacao ?? entry.obs ?? entry.annotation ?? '') || null;
     }
 
@@ -2014,12 +2058,111 @@ const normalizePlanEntriesPayload = (body, cycle) => {
     });
   });
 
-  if (!result.length) {
+  if (!result.length && removedScriptsSet.size === 0) {
     return { error: 'Nao foi possivel identificar dias validos para o agendamento.' };
   }
 
   result.sort((a, b) => a.scheduled_date.localeCompare(b.scheduled_date));
-  return { entries: result };
+  return { entries: result, removedScriptIds: Array.from(removedScriptsSet) };
+};
+
+const stripHtmlToPlainText = (value = '') => {
+  if (!value) return '';
+  return String(value)
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
+const buildScriptPreview = (html = '', maxLength = 200) => {
+  const plain = stripHtmlToPlainText(html);
+  if (!plain) return '';
+  if (plain.length <= maxLength) {
+    return plain;
+  }
+  return `${plain.slice(0, maxLength - 1).trim()}…`;
+};
+
+const buildCycleSummary = (cycle) => {
+  if (!cycle) return null;
+  const year = Number(cycle.cycle_year ?? cycle.year ?? new Date().getFullYear());
+  const month = Number(cycle.cycle_month ?? cycle.month ?? new Date().getMonth() + 1);
+  const monthLabel = String(month).padStart(2, '0');
+  const startDateSource = cycle.startDate ?? cycle.started_at ?? formatCycleMonthStart(year, month);
+  const startDate = typeof startDateSource === 'string' ? startDateSource.slice(0, 10) : formatCycleMonthStart(year, month);
+  const endDate = computeCycleEndDate({ ...cycle, cycle_year: year, cycle_month: month }) || startDate;
+
+  return {
+    id: cycle.id ?? null,
+    year,
+    month,
+    status: cycle.status ?? 'open',
+    label: `${monthLabel}/${year}`,
+    startDate,
+    endDate
+  };
+};
+
+const collectInfluencerPlanData = (cycle, influencer, { scriptLimit = 15 } = {}) => {
+  const scripts = listContentScriptsStmt
+    .all()
+    .slice(0, scriptLimit);
+  const plans = listPlansByInfluencerStmt.all(cycle.id, influencer.id);
+  return { cycle, influencer, scripts, plans };
+};
+
+const serializePlanForExtendedResponse = (plan) => {
+  if (!plan) return null;
+  return {
+    id: plan.id,
+    cycleId: plan.cycle_id,
+    influencerId: plan.influencer_id,
+    date: plan.scheduled_date,
+    status: plan.status,
+    notes: plan.notes,
+    scriptId: plan.content_script_id,
+    scriptTitle: plan.script_title,
+    scriptDescription: plan.script_description,
+    createdAt: plan.created_at,
+    updatedAt: plan.updated_at,
+    canEdit: plan.status === 'scheduled' || plan.status === 'posted',
+    script: plan.content_script_id
+      ? {
+          id: plan.content_script_id,
+          title: plan.script_title,
+          description: plan.script_description
+        }
+      : null
+  };
+};
+
+const serializeScriptForExtendedResponse = (script) => {
+  if (!script) return null;
+  return {
+    id: script.id,
+    title: script.titulo,
+    description: script.descricao,
+    preview: buildScriptPreview(script.descricao),
+    createdAt: script.created_at,
+    updatedAt: script.updated_at
+  };
+};
+
+const buildExtendedPlanResponse = (cycle, influencer, options = {}) => {
+  const { scripts, plans } = collectInfluencerPlanData(cycle, influencer, options);
+  const extendedScripts = scripts.map((script) => serializeScriptForExtendedResponse(script)).filter(Boolean);
+  const extendedPlans = plans.map((plan) => serializePlanForExtendedResponse(plan)).filter(Boolean);
+
+  return {
+    cycle: buildCycleSummary(cycle),
+    influencer: {
+      id: influencer.id,
+      name: influencer.nome
+    },
+    scripts: extendedScripts,
+    plans: extendedPlans
+  };
 };
 
 const normalizeSaleBody = (body) => {
@@ -2559,17 +2702,18 @@ app.get('/influencer/plan', authenticate, verificarAceite, (req, res) => {
     return res.status(status).json({ error: message });
   }
 
-  const plans = listPlansByInfluencerStmt.all(cycle.id, influencer.id);
-  const scripts = listContentScriptsStmt
-    .all()
-    .slice(0, 15)
-    .map((script) => ({
-      id: script.id,
-      titulo: script.titulo,
-      descricao: script.descricao
-    }));
+  const { plans, scripts } = collectInfluencerPlanData(cycle, influencer, { scriptLimit: 15 });
+  const legacyScripts = scripts.map((script) => ({
+    id: script.id,
+    titulo: script.titulo,
+    descricao: script.descricao,
+    created_at: script.created_at,
+    updated_at: script.updated_at
+  }));
 
-  return res.status(200).json({ cycle, influencer: { id: influencer.id, nome: influencer.nome }, plans, scripts });
+  return res
+    .status(200)
+    .json({ cycle, influencer: { id: influencer.id, nome: influencer.nome }, plans, scripts: legacyScripts });
 });
 
 app.post('/influencer/plan', authenticate, verificarAceite, (req, res) => {
@@ -2583,7 +2727,7 @@ app.post('/influencer/plan', authenticate, verificarAceite, (req, res) => {
   }
 
   const cycle = req.body?.cycleId ? getCycleByIdOrCurrent(req.body.cycleId) : baseCycle;
-  const { entries, error } = normalizePlanEntriesPayload(req.body || {}, cycle);
+  const { entries, removedScriptIds = [], error } = normalizePlanEntriesPayload(req.body || {}, cycle);
   if (error) {
     return res.status(400).json({ error });
   }
@@ -2591,15 +2735,34 @@ app.post('/influencer/plan', authenticate, verificarAceite, (req, res) => {
   db.exec('BEGIN');
   try {
     deletePendingPlansStmt.run(cycle.id, influencer.id);
+    removedScriptIds.forEach((scriptId) => {
+      deletePlanByScriptStmt.run(cycle.id, influencer.id, scriptId);
+    });
     entries.forEach((entry) => {
-      insertInfluencerPlanStmt.run({
-        cycle_id: cycle.id,
-        influencer_id: influencer.id,
-        scheduled_date: entry.scheduled_date,
-        content_script_id: entry.content_script_id,
-        notes: entry.notes,
-        status: 'scheduled'
-      });
+      let updatedExisting = false;
+      if (entry.content_script_id) {
+        const existing = findPlanByScriptStmt.get(cycle.id, influencer.id, entry.content_script_id);
+        if (existing?.id) {
+          updateInfluencerPlanStmt.run({
+            id: existing.id,
+            scheduled_date: entry.scheduled_date,
+            content_script_id: entry.content_script_id,
+            notes: entry.notes ?? null
+          });
+          updateInfluencerPlanStatusStmt.run('scheduled', existing.id);
+          updatedExisting = true;
+        }
+      }
+      if (!updatedExisting) {
+        insertInfluencerPlanStmt.run({
+          cycle_id: cycle.id,
+          influencer_id: influencer.id,
+          scheduled_date: entry.scheduled_date,
+          content_script_id: entry.content_script_id,
+          notes: entry.notes,
+          status: 'scheduled'
+        });
+      }
     });
     touchCycleStmt.run(cycle.id);
     db.exec('COMMIT');
@@ -2611,6 +2774,80 @@ app.post('/influencer/plan', authenticate, verificarAceite, (req, res) => {
 
   const plans = listPlansByInfluencerStmt.all(cycle.id, influencer.id);
   return res.status(201).json({ cycle, plans });
+});
+
+app.get('/api/influencer/plan', authenticate, verificarAceite, (req, res) => {
+  const cycle = getCycleByIdOrCurrent(req.query?.cycleId ?? req.query?.cycle_id);
+  const { influencer, status, message } = resolveInfluencerForRequest(
+    req,
+    req.query?.influencerId ?? req.query?.influencer_id
+  );
+  if (!influencer) {
+    return res.status(status).json({ error: message });
+  }
+
+  const payload = buildExtendedPlanResponse(cycle, influencer, { scriptLimit: 50 });
+  return res.status(200).json(payload);
+});
+
+app.post('/api/influencer/plan', authenticate, verificarAceite, (req, res) => {
+  const baseCycle = ensureMonthlyCycle();
+  const { influencer, status, message } = resolveInfluencerForRequest(
+    req,
+    req.body?.influencerId ?? req.body?.influencer_id
+  );
+  if (!influencer) {
+    return res.status(status).json({ error: message });
+  }
+
+  const cycle = req.body?.cycleId ? getCycleByIdOrCurrent(req.body.cycleId) : baseCycle;
+  const { entries, removedScriptIds = [], error } = normalizePlanEntriesPayload(req.body || {}, cycle);
+  if (error) {
+    return res.status(400).json({ error });
+  }
+
+  db.exec('BEGIN');
+  try {
+    deletePendingPlansStmt.run(cycle.id, influencer.id);
+    removedScriptIds.forEach((scriptId) => {
+      deletePlanByScriptStmt.run(cycle.id, influencer.id, scriptId);
+    });
+    entries.forEach((entry) => {
+      let updatedExisting = false;
+      if (entry.content_script_id) {
+        const existing = findPlanByScriptStmt.get(cycle.id, influencer.id, entry.content_script_id);
+        if (existing?.id) {
+          updateInfluencerPlanStmt.run({
+            id: existing.id,
+            scheduled_date: entry.scheduled_date,
+            content_script_id: entry.content_script_id,
+            notes: entry.notes ?? null
+          });
+          updateInfluencerPlanStatusStmt.run('scheduled', existing.id);
+          updatedExisting = true;
+        }
+      }
+      if (!updatedExisting) {
+        insertInfluencerPlanStmt.run({
+          cycle_id: cycle.id,
+          influencer_id: influencer.id,
+          scheduled_date: entry.scheduled_date,
+          content_script_id: entry.content_script_id,
+          notes: entry.notes,
+          status: 'scheduled'
+        });
+      }
+    });
+    touchCycleStmt.run(cycle.id);
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    console.error('Erro ao registrar agenda de stories (API):', err);
+    return res.status(500).json({ error: 'Nao foi possivel salvar a agenda.' });
+  }
+
+  const payload = buildExtendedPlanResponse(cycle, influencer, { scriptLimit: 50 });
+  return res.status(201).json(payload);
 });
 
 app.put('/influencer/plan/:id', authenticate, verificarAceite, (req, res) => {
@@ -2627,10 +2864,6 @@ app.put('/influencer/plan/:id', authenticate, verificarAceite, (req, res) => {
   const { influencer, status, message } = resolveInfluencerForRequest(req, plan.influencer_id);
   if (!influencer) {
     return res.status(status).json({ error: message });
-  }
-
-  if (plan.status === 'validated') {
-    return res.status(409).json({ error: 'Stories ja validado para este dia.' });
   }
 
   const cycle = findCycleByIdStmt.get(plan.cycle_id) || ensureMonthlyCycle();
@@ -2680,6 +2913,7 @@ app.put('/influencer/plan/:id', authenticate, verificarAceite, (req, res) => {
       content_script_id: scriptId,
       notes: notes || null
     });
+    updateInfluencerPlanStatusStmt.run('scheduled', plan.id);
     touchCycleStmt.run(plan.cycle_id);
   } catch (error) {
     console.error('Erro ao atualizar agendamento de story:', error);
