@@ -16,12 +16,12 @@ const elements = {
   emptyState: document.getElementById('empty-state'),
   saveBtn: document.getElementById('save-btn'),
   filters: Array.from(document.querySelectorAll('.filter-btn')),
-  datePicker: document.getElementById('date-picker'),
   toastContainer: document.getElementById('toast-container'),
   logoutBtn: document.getElementById('logout-btn')
 };
 
 let toastTimeoutId = null;
+let activePopover = null;
 
 const session = (() => {
   try {
@@ -132,6 +132,13 @@ const showToast = (message, type = 'info') => {
     toast.classList.remove('visible');
     window.setTimeout(() => toast.remove(), 300);
   }, 3200);
+};
+
+const closeActivePopover = () => {
+  if (activePopover?.element?.isConnected) {
+    activePopover.element.remove();
+  }
+  activePopover = null;
 };
 
 const setLoading = (loading) => {
@@ -267,11 +274,6 @@ const renderCycleInfo = () => {
 
 const getPlanForScript = (scriptId) => state.planMap.get(scriptId);
 
-const isPlanEditable = (plan) => {
-  if (!plan) return true;
-  return plan.status === 'scheduled' || plan.status === 'posted';
-};
-
 const scheduleForScript = (script, isoDate) => {
   if (!script || !isoDate) return;
   const normalizedDate = isoDate.trim();
@@ -279,7 +281,7 @@ const scheduleForScript = (script, isoDate) => {
   if (existingPlan) {
     existingPlan.scheduled_date = normalizedDate;
     existingPlan._removed = false;
-    existingPlan.status = existingPlan.status || 'scheduled';
+    existingPlan.status = 'scheduled';
   } else {
     const plan = normalizePlan({
       id: null,
@@ -296,6 +298,7 @@ const scheduleForScript = (script, isoDate) => {
   }
   state.removedIds.delete(script.id);
   state.pendingChanges = true;
+  closeActivePopover();
   renderRoteiros();
   updateSaveVisibility();
 };
@@ -307,6 +310,9 @@ const removeScheduleForScript = (scriptId) => {
   state.planMap.delete(scriptId);
   state.removedIds.add(scriptId);
   state.pendingChanges = true;
+  if (activePopover?.scriptId === scriptId) {
+    closeActivePopover();
+  }
   renderRoteiros();
   updateSaveVisibility();
 };
@@ -322,6 +328,7 @@ const filterScripts = () => {
 };
 
 const clearList = () => {
+  closeActivePopover();
   if (elements.roteirosList) {
     elements.roteirosList.innerHTML = '';
   }
@@ -350,9 +357,6 @@ const renderRoteiros = () => {
     card.dataset.id = String(script.id);
     if (plan && !plan._removed) {
       card.classList.add('scheduled');
-      if (!isPlanEditable(plan)) {
-        card.classList.add('disabled');
-      }
     }
 
     const header = document.createElement('div');
@@ -398,10 +402,9 @@ const renderRoteiros = () => {
     scheduleBtn.type = 'button';
     scheduleBtn.textContent = plan && !plan._removed ? 'Editar data' : '📅 Agendar';
     scheduleBtn.addEventListener('click', () => openDatePicker(script));
-    scheduleBtn.disabled = plan && !isPlanEditable(plan);
     actions.appendChild(scheduleBtn);
 
-    if (plan && !plan._removed && isPlanEditable(plan)) {
+    if (plan && !plan._removed) {
       const clearBtn = document.createElement('button');
       clearBtn.className = 'secondary danger';
       clearBtn.type = 'button';
@@ -434,34 +437,105 @@ const validateDateWithinCycle = (isoDate) => {
 };
 
 const openDatePicker = (script) => {
-  if (!elements.datePicker || !script) return;
-  const plan = getPlanForScript(script.id);
-  if (plan && !isPlanEditable(plan)) {
-    showToast('Este agendamento já foi validado e não pode ser alterado.', 'info');
+  if (!script) return;
+  const card = elements.roteirosList?.querySelector(`.roteiro-card[data-id="${script.id}"]`);
+  if (!card) return;
+
+  if (activePopover?.scriptId === script.id) {
+    closeActivePopover();
     return;
   }
 
-  const picker = elements.datePicker;
-  picker.value = plan?.scheduled_date ?? '';
-  picker.dataset.scriptId = String(script.id);
-  picker.min = state.cycle?.startDate ?? '';
-  picker.max = state.cycle?.endDate ?? '';
+  closeActivePopover();
 
-  picker.onchange = (event) => {
-    const value = event.target.value;
-    if (!value) return;
+  const plan = getPlanForScript(script.id);
+  const popover = document.createElement('div');
+  popover.className = 'date-popover';
+  popover.dataset.scriptId = String(script.id);
+  popover.setAttribute('role', 'dialog');
+  popover.setAttribute('aria-label', `Agendamento para ${script.title}`);
+
+  const title = document.createElement('p');
+  title.className = 'date-popover__title';
+  title.textContent = plan && !plan._removed ? 'Editar agendamento' : 'Novo agendamento';
+
+  const label = document.createElement('label');
+  label.className = 'date-popover__label';
+  label.textContent = 'Escolha a data';
+
+  const input = document.createElement('input');
+  input.type = 'date';
+  input.className = 'date-popover__input';
+  input.value = plan?.scheduled_date ?? '';
+  if (state.cycle?.startDate) {
+    input.min = state.cycle.startDate;
+  }
+  if (state.cycle?.endDate) {
+    input.max = state.cycle.endDate;
+  }
+
+  const handleEscape = (event) => {
+    if (event.key === 'Escape') {
+      closeActivePopover();
+    }
+  };
+
+  input.addEventListener('keydown', handleEscape);
+
+  label.appendChild(input);
+
+  const helper = document.createElement('p');
+  helper.className = 'date-popover__helper';
+  if (state.cycle?.startDate && state.cycle?.endDate) {
+    helper.textContent = `Ciclo vigente: ${formatDateLabel(state.cycle.startDate)} até ${formatDateLabel(
+      state.cycle.endDate
+    )}`;
+  } else {
+    helper.textContent = 'Selecione um dia disponível para a publicação.';
+  }
+
+  const actions = document.createElement('div');
+  actions.className = 'date-popover__actions';
+
+  const confirmBtn = document.createElement('button');
+  confirmBtn.type = 'button';
+  confirmBtn.className = 'primary';
+  confirmBtn.textContent = plan && !plan._removed ? 'Atualizar' : 'Agendar';
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.type = 'button';
+  cancelBtn.className = 'secondary';
+  cancelBtn.textContent = 'Cancelar';
+
+  confirmBtn.addEventListener('click', () => {
+    const value = input.value;
+    if (!value) {
+      showToast('Escolha uma data para agendar.', 'error');
+      input.focus();
+      return;
+    }
     if (!validateDateWithinCycle(value)) {
       showToast('Escolha uma data dentro do ciclo vigente.', 'error');
+      input.focus();
       return;
     }
     scheduleForScript(script, value);
-  };
+  });
 
-  picker.focus();
-  picker.showPicker?.();
-  if (!picker.showPicker) {
-    picker.click();
-  }
+  cancelBtn.addEventListener('click', () => {
+    closeActivePopover();
+  });
+
+  actions.append(confirmBtn, cancelBtn);
+
+  popover.append(title, label, helper, actions);
+  card.appendChild(popover);
+  activePopover = { scriptId: script.id, element: popover };
+
+  window.requestAnimationFrame(() => {
+    input.focus();
+    input.showPicker?.();
+  });
 };
 
 const gatherPlanEntries = () => {
@@ -470,7 +544,6 @@ const gatherPlanEntries = () => {
     if (!plan) return;
     if (plan._removed) return;
     if (!plan.scheduled_date) return;
-    if (plan.status && !isPlanEditable(plan)) return;
     const entry = { date: plan.scheduled_date };
     if (plan.content_script_id) {
       entry.scriptId = plan.content_script_id;
@@ -499,7 +572,10 @@ const saveSchedules = async () => {
   elements.saveBtn.textContent = 'Salvando...';
 
   try {
-    const payload = { schedules: entries };
+    const payload = {
+      schedules: entries,
+      removedScripts: Array.from(state.removedIds)
+    };
     const response = await fetchWithAuth('/api/influencer/plan', { method: 'POST', body: payload });
     syncStateFromResponse(response);
     showToast('Agenda atualizada com sucesso! 💗', 'success');

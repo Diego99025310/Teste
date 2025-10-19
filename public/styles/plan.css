@@ -183,10 +183,6 @@ button {
   border: 2px solid rgba(76, 175, 80, 0.35);
 }
 
-.roteiro-card.disabled {
-  opacity: 0.6;
-}
-
 .roteiro-header {
   display: flex;
   justify-content: space-between;
@@ -289,6 +285,63 @@ button {
 .card-actions .danger:hover {
   background: rgba(255, 105, 180, 0.12);
   border-color: var(--pink-600);
+}
+
+.date-popover {
+  margin-top: 4px;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid var(--gray-200);
+  box-shadow: var(--shadow-md);
+  background: #fff;
+  display: grid;
+  gap: 12px;
+  animation: fadeIn 0.18s ease;
+}
+
+.date-popover__title {
+  margin: 0;
+  font-weight: 700;
+  color: var(--pink-700);
+}
+
+.date-popover__label {
+  display: grid;
+  gap: 6px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--gray-700);
+}
+
+.date-popover__input {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--gray-300);
+  background: #fff;
+  font: inherit;
+  color: inherit;
+}
+
+.date-popover__input:focus-visible {
+  outline: 3px solid rgba(255, 105, 180, 0.35);
+  border-color: var(--pink-500);
+}
+
+.date-popover__helper {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--gray-600);
+}
+
+.date-popover__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.date-popover__actions .primary,
+.date-popover__actions .secondary {
+  flex: 1 1 auto;
+  min-height: 44px;
 }
 
 .empty-state {
@@ -397,6 +450,17 @@ button {
   }
   100% {
     background-position: -200% 0;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 

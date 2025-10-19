@@ -509,6 +509,8 @@ test('endpoints mobile-first de agendamento retornam dados completos', async () 
     });
 
   assert.strictEqual(createResponse.status, 201);
+  const influencerId = createResponse.body.id;
+  assert.ok(influencerId);
   const provisionalPassword = createResponse.body.senha_provisoria;
   const loginEmail = createResponse.body.login_email;
   assert.ok(loginEmail);
@@ -555,6 +557,62 @@ test('endpoints mobile-first de agendamento retornam dados completos', async () 
   const scheduledPlan = refreshed.body.plans.find((plan) => Number(plan.scriptId) === Number(scriptId));
   assert.ok(scheduledPlan);
   assert.strictEqual(scheduledPlan.date, scheduleDate);
+
+  const planRow = db
+    .prepare(
+      'SELECT id, status, scheduled_date FROM influencer_plans WHERE influencer_id = ? AND content_script_id = ? LIMIT 1'
+    )
+    .get(influencerId, scriptId);
+  assert.ok(planRow?.id);
+
+  db.prepare("UPDATE influencer_plans SET status = 'validated' WHERE id = ?").run(planRow.id);
+
+  const cyclePrefix = `${cycleInfo.year}-${String(cycleInfo.month).padStart(2, '0')}-`;
+  const nextDayCandidate = new Date(`${scheduleDate}T12:00:00Z`);
+  nextDayCandidate.setUTCDate(nextDayCandidate.getUTCDate() + 1);
+  let rescheduleDate = nextDayCandidate.toISOString().slice(0, 10);
+  if (!rescheduleDate.startsWith(cyclePrefix)) {
+    const previousDayCandidate = new Date(`${scheduleDate}T12:00:00Z`);
+    previousDayCandidate.setUTCDate(previousDayCandidate.getUTCDate() - 1);
+    const fallback = previousDayCandidate.toISOString().slice(0, 10);
+    rescheduleDate = fallback.startsWith(cyclePrefix) ? fallback : scheduleDate;
+  }
+
+  const rescheduleResponse = await request(app)
+    .post('/api/influencer/plan')
+    .set('Authorization', `Bearer ${influencerToken}`)
+    .send({ schedules: [{ scriptId, date: rescheduleDate }] });
+
+  assert.strictEqual(rescheduleResponse.status, 201);
+  const rescheduledPlan = rescheduleResponse.body.plans.find((plan) => Number(plan.scriptId) === Number(scriptId));
+  assert.ok(rescheduledPlan);
+  assert.strictEqual(rescheduledPlan.date, rescheduleDate);
+  assert.strictEqual(rescheduledPlan.status, 'scheduled');
+
+  const persistedPlan = db
+    .prepare('SELECT status, scheduled_date FROM influencer_plans WHERE id = ?')
+    .get(planRow.id);
+  assert.strictEqual(persistedPlan.status, 'scheduled');
+  assert.strictEqual(persistedPlan.scheduled_date, rescheduleDate);
+
+  const removalResponse = await request(app)
+    .post('/api/influencer/plan')
+    .set('Authorization', `Bearer ${influencerToken}`)
+    .send({ schedules: [], removedScripts: [scriptId] });
+
+  assert.strictEqual(removalResponse.status, 201);
+  const postRemoval = await request(app)
+    .get('/api/influencer/plan')
+    .set('Authorization', `Bearer ${influencerToken}`);
+
+  assert.strictEqual(postRemoval.status, 200);
+  const afterRemovalPlan = postRemoval.body.plans.find((plan) => Number(plan.scriptId) === Number(scriptId));
+  assert.strictEqual(afterRemovalPlan, undefined);
+
+  const remainingCount = db
+    .prepare('SELECT COUNT(*) as total FROM influencer_plans WHERE influencer_id = ? AND content_script_id = ?')
+    .get(influencerId, scriptId);
+  assert.strictEqual(Number(remainingCount.total), 0);
 });
 
 test('gestao de vendas vinculada a influenciadora', async () => {
