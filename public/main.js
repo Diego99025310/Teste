@@ -3197,45 +3197,6 @@
 
     const formatPlanStatus = (status) => planStatusLabels[status] || status || '-';
 
-    const computeCycleBounds = (cycle) => {
-      if (!cycle) return {};
-      const year = Number(cycle.cycle_year);
-      const month = Number(cycle.cycle_month);
-      if (!Number.isInteger(year) || !Number.isInteger(month)) return {};
-      const monthStr = String(month).padStart(2, '0');
-      const firstDay = `${year}-${monthStr}-01`;
-      const lastDay = new Date(year, month, 0).getDate();
-      const lastDayStr = `${year}-${monthStr}-${String(lastDay).padStart(2, '0')}`;
-      return { min: firstDay, max: lastDayStr };
-    };
-
-    const setFormDisabled = (form, disabled) => {
-      if (!form) return;
-      form.querySelectorAll('input, select, textarea, button').forEach((field) => {
-        field.disabled = disabled;
-      });
-    };
-
-    const buildPlanEntriesPayload = (additional = []) => {
-      const scheduled = Array.isArray(planState.plans)
-        ? planState.plans.filter((plan) => plan.status === 'scheduled')
-        : [];
-      const entries = scheduled.map((plan) => {
-        const entry = { date: plan.scheduled_date };
-        if (plan.content_script_id) {
-          entry.scriptId = plan.content_script_id;
-        }
-        if (plan.notes) {
-          entry.notes = plan.notes;
-        }
-        return entry;
-      });
-      additional
-        .filter((entry) => entry && entry.date)
-        .forEach((entry) => entries.push(entry));
-      return entries;
-    };
-
     const resolveScriptTitle = (plan) => {
       if (!plan) return '-';
       const existingTitle = toTrimmedString(plan.script_title ?? plan.scriptTitle ?? '');
@@ -3266,124 +3227,6 @@
       if (planValidatedCountEl) {
         planValidatedCountEl.textContent = String(validatedCount);
       }
-    };
-
-    const buildPlanEditForm = (plan) => {
-      const form = document.createElement('form');
-      form.className = 'plan-edit-form';
-      form.hidden = true;
-
-      const bounds = computeCycleBounds(planState.cycle);
-
-      const dateLabel = document.createElement('label');
-      dateLabel.textContent = 'Data do story';
-      const dateInput = document.createElement('input');
-      dateInput.type = 'date';
-      if (bounds.min) dateInput.min = bounds.min;
-      if (bounds.max) dateInput.max = bounds.max;
-      dateInput.value = plan.scheduled_date;
-      dateLabel.appendChild(dateInput);
-
-      const scriptLabel = document.createElement('label');
-      scriptLabel.textContent = 'Roteiro';
-      const scriptSelect = document.createElement('select');
-      const emptyOption = document.createElement('option');
-      emptyOption.value = '';
-      emptyOption.textContent = 'Sem roteiro definido';
-      scriptSelect.appendChild(emptyOption);
-      planState.scripts.forEach((script) => {
-        if (!script) return;
-        const option = document.createElement('option');
-        option.value = String(script.id);
-        option.textContent = toTrimmedString(script.titulo ?? script.title ?? '') || `Roteiro ${script.id}`;
-        scriptSelect.appendChild(option);
-      });
-      if (plan.content_script_id) {
-        scriptSelect.value = String(plan.content_script_id);
-      }
-      scriptLabel.appendChild(scriptSelect);
-
-      const noteLabel = document.createElement('label');
-      noteLabel.textContent = 'Observações';
-      const noteInput = document.createElement('textarea');
-      noteInput.rows = 2;
-      noteInput.value = plan.notes ?? '';
-      noteLabel.appendChild(noteInput);
-
-      const actions = document.createElement('div');
-      actions.className = 'form-actions';
-
-      const submitBtn = document.createElement('button');
-      submitBtn.type = 'submit';
-      submitBtn.textContent = 'Salvar alterações';
-
-      const cancelBtn = document.createElement('button');
-      cancelBtn.type = 'button';
-      cancelBtn.className = 'link-button';
-      cancelBtn.textContent = 'Cancelar';
-
-      actions.append(submitBtn, cancelBtn);
-
-      form.append(dateLabel, scriptLabel, noteLabel, actions);
-
-      cancelBtn.addEventListener('click', () => {
-        form.hidden = true;
-      });
-
-      form.addEventListener('submit', async (event) => {
-        event.preventDefault();
-        if (form.dataset.loading === 'true') return;
-
-        const nextDate = dateInput.value.trim();
-        if (!nextDate) {
-          setMessage(planMessageEl, 'Informe uma data válida para atualizar o agendamento.', 'error');
-          dateInput.focus();
-          return;
-        }
-
-        const scriptValue = scriptSelect.value.trim();
-        const noteValue = noteInput.value.trim();
-
-        const payload = {};
-        if (nextDate !== plan.scheduled_date) {
-          payload.date = nextDate;
-        }
-        if (scriptValue !== '') {
-          payload.scriptId = Number(scriptValue);
-        } else if (plan.content_script_id != null) {
-          payload.scriptId = null;
-        }
-        if (noteValue !== (plan.notes ?? '')) {
-          payload.notes = noteValue;
-        }
-
-        if (!Object.keys(payload).length) {
-          setMessage(planMessageEl, 'Nenhuma alteração detectada.', 'info');
-          form.hidden = true;
-          return;
-        }
-
-        try {
-          form.dataset.loading = 'true';
-          setFormDisabled(form, true);
-          setMessage(planMessageEl, 'Atualizando agendamento...', 'info');
-          await apiFetch(`/influencer/plan/${plan.id}`, { method: 'PUT', body: payload });
-          setMessage(planMessageEl, 'Agendamento atualizado com sucesso!', 'success');
-          form.hidden = true;
-          await loadPlan({ silent: true });
-        } catch (error) {
-          if (error.status === 401) {
-            logout();
-            return;
-          }
-          setMessage(planMessageEl, error.message || 'Não foi possível atualizar o agendamento.', 'error');
-        } finally {
-          form.dataset.loading = 'false';
-          setFormDisabled(form, false);
-        }
-      });
-
-      return form;
     };
 
     const renderPlanEntries = () => {
@@ -3432,171 +3275,8 @@
           item.appendChild(note);
         }
 
-        if (plan.status === 'scheduled') {
-          const actions = document.createElement('div');
-          actions.className = 'plan-entry-actions';
-          const editButton = document.createElement('button');
-          editButton.type = 'button';
-          editButton.className = 'link-button';
-          editButton.textContent = 'Editar';
-          actions.appendChild(editButton);
-          item.appendChild(actions);
-
-          const editForm = buildPlanEditForm(plan);
-          item.appendChild(editForm);
-
-          editButton.addEventListener('click', () => {
-            const bounds = computeCycleBounds(planState.cycle);
-            const dateInput = editForm.querySelector('input[type="date"]');
-            if (dateInput) {
-              if (bounds.min) dateInput.min = bounds.min;
-              if (bounds.max) dateInput.max = bounds.max;
-            }
-            editForm.hidden = !editForm.hidden;
-            if (!editForm.hidden) {
-              window.requestAnimationFrame(() => dateInput?.focus());
-            }
-          });
-        }
-
         planEntriesListEl.appendChild(item);
       });
-    };
-
-    const buildScheduleForm = (script) => {
-      const form = document.createElement('form');
-      form.className = 'script-schedule-form';
-      form.hidden = true;
-
-      const dateLabel = document.createElement('label');
-      dateLabel.textContent = 'Definir data';
-      const dateInput = document.createElement('input');
-      dateInput.type = 'date';
-      dateLabel.appendChild(dateInput);
-
-      const noteLabel = document.createElement('label');
-      noteLabel.textContent = 'Observações (opcional)';
-      const noteInput = document.createElement('textarea');
-      noteInput.rows = 2;
-      noteInput.placeholder = 'Inclua lembretes para este conteúdo (opcional)';
-      noteLabel.appendChild(noteInput);
-
-      const actions = document.createElement('div');
-      actions.className = 'form-actions';
-
-      const submitBtn = document.createElement('button');
-      submitBtn.type = 'submit';
-      submitBtn.textContent = 'Salvar agendamento';
-
-      const cancelBtn = document.createElement('button');
-      cancelBtn.type = 'button';
-      cancelBtn.className = 'link-button';
-      cancelBtn.textContent = 'Cancelar';
-
-      actions.append(submitBtn, cancelBtn);
-
-      form.append(dateLabel, noteLabel, actions);
-
-      cancelBtn.addEventListener('click', () => {
-        form.reset();
-        form.hidden = true;
-      });
-
-      form.addEventListener('submit', async (event) => {
-        event.preventDefault();
-        if (form.dataset.loading === 'true') return;
-
-        if (!planState.cycle) {
-          setMessage(planMessageEl, 'Carregando ciclo atual. Tente novamente em instantes.', 'info');
-          return;
-        }
-
-        const bounds = computeCycleBounds(planState.cycle);
-        const rawValue = dateInput.value;
-        if (!rawValue) {
-          setMessage(planMessageEl, 'Selecione uma data para agendar este roteiro.', 'error');
-          dateInput.focus();
-          return;
-        }
-
-        const normalized = rawValue.trim();
-        const expectedPrefix = `${planState.cycle.cycle_year}-${String(planState.cycle.cycle_month).padStart(2, '0')}-`;
-        if (!normalized.startsWith(expectedPrefix)) {
-          setMessage(planMessageEl, 'Escolha uma data dentro do ciclo vigente.', 'error');
-          dateInput.focus();
-          return;
-        }
-
-        const existingPlan = Array.isArray(planState.plans)
-          ? planState.plans.find((plan) => plan.scheduled_date === normalized)
-          : null;
-        const notesValue = noteInput.value.trim();
-
-        let shouldRefresh = false;
-        try {
-          form.dataset.loading = 'true';
-          setFormDisabled(form, true);
-          setMessage(planMessageEl, 'Salvando agendamento...', 'info');
-
-          if (existingPlan) {
-            if (existingPlan.status !== 'scheduled') {
-              setMessage(
-                planMessageEl,
-                'Este dia já foi registrado e não pode ser alterado por aqui.',
-                'error'
-              );
-            } else {
-              const payload = {};
-              const scriptId = Number(script?.id);
-              if (Number.isInteger(scriptId) && scriptId > 0) {
-                payload.scriptId = scriptId;
-              }
-              if (notesValue) {
-                payload.notes = notesValue;
-              } else if (existingPlan.notes) {
-                payload.notes = existingPlan.notes;
-              }
-              await apiFetch(`/influencer/plan/${existingPlan.id}`, { method: 'PUT', body: payload });
-              setMessage(planMessageEl, 'Roteiro vinculado à data selecionada.', 'success');
-              shouldRefresh = true;
-            }
-          } else {
-            const additionalEntry = { date: normalized };
-            const scriptId = Number(script?.id);
-            if (Number.isInteger(scriptId) && scriptId > 0) {
-              additionalEntry.scriptId = scriptId;
-            }
-            if (notesValue) {
-              additionalEntry.notes = notesValue;
-            }
-            const payload = buildPlanEntriesPayload([additionalEntry]);
-            await apiFetch('/influencer/plan', { method: 'POST', body: { entries: payload } });
-            setMessage(planMessageEl, 'Agenda atualizada com sucesso!', 'success');
-            shouldRefresh = true;
-          }
-
-          if (shouldRefresh) {
-            form.reset();
-            form.hidden = true;
-            await loadPlan({ silent: true });
-          }
-        } catch (error) {
-          if (error.status === 401) {
-            logout();
-            return;
-          }
-          setMessage(
-            planMessageEl,
-            error.message || 'Não foi possível salvar o agendamento.',
-            'error'
-          );
-        } finally {
-          form.dataset.loading = 'false';
-          setFormDisabled(form, false);
-        }
-      });
-
-      return form;
     };
 
     const renderScriptsList = (rows = planState.scripts) => {
@@ -3672,33 +3352,14 @@
           content.appendChild(scheduledWrapper);
         }
 
-        const actions = document.createElement('div');
-        actions.className = 'script-actions';
-        const scheduleButton = document.createElement('button');
-        scheduleButton.type = 'button';
-        scheduleButton.className = 'script-schedule-button';
-        scheduleButton.textContent = 'Agendar com este roteiro';
-        actions.appendChild(scheduleButton);
-        content.appendChild(actions);
-
-        const scheduleForm = buildScheduleForm(script);
-        content.appendChild(scheduleForm);
-
-        scheduleButton.addEventListener('click', () => {
-          const bounds = computeCycleBounds(planState.cycle);
-          const dateInput = scheduleForm.querySelector('input[type="date"]');
-          if (dateInput) {
-            if (bounds.min) dateInput.min = bounds.min;
-            if (bounds.max) dateInput.max = bounds.max;
-            if (!dateInput.value && bounds.min) {
-              dateInput.value = bounds.min;
-            }
-          }
-          scheduleForm.hidden = !scheduleForm.hidden;
-          if (!scheduleForm.hidden) {
-            window.requestAnimationFrame(() => dateInput?.focus());
-          }
-        });
+        const plannerHint = document.createElement('div');
+        plannerHint.className = 'script-planner-hint';
+        const plannerLink = document.createElement('a');
+        plannerLink.className = 'link-button';
+        plannerLink.href = 'influencer-plan.html';
+        plannerLink.textContent = 'Abrir planejador para agendar';
+        plannerHint.appendChild(plannerLink);
+        content.appendChild(plannerHint);
 
         const contentId = `script-content-${script?.id ?? index}`;
         content.id = contentId;
@@ -3721,7 +3382,6 @@
             item.classList.remove('open');
             headerButton.setAttribute('aria-expanded', 'false');
             content.hidden = true;
-            scheduleForm.hidden = true;
             iconSpan.textContent = '+';
           } else {
             item.classList.add('open');
