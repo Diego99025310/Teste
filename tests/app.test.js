@@ -595,6 +595,81 @@ test('endpoints mobile-first de agendamento retornam dados completos', async () 
   assert.strictEqual(persistedPlan.status, 'scheduled');
   assert.strictEqual(persistedPlan.scheduled_date, rescheduleDate);
 
+  db.prepare("UPDATE influencer_plans SET status = 'validated' WHERE id = ?").run(planRow.id);
+
+  let additionalDate = null;
+  const startBoundary = cycleInfo.startDate || scheduleDate;
+  const endBoundary = cycleInfo.endDate || scheduleDate;
+  const startCursor = new Date(`${startBoundary}T12:00:00Z`);
+  const endCursor = new Date(`${endBoundary}T12:00:00Z`);
+  for (let cursor = new Date(startCursor); cursor <= endCursor; cursor.setUTCDate(cursor.getUTCDate() + 1)) {
+    const iso = cursor.toISOString().slice(0, 10);
+    if (iso !== rescheduleDate && iso.startsWith(cyclePrefix)) {
+      additionalDate = iso;
+      break;
+    }
+  }
+  if (!additionalDate) {
+    for (let offset = -5; offset <= 5; offset += 1) {
+      if (offset === 0) continue;
+      const candidate = new Date(`${rescheduleDate}T12:00:00Z`);
+      candidate.setUTCDate(candidate.getUTCDate() + offset);
+      const iso = candidate.toISOString().slice(0, 10);
+      if (iso.startsWith(cyclePrefix) && iso !== rescheduleDate) {
+        additionalDate = iso;
+        break;
+      }
+    }
+  }
+
+  assert.ok(additionalDate, 'deve existir ao menos outro dia válido no ciclo');
+  assert.notStrictEqual(additionalDate, rescheduleDate);
+
+  const appendResponse = await request(app)
+    .post('/api/influencer/plan')
+    .set('Authorization', `Bearer ${influencerToken}`)
+    .send({ schedules: [{ scriptId, date: additionalDate, append: true }] });
+
+  assert.strictEqual(appendResponse.status, 201);
+  const scriptPlans = appendResponse.body.plans.filter((plan) => Number(plan.scriptId) === Number(scriptId));
+  assert.ok(scriptPlans.length >= 2, 'deve haver duas ocorrências do mesmo roteiro');
+  const validatedPlan = scriptPlans.find((plan) => plan.date === rescheduleDate);
+  assert.ok(validatedPlan);
+  assert.strictEqual(validatedPlan.status, 'validated');
+  const newOccurrence = scriptPlans.find((plan) => plan.date === additionalDate);
+  assert.ok(newOccurrence);
+  assert.ok(newOccurrence.id);
+  assert.strictEqual(newOccurrence.status, 'scheduled');
+
+  const countAfterAppend = db
+    .prepare('SELECT COUNT(*) as total FROM influencer_plans WHERE influencer_id = ? AND content_script_id = ?')
+    .get(influencerId, scriptId);
+  assert.ok(Number(countAfterAppend.total) >= 2);
+
+  const removeOccurrenceResponse = await request(app)
+    .post('/api/influencer/plan')
+    .set('Authorization', `Bearer ${influencerToken}`)
+    .send({ schedules: [], removedPlans: [newOccurrence.id] });
+
+  assert.strictEqual(removeOccurrenceResponse.status, 201);
+
+  const afterOccurrenceRemoval = await request(app)
+    .get('/api/influencer/plan')
+    .set('Authorization', `Bearer ${influencerToken}`);
+
+  assert.strictEqual(afterOccurrenceRemoval.status, 200);
+  const remainingPlans = afterOccurrenceRemoval.body.plans.filter(
+    (plan) => Number(plan.scriptId) === Number(scriptId)
+  );
+  assert.strictEqual(remainingPlans.length, 1);
+  assert.strictEqual(remainingPlans[0].date, rescheduleDate);
+  assert.strictEqual(remainingPlans[0].status, 'validated');
+
+  const countAfterRemoval = db
+    .prepare('SELECT COUNT(*) as total FROM influencer_plans WHERE influencer_id = ? AND content_script_id = ?')
+    .get(influencerId, scriptId);
+  assert.strictEqual(Number(countAfterRemoval.total), 1);
+
   const removalResponse = await request(app)
     .post('/api/influencer/plan')
     .set('Authorization', `Bearer ${influencerToken}`)

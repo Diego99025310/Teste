@@ -7,7 +7,9 @@ const state = {
   planMap: new Map(),
   pendingChanges: false,
   currentFilter: 'all',
-  removedIds: new Set()
+  removedPlanIds: new Set(),
+  removedScriptIds: new Set(),
+  localCounter: 0
 };
 
 const elements = {
@@ -190,23 +192,131 @@ const normalizePlan = (plan) => {
     script_description: plan.scriptDescription ?? plan.script_description ?? null,
     created_at: plan.createdAt ?? plan.created_at ?? null,
     updated_at: plan.updatedAt ?? plan.updated_at ?? null,
-    _removed: false
+    _removed: false,
+    _new: false,
+    _localId: null
   };
 };
 
 const rebuildPlanMap = () => {
-  state.planMap = new Map();
-  state.removedIds = new Set();
+  const planMap = new Map();
+  const removedPlanIds = new Set();
+  const activeScriptIds = new Set();
+
   state.plans.forEach((plan) => {
     if (!plan || !plan.content_script_id) {
       return;
     }
+
     if (plan._removed) {
-      state.removedIds.add(plan.content_script_id);
+      if (plan.id) {
+        removedPlanIds.add(plan.id);
+      }
       return;
     }
-    state.planMap.set(plan.content_script_id, plan);
+
+    const list = planMap.get(plan.content_script_id) ?? [];
+    list.push(plan);
+    planMap.set(plan.content_script_id, list);
+    activeScriptIds.add(plan.content_script_id);
   });
+
+  planMap.forEach((list, scriptId) => {
+    list.sort((a, b) => {
+      if (a.scheduled_date === b.scheduled_date) {
+        return (a.id ?? a._localId ?? 0) - (b.id ?? b._localId ?? 0);
+      }
+      return a.scheduled_date.localeCompare(b.scheduled_date);
+    });
+    planMap.set(scriptId, list);
+  });
+
+  state.planMap = planMap;
+  state.removedPlanIds = removedPlanIds;
+
+  const removedScripts = new Set();
+  state.plans.forEach((plan) => {
+    if (plan?._removed && plan.content_script_id && !activeScriptIds.has(plan.content_script_id)) {
+      removedScripts.add(plan.content_script_id);
+    }
+  });
+  state.removedScriptIds = removedScripts;
+};
+
+const refreshPendingChanges = () => {
+  state.pendingChanges = state.plans.some((plan) => plan && !plan._removed && plan._new);
+  if (!state.pendingChanges) {
+    state.pendingChanges = state.plans.some((plan) => plan?._removed);
+  }
+};
+
+const getPlansForScript = (scriptId) => state.planMap.get(scriptId) ?? [];
+
+const hasPlansForScript = (scriptId) => getPlansForScript(scriptId).length > 0;
+
+const planExistsForDate = (scriptId, isoDate) =>
+  state.plans.some(
+    (plan) =>
+      plan &&
+      !plan._removed &&
+      plan.content_script_id === scriptId &&
+      plan.scheduled_date === isoDate
+  );
+
+const createLocalPlan = (script, isoDate) => {
+  state.localCounter += 1;
+  return {
+    id: null,
+    cycleId: state.cycle?.id ?? null,
+    influencerId: state.influencer?.id ?? null,
+    scheduled_date: isoDate,
+    status: 'scheduled',
+    notes: null,
+    content_script_id: script.id,
+    script_title: script.title,
+    script_description: script.description,
+    created_at: null,
+    updated_at: null,
+    _removed: false,
+    _new: true,
+    _localId: `local-${Date.now()}-${state.localCounter}`
+  };
+};
+
+const STATUS_LABELS = {
+  scheduled: 'Agendado',
+  validated: 'Validado',
+  posted: 'Publicado',
+  missed: 'Atrasado'
+};
+
+const buildStatusChip = (plan) => {
+  if (!plan) return null;
+
+  const chip = document.createElement('span');
+  chip.className = 'schedule-occurrence__status';
+
+  if (plan._new) {
+    chip.classList.add('schedule-occurrence__status--pending');
+    chip.textContent = 'Novo agendamento';
+    return chip;
+  }
+
+  const statusKey = typeof plan.status === 'string' ? plan.status.toLowerCase() : '';
+  const label = STATUS_LABELS[statusKey] ?? (statusKey ? statusKey : 'Agendado');
+  chip.textContent = label;
+
+  if (statusKey === 'validated') {
+    chip.classList.add('schedule-occurrence__status--validated');
+  } else if (statusKey === 'posted') {
+    chip.classList.add('schedule-occurrence__status--posted');
+  } else if (statusKey === 'missed') {
+    chip.classList.add('schedule-occurrence__status--missed');
+  } else {
+    chip.classList.add('schedule-occurrence__status--scheduled');
+  }
+
+  return chip;
 };
 
 const normalizeCycle = (cycle) => {
@@ -255,7 +365,7 @@ const syncStateFromResponse = (data) => {
   state.scripts = Array.isArray(data?.scripts) ? data.scripts.map((script) => normalizeScript(script)).filter(Boolean) : [];
   state.plans = Array.isArray(data?.plans) ? data.plans.map((plan) => normalizePlan(plan)).filter(Boolean) : [];
   rebuildPlanMap();
-  state.pendingChanges = false;
+  refreshPendingChanges();
   state.currentFilter = 'all';
   renderCycleInfo();
   renderRoteiros();
@@ -272,57 +382,49 @@ const renderCycleInfo = () => {
   elements.cycleName.textContent = `${month}/${state.cycle.year}`;
 };
 
-const getPlanForScript = (scriptId) => state.planMap.get(scriptId);
-
-const scheduleForScript = (script, isoDate) => {
+const addScheduleForScript = (script, isoDate) => {
   if (!script || !isoDate) return;
   const normalizedDate = isoDate.trim();
-  const existingPlan = getPlanForScript(script.id);
-  if (existingPlan) {
-    existingPlan.scheduled_date = normalizedDate;
-    existingPlan._removed = false;
-    existingPlan.status = 'scheduled';
-  } else {
-    const plan = normalizePlan({
-      id: null,
-      cycleId: state.cycle?.id ?? null,
-      influencerId: state.influencer?.id ?? null,
-      date: normalizedDate,
-      status: 'scheduled',
-      scriptId: script.id,
-      scriptTitle: script.title,
-      scriptDescription: script.description
-    });
-    state.plans.push(plan);
-    state.planMap.set(script.id, plan);
+  if (planExistsForDate(script.id, normalizedDate)) {
+    showToast('Esse roteiro já está agendado para essa data.', 'error');
+    return;
   }
-  state.removedIds.delete(script.id);
-  state.pendingChanges = true;
+
+  const plan = createLocalPlan(script, normalizedDate);
+  state.plans.push(plan);
+  rebuildPlanMap();
+  refreshPendingChanges();
   closeActivePopover();
   renderRoteiros();
   updateSaveVisibility();
 };
 
-const removeScheduleForScript = (scriptId) => {
-  const plan = getPlanForScript(scriptId);
+const removePlanOccurrence = (plan) => {
   if (!plan) return;
-  plan._removed = true;
-  state.planMap.delete(scriptId);
-  state.removedIds.add(scriptId);
-  state.pendingChanges = true;
-  if (activePopover?.scriptId === scriptId) {
+
+  if (!plan.id) {
+    state.plans = state.plans.filter((item) => item !== plan);
+  } else {
+    plan._removed = true;
+  }
+
+  rebuildPlanMap();
+  refreshPendingChanges();
+
+  if (activePopover?.scriptId === plan.content_script_id) {
     closeActivePopover();
   }
+
   renderRoteiros();
   updateSaveVisibility();
 };
 
 const filterScripts = () => {
   if (state.currentFilter === 'scheduled') {
-    return state.scripts.filter((script) => getPlanForScript(script.id));
+    return state.scripts.filter((script) => hasPlansForScript(script.id));
   }
   if (state.currentFilter === 'available') {
-    return state.scripts.filter((script) => !getPlanForScript(script.id));
+    return state.scripts.filter((script) => !hasPlansForScript(script.id));
   }
   return state.scripts;
 };
@@ -351,11 +453,11 @@ const renderRoteiros = () => {
   elements.emptyState?.setAttribute('hidden', '');
 
   scripts.forEach((script) => {
-    const plan = getPlanForScript(script.id);
+    const occurrences = getPlansForScript(script.id);
     const card = document.createElement('article');
     card.className = 'roteiro-card';
     card.dataset.id = String(script.id);
-    if (plan && !plan._removed) {
+    if (occurrences.length) {
       card.classList.add('scheduled');
     }
 
@@ -381,17 +483,50 @@ const renderRoteiros = () => {
     card.appendChild(header);
     card.appendChild(preview);
 
-    if (plan && !plan._removed && plan.scheduled_date) {
-      const scheduled = document.createElement('div');
-      scheduled.className = 'scheduled-date';
-      scheduled.innerHTML = `📅 Agendado para <strong>${formatDateLabel(plan.scheduled_date)}</strong>`;
-      if (plan.status && plan.status !== 'scheduled') {
-        const statusChip = document.createElement('span');
-        statusChip.className = 'scheduled-date__status';
-        statusChip.textContent = plan.status === 'validated' ? 'Validado' : plan.status;
-        scheduled.appendChild(statusChip);
-      }
-      card.appendChild(scheduled);
+    if (occurrences.length) {
+      const list = document.createElement('div');
+      list.className = 'schedule-occurrences';
+
+      occurrences.forEach((plan) => {
+        if (!plan || plan._removed || !plan.scheduled_date) {
+          return;
+        }
+
+        const occurrence = document.createElement('div');
+        occurrence.className = 'schedule-occurrence';
+        if (plan._new) {
+          occurrence.classList.add('schedule-occurrence--new');
+        }
+
+        const info = document.createElement('div');
+        info.className = 'schedule-occurrence__info';
+
+        const dateLabel = document.createElement('span');
+        dateLabel.className = 'schedule-occurrence__date';
+        dateLabel.textContent = formatDateLabel(plan.scheduled_date);
+        info.appendChild(dateLabel);
+
+        const statusChip = buildStatusChip(plan);
+        if (statusChip) {
+          info.appendChild(statusChip);
+        }
+
+        const actionsContainer = document.createElement('div');
+        actionsContainer.className = 'schedule-occurrence__actions';
+
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'occurrence-remove';
+        removeBtn.textContent = 'Remover';
+        removeBtn.addEventListener('click', () => removePlanOccurrence(plan));
+
+        actionsContainer.appendChild(removeBtn);
+
+        occurrence.append(info, actionsContainer);
+        list.appendChild(occurrence);
+      });
+
+      card.appendChild(list);
     }
 
     const actions = document.createElement('div');
@@ -400,18 +535,9 @@ const renderRoteiros = () => {
     const scheduleBtn = document.createElement('button');
     scheduleBtn.className = 'primary';
     scheduleBtn.type = 'button';
-    scheduleBtn.textContent = plan && !plan._removed ? 'Editar data' : '📅 Agendar';
+    scheduleBtn.textContent = '➕ Adicionar data';
     scheduleBtn.addEventListener('click', () => openDatePicker(script));
     actions.appendChild(scheduleBtn);
-
-    if (plan && !plan._removed) {
-      const clearBtn = document.createElement('button');
-      clearBtn.className = 'secondary danger';
-      clearBtn.type = 'button';
-      clearBtn.textContent = 'Remover';
-      clearBtn.addEventListener('click', () => removeScheduleForScript(script.id));
-      actions.appendChild(clearBtn);
-    }
 
     card.appendChild(actions);
     elements.roteirosList.appendChild(card);
@@ -421,8 +547,9 @@ const renderRoteiros = () => {
 const updateSaveVisibility = () => {
   if (!elements.saveBtn) return;
   const hasPending =
-    (state.pendingChanges && Array.from(state.planMap.values()).some((plan) => plan.scheduled_date)) ||
-    state.removedIds.size > 0;
+    state.pendingChanges ||
+    state.removedPlanIds.size > 0 ||
+    state.removedScriptIds.size > 0;
   if (hasPending) {
     elements.saveBtn.removeAttribute('hidden');
   } else {
@@ -448,16 +575,16 @@ const openDatePicker = (script) => {
 
   closeActivePopover();
 
-  const plan = getPlanForScript(script.id);
+  const occurrences = getPlansForScript(script.id);
   const popover = document.createElement('div');
   popover.className = 'date-popover';
   popover.dataset.scriptId = String(script.id);
   popover.setAttribute('role', 'dialog');
-  popover.setAttribute('aria-label', `Agendamento para ${script.title}`);
+  popover.setAttribute('aria-label', `Adicionar agendamento para ${script.title}`);
 
   const title = document.createElement('p');
   title.className = 'date-popover__title';
-  title.textContent = plan && !plan._removed ? 'Editar agendamento' : 'Novo agendamento';
+  title.textContent = 'Adicionar novo agendamento';
 
   const label = document.createElement('label');
   label.className = 'date-popover__label';
@@ -466,7 +593,7 @@ const openDatePicker = (script) => {
   const input = document.createElement('input');
   input.type = 'date';
   input.className = 'date-popover__input';
-  input.value = plan?.scheduled_date ?? '';
+  input.value = '';
   if (state.cycle?.startDate) {
     input.min = state.cycle.startDate;
   }
@@ -486,12 +613,15 @@ const openDatePicker = (script) => {
 
   const helper = document.createElement('p');
   helper.className = 'date-popover__helper';
-  if (state.cycle?.startDate && state.cycle?.endDate) {
-    helper.textContent = `Ciclo vigente: ${formatDateLabel(state.cycle.startDate)} até ${formatDateLabel(
-      state.cycle.endDate
-    )}`;
+  const cycleMessage =
+    state.cycle?.startDate && state.cycle?.endDate
+      ? `Ciclo vigente: ${formatDateLabel(state.cycle.startDate)} até ${formatDateLabel(state.cycle.endDate)}`
+      : 'Selecione um dia disponível para a publicação.';
+  if (occurrences.length) {
+    const suffix = occurrences.length === 1 ? 'data agendada' : 'datas agendadas';
+    helper.textContent = `${cycleMessage}. Você já possui ${occurrences.length} ${suffix} para este roteiro.`;
   } else {
-    helper.textContent = 'Selecione um dia disponível para a publicação.';
+    helper.textContent = cycleMessage;
   }
 
   const actions = document.createElement('div');
@@ -500,7 +630,7 @@ const openDatePicker = (script) => {
   const confirmBtn = document.createElement('button');
   confirmBtn.type = 'button';
   confirmBtn.className = 'primary';
-  confirmBtn.textContent = plan && !plan._removed ? 'Atualizar' : 'Agendar';
+  confirmBtn.textContent = 'Adicionar';
 
   const cancelBtn = document.createElement('button');
   cancelBtn.type = 'button';
@@ -519,7 +649,7 @@ const openDatePicker = (script) => {
       input.focus();
       return;
     }
-    scheduleForScript(script, value);
+    addScheduleForScript(script, value);
   });
 
   cancelBtn.addEventListener('click', () => {
@@ -541,10 +671,14 @@ const openDatePicker = (script) => {
 const gatherPlanEntries = () => {
   const entries = [];
   state.plans.forEach((plan) => {
-    if (!plan) return;
-    if (plan._removed) return;
-    if (!plan.scheduled_date) return;
-    const entry = { date: plan.scheduled_date };
+    if (!plan || plan._removed || !plan.scheduled_date) {
+      return;
+    }
+    if (!plan._new) {
+      return;
+    }
+
+    const entry = { date: plan.scheduled_date, append: true };
     if (plan.content_script_id) {
       entry.scriptId = plan.content_script_id;
     }
@@ -561,9 +695,9 @@ const saveSchedules = async () => {
   if (!ensureAuth()) return;
 
   const entries = gatherPlanEntries();
-  if (!entries.length && !state.removedIds.size) {
+  if (!entries.length && !state.removedPlanIds.size && !state.removedScriptIds.size) {
     showToast('Nenhum agendamento pendente para salvar.', 'info');
-    state.pendingChanges = false;
+    refreshPendingChanges();
     updateSaveVisibility();
     return;
   }
@@ -574,7 +708,8 @@ const saveSchedules = async () => {
   try {
     const payload = {
       schedules: entries,
-      removedScripts: Array.from(state.removedIds)
+      removedPlans: Array.from(state.removedPlanIds),
+      removedScripts: Array.from(state.removedScriptIds)
     };
     const response = await fetchWithAuth('/api/influencer/plan', { method: 'POST', body: payload });
     syncStateFromResponse(response);
