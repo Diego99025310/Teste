@@ -44,22 +44,6 @@
           grid-template-columns: repeat(2, minmax(0, 1fr));
         }
       }
-      table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 1rem;
-      }
-      th,
-      td {
-        padding: 0.65rem 0.75rem;
-        text-align: left;
-        border-bottom: 1px solid #f3a6c2;
-      }
-      th {
-        background: rgba(228, 68, 122, 0.08);
-        color: #c72b60;
-        font-weight: 600;
-      }
       a.cta-button {
         display: inline-flex;
         align-items: center;
@@ -76,16 +60,6 @@
       a.cta-button:hover {
         transform: translateY(-1px);
         box-shadow: 0 10px 20px rgba(228, 68, 122, 0.25);
-      }
-      .status-chip {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.4rem;
-        background: rgba(228, 68, 122, 0.12);
-        color: #c72b60;
-        border-radius: 999px;
-        padding: 0.35rem 0.9rem;
-        font-size: 0.85rem;
       }
       .alert {
         border-left: 4px solid #f97316;
@@ -106,6 +80,130 @@
       }
       .planner-card p {
         margin: 0;
+      }
+      .plan-grid {
+        display: grid;
+        gap: 1.25rem;
+        grid-template-columns: repeat(auto-fit, minmax(14.5rem, 1fr));
+      }
+      .plan-card {
+        position: relative;
+        overflow: hidden;
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(255, 236, 244, 0.9));
+        border-radius: 22px;
+        border: 1px solid rgba(228, 68, 122, 0.14);
+        padding: 1.35rem;
+        display: grid;
+        gap: 0.85rem;
+        box-shadow: 0 18px 36px rgba(228, 68, 122, 0.12);
+        backdrop-filter: blur(8px);
+      }
+      .plan-card::after {
+        content: '';
+        position: absolute;
+        inset: auto -30% -45% auto;
+        width: 10rem;
+        height: 10rem;
+        background: radial-gradient(circle, rgba(228, 68, 122, 0.22) 0%, rgba(228, 68, 122, 0) 65%);
+        pointer-events: none;
+      }
+      .plan-card header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 0.75rem;
+      }
+      .plan-date {
+        display: grid;
+        gap: 0.25rem;
+      }
+      .plan-date strong {
+        font-size: 1.75rem;
+        line-height: 1;
+        color: #e4447a;
+      }
+      .plan-date small {
+        text-transform: uppercase;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        color: rgba(55, 65, 81, 0.7);
+      }
+      .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.38rem 0.95rem;
+        border-radius: 999px;
+        font-size: 0.78rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        background: rgba(228, 68, 122, 0.12);
+        color: #c72b60;
+        border: 1px solid rgba(228, 68, 122, 0.25);
+        box-shadow: 0 10px 20px rgba(228, 68, 122, 0.12);
+        backdrop-filter: blur(6px);
+      }
+      .status-badge::before {
+        content: '';
+        width: 0.45rem;
+        height: 0.45rem;
+        border-radius: 50%;
+        background: currentColor;
+        opacity: 0.85;
+      }
+      .status-validado {
+        background: rgba(34, 197, 94, 0.15);
+        border-color: rgba(34, 197, 94, 0.35);
+        color: #166534;
+      }
+      .status-pendente {
+        background: rgba(250, 204, 21, 0.2);
+        border-color: rgba(250, 204, 21, 0.35);
+        color: #854d0e;
+      }
+      .status-andamento {
+        background: rgba(59, 130, 246, 0.2);
+        border-color: rgba(59, 130, 246, 0.35);
+        color: #1d4ed8;
+      }
+      .status-atrasado {
+        background: rgba(248, 113, 113, 0.22);
+        border-color: rgba(248, 113, 113, 0.35);
+        color: #b91c1c;
+      }
+      .plan-card h3 {
+        margin: 0;
+        color: #c72b60;
+        font-size: 1.1rem;
+      }
+      .plan-card p {
+        margin: 0;
+        color: rgba(55, 65, 81, 0.75);
+        font-size: 0.95rem;
+      }
+      .plan-legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem 1.25rem;
+        font-size: 0.9rem;
+        color: #6b7280;
+      }
+      .plan-legend span {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+      }
+      .plan-legend .dot {
+        width: 0.65rem;
+        height: 0.65rem;
+        border-radius: 50%;
+      }
+      .empty-state {
+        background: rgba(228, 68, 122, 0.08);
+        border-radius: 16px;
+        padding: 1.25rem;
+        text-align: center;
       }
     </style>
   </head>
@@ -159,18 +257,13 @@
           <p class="muted" id="plan-helper-text">
             Veja abaixo as datas planejadas para este ciclo. Use o planejador para reagendar ou remover histórias.
           </p>
-          <table aria-describedby="plan-helper-text">
-            <thead>
-              <tr>
-                <th>Data</th>
-                <th>Status</th>
-                <th>Roteiro</th>
-              </tr>
-            </thead>
-            <tbody id="plan-table">
-              <tr><td colspan="3" class="muted">Nenhum agendamento encontrado.</td></tr>
-            </tbody>
-          </table>
+          <div class="plan-grid" id="plan-grid" aria-live="polite"></div>
+          <div class="plan-legend">
+            <span><span class="dot" style="background: #34d399"></span> Validado</span>
+            <span><span class="dot" style="background: #fbbf24"></span> Pendente</span>
+            <span><span class="dot" style="background: #60a5fa"></span> Em validação</span>
+            <span><span class="dot" style="background: #f87171"></span> Não entregue</span>
+          </div>
         </div>
       </section>
     </main>
@@ -203,7 +296,28 @@
         posted: 'Em validação',
         missed: 'Não entregue'
       };
+      const statusClasses = {
+        scheduled: 'status-pendente',
+        validated: 'status-validado',
+        posted: 'status-andamento',
+        missed: 'status-atrasado'
+      };
       const formatStatus = (status) => statusLabels[status] || status;
+      const getStatusClass = (status) => statusClasses[status] || 'status-andamento';
+
+      const monthLabels = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+      const formatDayNumber = (value) => {
+        if (!value) return '--';
+        const parts = value.split('-');
+        const day = parts[2];
+        return day ? String(Number(day)) : value;
+      };
+      const formatMonthShort = (value) => {
+        if (!value) return '';
+        const parts = value.split('-');
+        const monthIndex = Number(parts[1]) - 1;
+        return monthLabels[monthIndex] || parts[1] || '';
+      };
 
       const setText = (id, text) => {
         const el = document.getElementById(id);
@@ -213,22 +327,45 @@
       };
 
       function renderPlans() {
-        const table = document.getElementById('plan-table');
-        if (!table) return;
-        table.innerHTML = '';
+        const grid = document.getElementById('plan-grid');
+        if (!grid) return;
+        grid.innerHTML = '';
         if (!state.plans.length) {
-          table.innerHTML = '<tr><td colspan="3" class="muted">Nenhum agendamento cadastrado.</td></tr>';
+          grid.innerHTML = '<div class="empty-state muted">Nenhum agendamento cadastrado.</div>';
           return;
         }
         state.plans.forEach((plan) => {
-          const row = document.createElement('tr');
           const statusText = formatStatus(plan.status);
-          row.innerHTML = `
-            <td>${formatDate(plan.scheduled_date)}</td>
-            <td><span class="status-chip">${statusText}</span></td>
-            <td>${plan.script_title || '-'}</td>
-          `;
-          table.appendChild(row);
+          const statusClass = getStatusClass(plan.status);
+
+          const card = document.createElement('article');
+          card.className = 'plan-card';
+
+          const header = document.createElement('header');
+
+          const dateWrapper = document.createElement('span');
+          dateWrapper.className = 'plan-date';
+          const dayElement = document.createElement('strong');
+          dayElement.textContent = formatDayNumber(plan.scheduled_date);
+          const monthElement = document.createElement('small');
+          monthElement.textContent = formatMonthShort(plan.scheduled_date);
+          dateWrapper.append(dayElement, monthElement);
+
+          const statusElement = document.createElement('span');
+          statusElement.className = `status-badge ${statusClass}`;
+          statusElement.textContent = statusText;
+
+          header.append(dateWrapper, statusElement);
+
+          const titleElement = document.createElement('h3');
+          titleElement.textContent = plan.script_title || 'Story sem título';
+
+          const descriptionElement = document.createElement('p');
+          descriptionElement.textContent =
+            plan.script_description || plan.script_notes || 'Confira os detalhes no planejador.';
+
+          card.append(header, titleElement, descriptionElement);
+          grid.appendChild(card);
         });
       }
 
