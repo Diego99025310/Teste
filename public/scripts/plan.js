@@ -9,7 +9,8 @@ const state = {
   currentFilter: 'all',
   removedPlanIds: new Set(),
   removedScriptIds: new Set(),
-  localCounter: 0
+  localCounter: 0,
+  expandedScripts: new Set()
 };
 
 const elements = {
@@ -359,6 +360,8 @@ const normalizeCycle = (cycle) => {
 };
 
 const syncStateFromResponse = (data) => {
+  const previousExpansions = new Set(state.expandedScripts);
+
   state.cycle = normalizeCycle(data?.cycle);
 
   state.influencer = data?.influencer ?? null;
@@ -367,6 +370,14 @@ const syncStateFromResponse = (data) => {
   rebuildPlanMap();
   refreshPendingChanges();
   state.currentFilter = 'all';
+
+  state.expandedScripts = new Set();
+  state.scripts.forEach((script) => {
+    if (previousExpansions.has(Number(script.id))) {
+      state.expandedScripts.add(Number(script.id));
+    }
+  });
+
   renderCycleInfo();
   renderRoteiros();
   updateSaveVisibility();
@@ -436,6 +447,40 @@ const clearList = () => {
   }
 };
 
+const isScriptExpanded = (scriptId) => state.expandedScripts.has(Number(scriptId));
+
+const setScriptExpansion = (scriptId, expanded) => {
+  const numericId = Number(scriptId);
+  if (Number.isNaN(numericId)) return;
+  const currentlyExpanded = state.expandedScripts.has(numericId);
+  if (expanded === currentlyExpanded) {
+    return;
+  }
+  if (expanded) {
+    state.expandedScripts.add(numericId);
+  } else {
+    state.expandedScripts.delete(numericId);
+  }
+  renderRoteiros();
+};
+
+const toggleScriptExpansion = (scriptId) => {
+  setScriptExpansion(scriptId, !isScriptExpanded(scriptId));
+};
+
+const ensureScriptExpanded = (scriptId) => {
+  const numericId = Number(scriptId);
+  if (Number.isNaN(numericId)) {
+    return false;
+  }
+  if (state.expandedScripts.has(numericId)) {
+    return false;
+  }
+  state.expandedScripts.add(numericId);
+  renderRoteiros();
+  return true;
+};
+
 const renderRoteiros = () => {
   if (!elements.roteirosList) return;
   clearList();
@@ -461,27 +506,52 @@ const renderRoteiros = () => {
       card.classList.add('scheduled');
     }
 
+    const expanded = isScriptExpanded(script.id);
+    card.classList.add(expanded ? 'is-expanded' : 'is-collapsed');
+
     const header = document.createElement('div');
     header.className = 'roteiro-header';
+
+    const headerInfo = document.createElement('div');
+    headerInfo.className = 'roteiro-header__info';
 
     const title = document.createElement('h3');
     title.className = 'roteiro-title';
     title.textContent = script.title;
-    header.appendChild(title);
+    headerInfo.appendChild(title);
 
     if (script.product) {
       const badge = document.createElement('span');
       badge.className = 'roteiro-badge';
       badge.textContent = script.product;
-      header.appendChild(badge);
+      headerInfo.appendChild(badge);
     }
+
+    header.appendChild(headerInfo);
+
+    const toggleBtn = document.createElement('button');
+    toggleBtn.type = 'button';
+    toggleBtn.className = 'collapse-toggle';
+    toggleBtn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+    toggleBtn.setAttribute(
+      'aria-label',
+      expanded ? `Recolher detalhes de ${script.title}` : `Expandir detalhes de ${script.title}`
+    );
+    toggleBtn.textContent = expanded ? '−' : '+';
+    toggleBtn.addEventListener('click', () => toggleScriptExpansion(script.id));
+    header.appendChild(toggleBtn);
 
     const preview = document.createElement('p');
     preview.className = 'roteiro-preview';
     preview.textContent = script.preview || 'Sem preview disponível.';
 
-    card.appendChild(header);
-    card.appendChild(preview);
+    const details = document.createElement('div');
+    details.className = 'roteiro-details';
+    if (!expanded) {
+      details.setAttribute('data-collapsed', '');
+    }
+
+    details.appendChild(preview);
 
     if (occurrences.length) {
       const list = document.createElement('div');
@@ -526,8 +596,11 @@ const renderRoteiros = () => {
         list.appendChild(occurrence);
       });
 
-      card.appendChild(list);
+      details.appendChild(list);
     }
+
+    card.appendChild(header);
+    card.appendChild(details);
 
     const actions = document.createElement('div');
     actions.className = 'card-actions';
@@ -565,7 +638,15 @@ const validateDateWithinCycle = (isoDate) => {
 
 const openDatePicker = (script) => {
   if (!script) return;
-  const card = elements.roteirosList?.querySelector(`.roteiro-card[data-id="${script.id}"]`);
+
+  let card = elements.roteirosList?.querySelector(`.roteiro-card[data-id="${script.id}"]`);
+  if (!card) return;
+
+  if (!isScriptExpanded(script.id)) {
+    ensureScriptExpanded(script.id);
+    card = elements.roteirosList?.querySelector(`.roteiro-card[data-id="${script.id}"]`);
+  }
+
   if (!card) return;
 
   if (activePopover?.scriptId === script.id) {
@@ -659,7 +740,8 @@ const openDatePicker = (script) => {
   actions.append(confirmBtn, cancelBtn);
 
   popover.append(title, label, helper, actions);
-  card.appendChild(popover);
+  const detailsContainer = card.querySelector('.roteiro-details') || card;
+  detailsContainer.appendChild(popover);
   activePopover = { scriptId: script.id, element: popover };
 
   window.requestAnimationFrame(() => {
