@@ -3144,6 +3144,9 @@
     if (!ensureAuth()) return;
     attachLogoutButtons();
 
+    const pageType = document.body?.dataset?.page || 'influencer';
+    const isStandalonePerformancePage = pageType === 'influencer-performance';
+
     const detailsEl = document.getElementById('influencerDetails');
     const greetingEl = document.getElementById('influencerGreeting');
 
@@ -3168,12 +3171,14 @@
     const planMessageEl = document.getElementById('planMessage');
     const planEntriesListEl = document.getElementById('planEntriesList');
 
-    const sectionsMap = sectionNodes.reduce((acc, section) => {
-      if (section?.id) {
-        acc[section.id] = section;
-      }
-      return acc;
-    }, {});
+    const sectionsMap = isStandalonePerformancePage
+      ? {}
+      : sectionNodes.reduce((acc, section) => {
+          if (section?.id) {
+            acc[section.id] = section;
+          }
+          return acc;
+        }, {});
 
     let scriptsLoaded = false;
     let scriptsLoading = false;
@@ -3479,6 +3484,8 @@
     };
 
     const showSection = (sectionId = '') => {
+      if (isStandalonePerformancePage) return;
+
       const targetId = sectionId && sectionsMap[sectionId] ? sectionId : '';
 
       if (mainDashboardSection) {
@@ -3535,38 +3542,40 @@
       }
     };
 
-    dashboardOptions.forEach((option) => {
-      option.addEventListener('click', () => {
-        const plannerHref = option.dataset.openPlanner;
-        if (plannerHref) {
-          window.location.href = plannerHref;
-          return;
-        }
+    if (!isStandalonePerformancePage) {
+      dashboardOptions.forEach((option) => {
+        option.addEventListener('click', () => {
+          const plannerHref = option.dataset.openPlanner;
+          if (plannerHref) {
+            window.location.href = plannerHref;
+            return;
+          }
 
-        const targetSection = option.dataset.section;
-        if (targetSection) {
-          showSection(targetSection);
-        }
+          const targetSection = option.dataset.section;
+          if (targetSection) {
+            showSection(targetSection);
+          }
+        });
       });
-    });
 
-    backButtons.forEach((button) => {
-      button.addEventListener('click', () => {
-        const targetSection = button.dataset.target;
-        if (targetSection && targetSection !== 'main') {
-          showSection(targetSection);
-        } else {
-          showSection('');
-        }
-        if (mainDashboardSection) {
-          window.requestAnimationFrame(() => {
-            mainDashboardSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          });
-        }
+      backButtons.forEach((button) => {
+        button.addEventListener('click', () => {
+          const targetSection = button.dataset.target;
+          if (targetSection && targetSection !== 'main') {
+            showSection(targetSection);
+          } else {
+            showSection('');
+          }
+          if (mainDashboardSection) {
+            window.requestAnimationFrame(() => {
+              mainDashboardSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+          }
+        });
       });
-    });
 
-    showSection('');
+      showSection('');
+    }
 
     const applyContractWaiverState = () => {
       if (!contractWaived) {
@@ -3843,11 +3852,17 @@
         if (!influencer) {
           renderInfluencerStatus(detailsEl, 'Nenhum registro associado ao seu usuario.');
           renderSalesTable([]);
-          setMessage(salesMessageEl, '', '');
+          if (isStandalonePerformancePage) {
+            setMessage(salesMessageEl, 'Nenhum registro associado ao seu usuario.', 'info');
+          } else {
+            setMessage(salesMessageEl, '', '');
+          }
           if (greetingEl) {
             greetingEl.textContent = 'Bem vinda, Pinklover.';
           }
-          await loadContractRecord();
+          if (!isStandalonePerformancePage) {
+            await loadContractRecord();
+          }
           return;
         }
         renderInfluencerDetails(detailsEl, formatInfluencerDetails(influencer));
@@ -3858,13 +3873,17 @@
         contractWaived = parseBooleanFlag(
           influencer.contract_signature_waived ?? influencer.contractSignatureWaived
         );
-        if (!contractWaived) {
-          setMessage(contractMessageEl, '', '');
-        } else {
-          applyContractWaiverState();
+        if (!isStandalonePerformancePage) {
+          if (!contractWaived) {
+            setMessage(contractMessageEl, '', '');
+          } else {
+            applyContractWaiverState();
+          }
         }
         await loadInfluencerSales(influencer.id);
-        await loadContractRecord();
+        if (!isStandalonePerformancePage) {
+          await loadContractRecord();
+        }
       } catch (error) {
         if (error.status === 401) {
           logout();
@@ -3875,9 +3894,18 @@
           greetingEl.textContent = 'Bem vinda, Pinklover.';
         }
         contractWaived = false;
-        setContractButtonsEnabled(false);
-        if (contractMessageEl) {
-          setMessage(contractMessageEl, 'Não foi possível carregar o contrato assinado.', 'error');
+        if (isStandalonePerformancePage) {
+          setMessage(salesMessageEl, error.message || 'Nao foi possivel carregar os dados.', 'error');
+          renderSalesTable([]);
+        } else {
+          setContractButtonsEnabled(false);
+          if (contractMessageEl) {
+            setMessage(
+              contractMessageEl,
+              'Não foi possível carregar o contrato assinado.',
+              'error'
+            );
+          }
         }
       }
     };
@@ -4051,6 +4079,7 @@
       'master-sales': initMasterSalesPage,
       'master-scripts': initMasterScriptsPage,
       influencer: initInfluencerPage,
+      'influencer-performance': initInfluencerPage,
       'aceite-termos': initTermAcceptancePage
     };
     const initializer = initializers[page];
