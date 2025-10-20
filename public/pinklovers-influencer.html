@@ -60,42 +60,22 @@
         color: #c72b60;
         font-weight: 600;
       }
-      button,
-      input,
-      textarea,
-      select {
-        font: inherit;
-      }
-      button {
+      a.cta-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
         background: #e4447a;
         color: #fff;
-        border: none;
         border-radius: 999px;
-        padding: 0.75rem 1.5rem;
-        cursor: pointer;
+        padding: 0.9rem 1.75rem;
+        font-weight: 600;
+        text-decoration: none;
         transition: transform 0.2s ease, box-shadow 0.2s ease;
       }
-      button:hover {
+      a.cta-button:hover {
         transform: translateY(-1px);
         box-shadow: 0 10px 20px rgba(228, 68, 122, 0.25);
-      }
-      .button-secondary {
-        background: rgba(228, 68, 122, 0.12);
-        color: #c72b60;
-      }
-      .button-secondary:hover {
-        box-shadow: none;
-        transform: none;
-      }
-      textarea,
-      input,
-      select {
-        width: 100%;
-        border-radius: 12px;
-        border: 1px solid #f3a6c2;
-        padding: 0.75rem;
-        margin-top: 0.4rem;
-        margin-bottom: 0.9rem;
       }
       .status-chip {
         display: inline-flex;
@@ -113,47 +93,19 @@
         padding: 0.75rem 1rem;
         border-radius: 12px;
       }
-      .planner-actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.75rem;
-        align-items: center;
-        margin-bottom: 0.75rem;
-      }
-      .chip-list {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.5rem;
-        margin-bottom: 1rem;
-      }
-      .chip {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.4rem;
-        background: rgba(228, 68, 122, 0.16);
-        color: #c72b60;
-        border-radius: 999px;
-        padding: 0.35rem 0.8rem;
-        font-size: 0.9rem;
-      }
-      .chip button {
-        background: transparent;
-        border: none;
-        color: #c72b60;
-        font-size: 1rem;
-        cursor: pointer;
-        padding: 0;
-        line-height: 1;
-      }
-      .chip button:hover {
-        color: #e4447a;
-      }
       .muted {
         color: #6b7280;
         font-size: 0.9rem;
       }
       .hidden {
         display: none !important;
+      }
+      .planner-card {
+        display: grid;
+        gap: 1rem;
+      }
+      .planner-card p {
+        margin: 0;
       }
     </style>
   </head>
@@ -194,35 +146,32 @@
         <div id="alerts" class="grid" style="margin-top: 1.25rem"></div>
       </section>
 
-      <section>
-        <h2>Agenda do Mês</h2>
-        <p class="muted">
-          Escolha cada data em que pretende postar stories neste ciclo. Você pode adicionar várias datas antes de salvar.
-        </p>
-        <form id="plan-form">
-          <div class="planner-actions">
-            <label style="flex: 1 1 220px">
-              Selecionar dia
-              <input id="plan-date" type="date" />
-            </label>
-            <button type="button" id="add-day" class="button-secondary">Adicionar dia</button>
-          </div>
-          <div id="selected-days" class="chip-list muted">Nenhuma data selecionada.</div>
-          <button type="submit">Salvar agenda</button>
-          <span id="plan-feedback" class="muted"></span>
-        </form>
-        <table>
-          <thead>
-            <tr>
-              <th>Data</th>
-              <th>Status</th>
-              <th>Roteiro</th>
-            </tr>
-          </thead>
-          <tbody id="plan-table">
-            <tr><td colspan="3" class="muted">Nenhum agendamento encontrado.</td></tr>
-          </tbody>
-        </table>
+      <section class="planner-card">
+        <div>
+          <h2>Planejamento de Stories</h2>
+          <p class="muted">
+            Todo o agendamento acontece no planejador dedicado. Abra o fluxo abaixo para escolher ou alterar as datas de cada roteiro.
+          </p>
+        </div>
+        <a class="cta-button" href="influencer-plan.html">Abrir planejador de roteiros</a>
+        <div>
+          <h3 style="margin-top: 1.25rem; margin-bottom: 0.25rem">Próximos agendamentos</h3>
+          <p class="muted" id="plan-helper-text">
+            Veja abaixo as datas planejadas para este ciclo. Use o planejador para reagendar ou remover histórias.
+          </p>
+          <table aria-describedby="plan-helper-text">
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Status</th>
+                <th>Roteiro</th>
+              </tr>
+            </thead>
+            <tbody id="plan-table">
+              <tr><td colspan="3" class="muted">Nenhum agendamento encontrado.</td></tr>
+            </tbody>
+          </table>
+        </div>
       </section>
     </main>
 
@@ -234,8 +183,7 @@
 
       const state = {
         cycle: null,
-        plans: [],
-        draftDays: []
+        plans: []
       };
 
       const headers = () => ({
@@ -264,50 +212,6 @@
         }
       };
 
-      const getCyclePrefix = () => {
-        if (!state.cycle) return null;
-        const month = String(state.cycle.cycle_month).padStart(2, '0');
-        return `${state.cycle.cycle_year}-${month}-`;
-      };
-
-      function removeDay(day) {
-        state.draftDays = state.draftDays.filter((value) => value !== day);
-        renderSelectedDays();
-      }
-
-      function renderSelectedDays() {
-        const container = document.getElementById('selected-days');
-        if (!container) return;
-        container.innerHTML = '';
-        if (!state.draftDays.length) {
-          container.classList.add('muted');
-          container.textContent = 'Nenhuma data selecionada.';
-          return;
-        }
-        container.classList.remove('muted');
-        state.draftDays.forEach((day) => {
-          const chip = document.createElement('span');
-          chip.className = 'chip';
-          const label = document.createElement('span');
-          label.textContent = formatDate(day);
-          const removeButton = document.createElement('button');
-          removeButton.type = 'button';
-          removeButton.setAttribute('aria-label', `Remover ${formatDate(day)}`);
-          removeButton.textContent = '×';
-          removeButton.addEventListener('click', () => removeDay(day));
-          chip.append(label, removeButton);
-          container.appendChild(chip);
-        });
-      }
-
-      function syncDraftFromPlans() {
-        state.draftDays = state.plans
-          .filter((plan) => plan.status === 'scheduled')
-          .map((plan) => plan.scheduled_date);
-        state.draftDays.sort();
-        renderSelectedDays();
-      }
-
       function renderPlans() {
         const table = document.getElementById('plan-table');
         if (!table) return;
@@ -331,7 +235,6 @@
       const renderStatus = (dashboard) => {
         state.cycle = dashboard.cycle;
         state.plans = dashboard.plans || [];
-        syncDraftFromPlans();
 
         setText('cycle-period', `${dashboard.cycle.cycle_month}/${dashboard.cycle.cycle_year}`);
         setText('cycle-multiplier', `${dashboard.progress.multiplier}x – ${dashboard.progress.multiplierLabel}`);
@@ -364,71 +267,6 @@
         renderStatus(data);
       };
 
-      const planForm = document.getElementById('plan-form');
-      const addDayButton = document.getElementById('add-day');
-      const planFeedback = document.getElementById('plan-feedback');
-      const planDateInput = document.getElementById('plan-date');
-      const setFeedback = (message) => {
-        if (planFeedback) {
-          planFeedback.textContent = message;
-        }
-      };
-
-      addDayButton.addEventListener('click', () => {
-        setFeedback('');
-        if (!state.cycle) {
-          setFeedback('Carregando ciclo atual...');
-          return;
-        }
-        const rawValue = planDateInput.value;
-        if (!rawValue) {
-          setFeedback('Selecione uma data.');
-          return;
-        }
-        const normalized = rawValue.trim();
-        const prefix = getCyclePrefix();
-        if (prefix && !normalized.startsWith(prefix)) {
-          const month = String(state.cycle.cycle_month).padStart(2, '0');
-          setFeedback(`Escolha uma data dentro de ${month}/${state.cycle.cycle_year}.`);
-          return;
-        }
-        if (state.draftDays.includes(normalized)) {
-          setFeedback('Esta data já foi adicionada.');
-          return;
-        }
-        const alreadyValidated = state.plans.some(
-          (plan) => plan.scheduled_date === normalized && plan.status === 'validated'
-        );
-        if (alreadyValidated) {
-          setFeedback('Este dia já foi validado e não pode ser alterado.');
-          return;
-        }
-        state.draftDays.push(normalized);
-        state.draftDays.sort();
-        renderSelectedDays();
-        planDateInput.value = '';
-      });
-
-      planForm.addEventListener('submit', async (event) => {
-        event.preventDefault();
-        setFeedback('Salvando...');
-        if (!state.draftDays.length) {
-          setFeedback('Adicione ao menos uma data antes de salvar.');
-          return;
-        }
-        const response = await fetch('/influencer/plan', {
-          method: 'POST',
-          headers: headers(),
-          body: JSON.stringify({ days: state.draftDays })
-        });
-        if (!response.ok) {
-          const error = await response.json().catch(() => ({}));
-          setFeedback(error.error || 'Não foi possível salvar a agenda.');
-          return;
-        }
-        setFeedback('Agenda atualizada com sucesso!');
-        await loadDashboard();
-      });
       loadDashboard().catch((error) => {
         console.error(error);
         document.body.innerHTML = '<main><section><h2>Erro ao carregar painel</h2><p>Tente novamente mais tarde.</p></section></main>';
