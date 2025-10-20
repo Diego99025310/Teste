@@ -65,6 +65,163 @@
         gap: 1.5rem;
       }
 
+      .schedule-card {
+        position: relative;
+        overflow: hidden;
+        background: linear-gradient(145deg, rgba(255, 255, 255, 0.95), #ffe6ef);
+      }
+
+      .schedule-card::after {
+        content: "";
+        position: absolute;
+        inset: -30% -20% auto auto;
+        width: 16rem;
+        height: 16rem;
+        background: radial-gradient(circle, rgba(228, 68, 122, 0.18) 0%, rgba(228, 68, 122, 0) 65%);
+        pointer-events: none;
+      }
+
+      .schedule-intro {
+        display: grid;
+        gap: 1rem;
+        text-align: center;
+        z-index: 1;
+      }
+
+      .schedule-button {
+        justify-self: center;
+        border: none;
+        padding: 0.85rem 2.5rem;
+        border-radius: 999px;
+        background: linear-gradient(120deg, var(--color-primary), var(--color-secondary));
+        color: #fff;
+        font-weight: 600;
+        cursor: pointer;
+        box-shadow: 0 1.25rem 2.5rem rgba(228, 68, 122, 0.2);
+        transition: transform 0.25s ease, box-shadow 0.25s ease;
+      }
+
+      .schedule-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 1.5rem 2.75rem rgba(228, 68, 122, 0.24);
+      }
+
+      .schedule-calendar {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+        gap: 1.25rem;
+        z-index: 1;
+      }
+
+      .schedule-day {
+        background: rgba(255, 255, 255, 0.9);
+        border-radius: 1.25rem;
+        padding: 1.25rem;
+        display: grid;
+        gap: 0.75rem;
+        border: 1px solid rgba(228, 68, 122, 0.18);
+        box-shadow: 0 1.25rem 2rem rgba(228, 68, 122, 0.1);
+        backdrop-filter: blur(4px);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .schedule-day header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+      }
+
+      .schedule-date {
+        display: grid;
+        gap: 0.2rem;
+        text-align: left;
+      }
+
+      .schedule-date strong {
+        font-size: 1.75rem;
+        color: var(--color-primary);
+        line-height: 1;
+      }
+
+      .schedule-date small {
+        text-transform: uppercase;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        color: rgba(51, 51, 51, 0.65);
+      }
+
+      .status-badge {
+        font-size: 0.85rem;
+        font-weight: 700;
+        padding: 0.35rem 0.75rem;
+        border-radius: 999px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        color: #fff;
+        box-shadow: 0 0.75rem 1.5rem rgba(0, 0, 0, 0.08);
+      }
+
+      .status-badge::before {
+        content: "";
+        width: 0.55rem;
+        height: 0.55rem;
+        border-radius: 50%;
+        background: currentColor;
+        opacity: 0.75;
+      }
+
+      .status-validado {
+        background: linear-gradient(120deg, #1eb980, #3ddc84);
+      }
+
+      .status-pendente {
+        background: linear-gradient(120deg, #fbbc05, #ffd166);
+        color: #7a4d00;
+      }
+
+      .status-revisao {
+        background: linear-gradient(120deg, #ef476f, #f78fa7);
+      }
+
+      .schedule-day h3 {
+        margin: 0;
+        font-size: 1.1rem;
+        color: var(--color-primary);
+      }
+
+      .schedule-day p {
+        margin: 0;
+        color: rgba(51, 51, 51, 0.7);
+        font-size: 0.95rem;
+      }
+
+      .schedule-legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem 1.5rem;
+        font-size: 0.9rem;
+        justify-content: center;
+        color: rgba(51, 51, 51, 0.65);
+        z-index: 1;
+      }
+
+      .schedule-legend span {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .legend-dot {
+        width: 0.75rem;
+        height: 0.75rem;
+        border-radius: 50%;
+      }
+
       .card-headline {
         text-align: center;
       }
@@ -351,7 +508,76 @@
         <h1>Bem-vinda, Pinklover 💗</h1>
       </div>
 
-      <!-- CARD 2: SEUS DADOS -->
+      <!-- CARD 2: PLANEJAMENTO -->
+      <section class="card schedule-card">
+        <div class="schedule-intro">
+          <div class="card-headline">
+            <h2>Planejamento de Stories</h2>
+            <p>
+              Todo o agendamento acontece no planejador dedicado. Assim fica muito mais fácil escolher qual roteiro será destaque em cada dia do roteiro.
+            </p>
+          </div>
+          <button class="schedule-button">Abrir planejador de roteiros</button>
+        </div>
+
+        <div class="schedule-calendar">
+          <article class="schedule-day">
+            <header>
+              <span class="schedule-date">
+                <strong>18</strong>
+                <small>dez</small>
+              </span>
+              <span class="status-badge status-validado">Validado</span>
+            </header>
+            <h3>Roteiro 1</h3>
+            <p>Stories com bastidores da preparação do conteúdo principal da semana.</p>
+          </article>
+
+          <article class="schedule-day">
+            <header>
+              <span class="schedule-date">
+                <strong>22</strong>
+                <small>dez</small>
+              </span>
+              <span class="status-badge status-pendente">Pendente</span>
+            </header>
+            <h3>Roteiro 2</h3>
+            <p>Sequência mostrando rotina noturna com foco nos benefícios 5 em 1.</p>
+          </article>
+
+          <article class="schedule-day">
+            <header>
+              <span class="schedule-date">
+                <strong>23</strong>
+                <small>dez</small>
+              </span>
+              <span class="status-badge status-pendente">Pendente</span>
+            </header>
+            <h3>Roteiro 3</h3>
+            <p>Enquete interativa para escolher o próximo conteúdo do feed.</p>
+          </article>
+
+          <article class="schedule-day">
+            <header>
+              <span class="schedule-date">
+                <strong>31</strong>
+                <small>dez</small>
+              </span>
+              <span class="status-badge status-revisao">Revisar</span>
+            </header>
+            <h3>Resultado real em pouco tempo</h3>
+            <p>Depoimento com captura de tela dos primeiros resultados da audiência.</p>
+          </article>
+        </div>
+
+        <div class="schedule-legend">
+          <span><span class="legend-dot" style="background: #3ddc84"></span> Validado</span>
+          <span><span class="legend-dot" style="background: #ffd166"></span> Pendente</span>
+          <span><span class="legend-dot" style="background: #ef476f"></span> Revisar</span>
+        </div>
+      </section>
+
+      <!-- CARD 3: SEUS DADOS -->
       <section class="card">
         <div class="card-headline">
           <h2>Seus dados</h2>
