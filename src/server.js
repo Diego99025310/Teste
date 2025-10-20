@@ -413,6 +413,9 @@ const deletePlanByScriptStmt = db.prepare(
 const deletePlanByIdStmt = db.prepare(
   'DELETE FROM influencer_plans WHERE id = ? AND cycle_id = ? AND influencer_id = ?'
 );
+const deletePlanByScriptStmt = db.prepare(
+  'DELETE FROM influencer_plans WHERE cycle_id = ? AND influencer_id = ? AND content_script_id = ?'
+);
 const insertInfluencerPlanStmt = db.prepare(
   `INSERT INTO influencer_plans (cycle_id, influencer_id, scheduled_date, content_script_id, notes, status, created_at, updated_at)
    VALUES (@cycle_id, @influencer_id, @scheduled_date, @content_script_id, @notes, COALESCE(@status, 'scheduled'), CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
