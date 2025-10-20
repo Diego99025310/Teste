@@ -3537,6 +3537,12 @@
 
     dashboardOptions.forEach((option) => {
       option.addEventListener('click', () => {
+        const plannerHref = option.dataset.openPlanner;
+        if (plannerHref) {
+          window.location.href = plannerHref;
+          return;
+        }
+
         const targetSection = option.dataset.section;
         if (targetSection) {
           showSection(targetSection);
