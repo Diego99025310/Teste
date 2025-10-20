@@ -23,7 +23,7 @@ body {
   background: var(--gray-100);
   color: var(--gray-700);
   min-height: 100vh;
-  padding-bottom: 88px;
+  padding-bottom: 32px;
 }
 
 button {
@@ -482,40 +482,6 @@ button {
   color: var(--gray-600);
 }
 
-.save-btn {
-  position: fixed;
-  left: 50%;
-  bottom: 20px;
-  transform: translateX(-50%);
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  padding: 16px 24px;
-  background: var(--green-500);
-  color: #fff;
-  border-radius: 999px;
-  border: 0;
-  font-size: 1rem;
-  font-weight: 700;
-  box-shadow: 0 12px 20px rgba(76, 175, 80, 0.3);
-  cursor: pointer;
-  transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
-  z-index: 10;
-}
-
-.save-btn:hover {
-  background: var(--green-600);
-  transform: translateX(-50%) translateY(-2px);
-  box-shadow: 0 16px 24px rgba(76, 175, 80, 0.35);
-}
-
-.save-btn[disabled] {
-  cursor: not-allowed;
-  opacity: 0.6;
-  transform: translateX(-50%);
-  box-shadow: none;
-}
-
 .toast-container {
   position: fixed;
   left: 50%;
@@ -610,16 +576,6 @@ button {
   .roteiros-list {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .save-btn {
-    left: auto;
-    right: 32px;
-    transform: none;
-  }
-
-  .save-btn:hover {
-    transform: translateY(-2px);
   }
 }
 

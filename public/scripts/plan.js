@@ -5,11 +5,7 @@ const state = {
   scripts: [],
   plans: [],
   planMap: new Map(),
-  pendingChanges: false,
   currentFilter: 'all',
-  removedPlanIds: new Set(),
-  removedScriptIds: new Set(),
-  localCounter: 0,
   expandedScripts: new Set()
 };
 
@@ -17,7 +13,6 @@ const elements = {
   cycleName: document.getElementById('cycle-name'),
   roteirosList: document.getElementById('roteiros-list'),
   emptyState: document.getElementById('empty-state'),
-  saveBtn: document.getElementById('save-btn'),
   filters: Array.from(document.querySelectorAll('.filter-btn')),
   toastContainer: document.getElementById('toast-container'),
   logoutBtn: document.getElementById('logout-btn')
@@ -201,31 +196,21 @@ const normalizePlan = (plan) => {
 
 const rebuildPlanMap = () => {
   const planMap = new Map();
-  const removedPlanIds = new Set();
-  const activeScriptIds = new Set();
 
   state.plans.forEach((plan) => {
-    if (!plan || !plan.content_script_id) {
-      return;
-    }
-
-    if (plan._removed) {
-      if (plan.id) {
-        removedPlanIds.add(plan.id);
-      }
+    if (!plan || plan._removed || !plan.content_script_id) {
       return;
     }
 
     const list = planMap.get(plan.content_script_id) ?? [];
     list.push(plan);
     planMap.set(plan.content_script_id, list);
-    activeScriptIds.add(plan.content_script_id);
   });
 
   planMap.forEach((list, scriptId) => {
     list.sort((a, b) => {
       if (a.scheduled_date === b.scheduled_date) {
-        return (a.id ?? a._localId ?? 0) - (b.id ?? b._localId ?? 0);
+        return (a.id ?? 0) - (b.id ?? 0);
       }
       return a.scheduled_date.localeCompare(b.scheduled_date);
     });
@@ -233,22 +218,6 @@ const rebuildPlanMap = () => {
   });
 
   state.planMap = planMap;
-  state.removedPlanIds = removedPlanIds;
-
-  const removedScripts = new Set();
-  state.plans.forEach((plan) => {
-    if (plan?._removed && plan.content_script_id && !activeScriptIds.has(plan.content_script_id)) {
-      removedScripts.add(plan.content_script_id);
-    }
-  });
-  state.removedScriptIds = removedScripts;
-};
-
-const refreshPendingChanges = () => {
-  state.pendingChanges = state.plans.some((plan) => plan && !plan._removed && plan._new);
-  if (!state.pendingChanges) {
-    state.pendingChanges = state.plans.some((plan) => plan?._removed);
-  }
 };
 
 const getPlansForScript = (scriptId) => state.planMap.get(scriptId) ?? [];
@@ -263,26 +232,6 @@ const planExistsForDate = (scriptId, isoDate) =>
       plan.content_script_id === scriptId &&
       plan.scheduled_date === isoDate
   );
-
-const createLocalPlan = (script, isoDate) => {
-  state.localCounter += 1;
-  return {
-    id: null,
-    cycleId: state.cycle?.id ?? null,
-    influencerId: state.influencer?.id ?? null,
-    scheduled_date: isoDate,
-    status: 'scheduled',
-    notes: null,
-    content_script_id: script.id,
-    script_title: script.title,
-    script_description: script.description,
-    created_at: null,
-    updated_at: null,
-    _removed: false,
-    _new: true,
-    _localId: `local-${Date.now()}-${state.localCounter}`
-  };
-};
 
 const STATUS_LABELS = {
   scheduled: 'Agendado',
@@ -368,7 +317,6 @@ const syncStateFromResponse = (data) => {
   state.scripts = Array.isArray(data?.scripts) ? data.scripts.map((script) => normalizeScript(script)).filter(Boolean) : [];
   state.plans = Array.isArray(data?.plans) ? data.plans.map((plan) => normalizePlan(plan)).filter(Boolean) : [];
   rebuildPlanMap();
-  refreshPendingChanges();
   state.currentFilter = 'all';
 
   state.expandedScripts = new Set();
@@ -380,7 +328,6 @@ const syncStateFromResponse = (data) => {
 
   renderCycleInfo();
   renderRoteiros();
-  updateSaveVisibility();
 };
 
 const renderCycleInfo = () => {
@@ -393,41 +340,85 @@ const renderCycleInfo = () => {
   elements.cycleName.textContent = `${month}/${state.cycle.year}`;
 };
 
-const addScheduleForScript = (script, isoDate) => {
-  if (!script || !isoDate) return;
+const persistPlanChanges = async (payload) => {
+  if (!ensureAuth()) {
+    throw new Error('Sessão expirada. Faça login novamente.');
+  }
+
+  const response = await fetchWithAuth('/api/influencer/plan', {
+    method: 'POST',
+    body: payload
+  });
+
+  syncStateFromResponse(response);
+  return response;
+};
+
+const addScheduleForScript = async (script, isoDate) => {
+  if (!script || !isoDate) return false;
   const normalizedDate = isoDate.trim();
   if (planExistsForDate(script.id, normalizedDate)) {
     showToast('Esse roteiro já está agendado para essa data.', 'error');
-    return;
+    return false;
   }
 
-  const plan = createLocalPlan(script, normalizedDate);
-  state.plans.push(plan);
-  rebuildPlanMap();
-  refreshPendingChanges();
-  closeActivePopover();
-  renderRoteiros();
-  updateSaveVisibility();
+  try {
+    await persistPlanChanges({
+      schedules: [
+        {
+          scriptId: script.id,
+          date: normalizedDate,
+          append: true
+        }
+      ]
+    });
+    closeActivePopover();
+    showToast('Agendamento enviado para aprovação 💗', 'success');
+    return true;
+  } catch (error) {
+    if (error?.message) {
+      showToast(error.message, 'error');
+    } else {
+      showToast('Não foi possível agendar o roteiro.', 'error');
+    }
+    return false;
+  }
 };
 
-const removePlanOccurrence = (plan) => {
+const removePlanOccurrence = async (plan, triggerButton) => {
   if (!plan) return;
 
   if (!plan.id) {
-    state.plans = state.plans.filter((item) => item !== plan);
-  } else {
-    plan._removed = true;
+    showToast('Não foi possível identificar este agendamento.', 'error');
+    return;
   }
 
-  rebuildPlanMap();
-  refreshPendingChanges();
-
-  if (activePopover?.scriptId === plan.content_script_id) {
-    closeActivePopover();
+  const originalText = triggerButton?.textContent;
+  if (triggerButton) {
+    triggerButton.disabled = true;
+    triggerButton.textContent = 'Removendo...';
   }
 
-  renderRoteiros();
-  updateSaveVisibility();
+  let success = false;
+  try {
+    await persistPlanChanges({ removedPlans: [plan.id] });
+    showToast('Agendamento removido.', 'success');
+    success = true;
+  } catch (error) {
+    if (error?.message) {
+      showToast(error.message, 'error');
+    } else {
+      showToast('Não foi possível remover o agendamento.', 'error');
+    }
+  } finally {
+    if (triggerButton) {
+      triggerButton.disabled = false;
+      triggerButton.textContent = originalText ?? 'Remover';
+    }
+    if (success && activePopover?.scriptId === plan.content_script_id) {
+      closeActivePopover();
+    }
+  }
 };
 
 const filterScripts = () => {
@@ -588,7 +579,7 @@ const renderRoteiros = () => {
         removeBtn.type = 'button';
         removeBtn.className = 'occurrence-remove';
         removeBtn.textContent = 'Remover';
-        removeBtn.addEventListener('click', () => removePlanOccurrence(plan));
+        removeBtn.addEventListener('click', () => removePlanOccurrence(plan, removeBtn));
 
         actionsContainer.appendChild(removeBtn);
 
@@ -615,19 +606,6 @@ const renderRoteiros = () => {
     card.appendChild(actions);
     elements.roteirosList.appendChild(card);
   });
-};
-
-const updateSaveVisibility = () => {
-  if (!elements.saveBtn) return;
-  const hasPending =
-    state.pendingChanges ||
-    state.removedPlanIds.size > 0 ||
-    state.removedScriptIds.size > 0;
-  if (hasPending) {
-    elements.saveBtn.removeAttribute('hidden');
-  } else {
-    elements.saveBtn.setAttribute('hidden', '');
-  }
 };
 
 const validateDateWithinCycle = (isoDate) => {
@@ -718,7 +696,7 @@ const openDatePicker = (script) => {
   cancelBtn.className = 'secondary';
   cancelBtn.textContent = 'Cancelar';
 
-  confirmBtn.addEventListener('click', () => {
+  confirmBtn.addEventListener('click', async () => {
     const value = input.value;
     if (!value) {
       showToast('Escolha uma data para agendar.', 'error');
@@ -730,7 +708,21 @@ const openDatePicker = (script) => {
       input.focus();
       return;
     }
-    addScheduleForScript(script, value);
+    confirmBtn.disabled = true;
+    const previousLabel = confirmBtn.textContent;
+    confirmBtn.textContent = 'Adicionando...';
+    try {
+      const success = await addScheduleForScript(script, value);
+      if (!success) {
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = previousLabel;
+        input.focus();
+      }
+    } finally {
+      if (!confirmBtn.disabled) {
+        confirmBtn.textContent = previousLabel;
+      }
+    }
   });
 
   cancelBtn.addEventListener('click', () => {
@@ -749,62 +741,6 @@ const openDatePicker = (script) => {
     input.showPicker?.();
   });
 };
-
-const gatherPlanEntries = () => {
-  const entries = [];
-  state.plans.forEach((plan) => {
-    if (!plan || plan._removed || !plan.scheduled_date) {
-      return;
-    }
-    if (!plan._new) {
-      return;
-    }
-
-    const entry = { date: plan.scheduled_date, append: true };
-    if (plan.content_script_id) {
-      entry.scriptId = plan.content_script_id;
-    }
-    if (plan.notes) {
-      entry.notes = plan.notes;
-    }
-    entries.push(entry);
-  });
-  return entries;
-};
-
-const saveSchedules = async () => {
-  if (!elements.saveBtn) return;
-  if (!ensureAuth()) return;
-
-  const entries = gatherPlanEntries();
-  if (!entries.length && !state.removedPlanIds.size && !state.removedScriptIds.size) {
-    showToast('Nenhum agendamento pendente para salvar.', 'info');
-    refreshPendingChanges();
-    updateSaveVisibility();
-    return;
-  }
-
-  elements.saveBtn.disabled = true;
-  elements.saveBtn.textContent = 'Salvando...';
-
-  try {
-    const payload = {
-      schedules: entries,
-      removedPlans: Array.from(state.removedPlanIds),
-      removedScripts: Array.from(state.removedScriptIds)
-    };
-    const response = await fetchWithAuth('/api/influencer/plan', { method: 'POST', body: payload });
-    syncStateFromResponse(response);
-    showToast('Agenda atualizada com sucesso! 💗', 'success');
-  } catch (error) {
-    showToast(error.message || 'Não foi possível salvar os agendamentos.', 'error');
-  } finally {
-    elements.saveBtn.disabled = false;
-    elements.saveBtn.textContent = 'Salvar agendamentos';
-  }
-};
-
-elements.saveBtn?.addEventListener('click', saveSchedules);
 
 elements.filters.forEach((button) => {
   button.addEventListener('click', () => {
