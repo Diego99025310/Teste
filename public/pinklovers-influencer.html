@@ -5,264 +5,94 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Painel Pinklovers – Influenciadora</title>
     <link rel="stylesheet" href="/style.css" />
-    <style>
-      body {
-        font-family: 'Outfit', 'Segoe UI', sans-serif;
-        margin: 0;
-        background: linear-gradient(180deg, #ffe0ec 0%, #ffffff 100%);
-        color: #333;
-      }
-      header {
-        background: #e4447a;
-        color: #fff;
-        padding: 1.5rem;
-        text-align: center;
-      }
-      main {
-        max-width: 1100px;
-        margin: 0 auto;
-        padding: 1.5rem;
-        display: grid;
-        gap: 1.5rem;
-      }
-      section {
-        background: #fff;
-        border-radius: 16px;
-        padding: 1.5rem;
-        box-shadow: 0 12px 24px rgba(228, 68, 122, 0.12);
-      }
-      h2 {
-        margin-top: 0;
-        color: #e4447a;
-      }
-      .grid {
-        display: grid;
-        gap: 1rem;
-      }
-      @media (min-width: 900px) {
-        .grid.two-columns {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-      }
-      a.cta-button {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
-        background: #e4447a;
-        color: #fff;
-        border-radius: 999px;
-        padding: 0.9rem 1.75rem;
-        font-weight: 600;
-        text-decoration: none;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-      }
-      a.cta-button:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 10px 20px rgba(228, 68, 122, 0.25);
-      }
-      .alert {
-        border-left: 4px solid #f97316;
-        background: rgba(249, 115, 22, 0.15);
-        padding: 0.75rem 1rem;
-        border-radius: 12px;
-      }
-      .muted {
-        color: #6b7280;
-        font-size: 0.9rem;
-      }
-      .hidden {
-        display: none !important;
-      }
-      .planner-card {
-        display: grid;
-        gap: 1rem;
-      }
-      .planner-card p {
-        margin: 0;
-      }
-      .plan-grid {
-        display: grid;
-        gap: 1.25rem;
-        grid-template-columns: repeat(auto-fit, minmax(14.5rem, 1fr));
-      }
-      .plan-card {
-        position: relative;
-        overflow: hidden;
-        background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(255, 236, 244, 0.9));
-        border-radius: 22px;
-        border: 1px solid rgba(228, 68, 122, 0.14);
-        padding: 1.35rem;
-        display: grid;
-        gap: 0.85rem;
-        box-shadow: 0 18px 36px rgba(228, 68, 122, 0.12);
-        backdrop-filter: blur(8px);
-      }
-      .plan-card::after {
-        content: '';
-        position: absolute;
-        inset: auto -30% -45% auto;
-        width: 10rem;
-        height: 10rem;
-        background: radial-gradient(circle, rgba(228, 68, 122, 0.22) 0%, rgba(228, 68, 122, 0) 65%);
-        pointer-events: none;
-      }
-      .plan-card header {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 0.75rem;
-      }
-      .plan-date {
-        display: grid;
-        gap: 0.25rem;
-      }
-      .plan-date strong {
-        font-size: 1.75rem;
-        line-height: 1;
-        color: #e4447a;
-      }
-      .plan-date small {
-        text-transform: uppercase;
-        font-weight: 600;
-        letter-spacing: 0.08em;
-        color: rgba(55, 65, 81, 0.7);
-      }
-      .status-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.4rem;
-        padding: 0.38rem 0.95rem;
-        border-radius: 999px;
-        font-size: 0.78rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        background: rgba(228, 68, 122, 0.12);
-        color: #c72b60;
-        border: 1px solid rgba(228, 68, 122, 0.25);
-        box-shadow: 0 10px 20px rgba(228, 68, 122, 0.12);
-        backdrop-filter: blur(6px);
-      }
-      .status-badge::before {
-        content: '';
-        width: 0.45rem;
-        height: 0.45rem;
-        border-radius: 50%;
-        background: currentColor;
-        opacity: 0.85;
-      }
-      .status-validado {
-        background: rgba(34, 197, 94, 0.15);
-        border-color: rgba(34, 197, 94, 0.35);
-        color: #166534;
-      }
-      .status-pendente {
-        background: rgba(250, 204, 21, 0.2);
-        border-color: rgba(250, 204, 21, 0.35);
-        color: #854d0e;
-      }
-      .status-andamento {
-        background: rgba(59, 130, 246, 0.2);
-        border-color: rgba(59, 130, 246, 0.35);
-        color: #1d4ed8;
-      }
-      .status-atrasado {
-        background: rgba(248, 113, 113, 0.22);
-        border-color: rgba(248, 113, 113, 0.35);
-        color: #b91c1c;
-      }
-      .plan-card h3 {
-        margin: 0;
-        color: #c72b60;
-        font-size: 1.1rem;
-      }
-      .plan-card p {
-        margin: 0;
-        color: rgba(55, 65, 81, 0.75);
-        font-size: 0.95rem;
-      }
-      .plan-legend {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.75rem 1.25rem;
-        font-size: 0.9rem;
-        color: #6b7280;
-      }
-      .plan-legend span {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.45rem;
-      }
-      .plan-legend .dot {
-        width: 0.65rem;
-        height: 0.65rem;
-        border-radius: 50%;
-      }
-      .empty-state {
-        background: rgba(228, 68, 122, 0.08);
-        border-radius: 16px;
-        padding: 1.25rem;
-        text-align: center;
-      }
-    </style>
+    <link rel="stylesheet" href="/styles/pinklovers-influencer.css" />
   </head>
-  <body>
-    <header>
-      <h1>Painel Pinklovers – Influenciadora</h1>
-      <p>Acompanhe seu ciclo mensal, organize as datas de stories e monitore as validações.</p>
+  <body class="pinklover-dashboard">
+    <header class="page-hero">
+      <div class="page-hero__container">
+        <span class="page-hero__eyebrow">Clube Pinklovers</span>
+        <h1>Seu painel de influenciadora</h1>
+        <p>
+          Visualize o progresso do ciclo, acompanhe as entregas de stories e organize seu
+          calendário com a curadoria HidraPink.
+        </p>
+        <div class="page-hero__actions">
+          <a class="primary-button" href="influencer-plan.html">Abrir planejador de roteiros</a>
+          <a class="ghost-button" href="influencer-performance.html">Ver desempenho</a>
+        </div>
+      </div>
     </header>
-    <main>
-      <section id="status">
-        <h2>Resumo do Ciclo</h2>
-        <div class="grid two-columns">
-          <div>
-            <strong>Período:</strong>
-            <div id="cycle-period" class="muted">–</div>
-          </div>
-          <div>
-            <strong>Multiplicador atual:</strong>
-            <div id="cycle-multiplier" class="muted">–</div>
-          </div>
-          <div>
-            <strong>Dias planejados:</strong>
-            <div id="cycle-planned" class="muted">–</div>
-          </div>
-          <div>
-            <strong>Dias validados:</strong>
-            <div id="cycle-validated" class="muted">–</div>
-          </div>
-          <div>
-            <strong>Dias aguardando validação:</strong>
-            <div id="cycle-pending" class="muted">–</div>
-          </div>
-          <div>
-            <strong>Comissão estimada:</strong>
-            <div id="cycle-commission" class="muted">–</div>
+
+    <main class="page-content">
+      <section id="status" class="card summary-card">
+        <div class="section-heading">
+          <span class="section-heading__eyebrow">Resumo do ciclo</span>
+          <div class="section-heading__copy">
+            <h2>Como está a sua agenda</h2>
+            <p class="muted">
+              Dados atualizados com base no período vigente e nas validações realizadas até o
+              momento.
+            </p>
           </div>
         </div>
-        <div id="alerts" class="grid" style="margin-top: 1.25rem"></div>
+        <div class="stats-grid">
+          <article class="stat-card">
+            <span class="stat-card__label">Período</span>
+            <strong class="stat-card__value" id="cycle-period">–</strong>
+          </article>
+          <article class="stat-card">
+            <span class="stat-card__label">Multiplicador atual</span>
+            <strong class="stat-card__value" id="cycle-multiplier">–</strong>
+          </article>
+          <article class="stat-card">
+            <span class="stat-card__label">Dias planejados</span>
+            <strong class="stat-card__value" id="cycle-planned">–</strong>
+          </article>
+          <article class="stat-card">
+            <span class="stat-card__label">Dias validados</span>
+            <strong class="stat-card__value" id="cycle-validated">–</strong>
+          </article>
+          <article class="stat-card">
+            <span class="stat-card__label">Aguardando validação</span>
+            <strong class="stat-card__value" id="cycle-pending">–</strong>
+          </article>
+          <article class="stat-card">
+            <span class="stat-card__label">Comissão estimada</span>
+            <strong class="stat-card__value" id="cycle-commission">–</strong>
+          </article>
+        </div>
+        <div class="alerts-grid" id="alerts" aria-live="polite"></div>
       </section>
 
-      <section class="planner-card">
-        <div>
-          <h2>Planejamento de Stories</h2>
+      <section class="card planner-card">
+        <div class="planner-card__intro">
+          <span class="section-heading__eyebrow">Planejamento</span>
+          <h2>Stories e entregas</h2>
           <p class="muted">
-            Todo o agendamento acontece no planejador dedicado. Abra o fluxo abaixo para escolher ou alterar as datas de cada roteiro.
+            Prepare-se para cada entrega com antecedência, mantenha as validações em dia e ajuste
+            datas conforme sua rotina.
           </p>
         </div>
-        <a class="cta-button" href="influencer-plan.html">Abrir planejador de roteiros</a>
-        <div>
-          <h3 style="margin-top: 1.25rem; margin-bottom: 0.25rem">Próximos agendamentos</h3>
-          <p class="muted" id="plan-helper-text">
-            Veja abaixo as datas planejadas para este ciclo. Use o planejador para reagendar ou remover histórias.
+        <div class="planner-card__cta">
+          <a class="primary-button" href="influencer-plan.html">Abrir planejador</a>
+          <p class="muted planner-card__helper">
+            Você poderá reagendar roteiros, validar entregas e acompanhar comentários da equipe.
           </p>
+        </div>
+        <div class="planner-card__schedule">
+          <div class="planner-card__header">
+            <h3>Próximos agendamentos</h3>
+            <p class="muted" id="plan-helper-text">
+              Veja abaixo as datas planejadas para este ciclo. Use o planejador para reagendar ou
+              remover histórias.
+            </p>
+          </div>
           <div class="plan-grid" id="plan-grid" aria-live="polite"></div>
-          <div class="plan-legend">
-            <span><span class="dot" style="background: #34d399"></span> Validado</span>
-            <span><span class="dot" style="background: #fbbf24"></span> Pendente</span>
-            <span><span class="dot" style="background: #60a5fa"></span> Em validação</span>
-            <span><span class="dot" style="background: #f87171"></span> Não entregue</span>
+          <div class="plan-legend" aria-hidden="true">
+            <span><span class="dot dot--validated"></span> Validado</span>
+            <span><span class="dot dot--pending"></span> Pendente</span>
+            <span><span class="dot dot--review"></span> Em validação</span>
+            <span><span class="dot dot--missed"></span> Não entregue</span>
           </div>
         </div>
       </section>
@@ -271,7 +101,8 @@
     <script>
       const token = sessionStorage.getItem('token');
       if (!token) {
-        document.body.innerHTML = '<main><section><h2>Faça login</h2><p>Entre pelo painel para carregar seus dados.</p></section></main>';
+        document.body.innerHTML =
+          '<main class="page-content"><section class="card"><h2>Faça login</h2><p>Entre pelo painel para carregar seus dados.</p></section></main>';
       }
 
       const state = {
@@ -406,7 +237,8 @@
 
       loadDashboard().catch((error) => {
         console.error(error);
-        document.body.innerHTML = '<main><section><h2>Erro ao carregar painel</h2><p>Tente novamente mais tarde.</p></section></main>';
+        document.body.innerHTML =
+          '<main class="page-content"><section class="card"><h2>Erro ao carregar painel</h2><p>Tente novamente mais tarde.</p></section></main>';
       });
     </script>
   </body>
