@@ -137,6 +137,20 @@
       const getStatusClass = (status) => statusClasses[status] || 'status-andamento';
 
       const monthLabels = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+      const fullMonthLabels = [
+        'janeiro',
+        'fevereiro',
+        'março',
+        'abril',
+        'maio',
+        'junho',
+        'julho',
+        'agosto',
+        'setembro',
+        'outubro',
+        'novembro',
+        'dezembro'
+      ];
       const formatDayNumber = (value) => {
         if (!value) return '--';
         const parts = value.split('-');
@@ -150,12 +164,47 @@
         return monthLabels[monthIndex] || parts[1] || '';
       };
 
-      const setText = (id, text) => {
+      const formatCurrency = (value) => {
+        if (value == null) return '–';
+        return new Intl.NumberFormat('pt-BR', {
+          style: 'currency',
+          currency: 'BRL'
+        }).format(value);
+      };
+
+      const formatCyclePeriod = (cycle) => {
+        if (!cycle || !cycle.cycle_month || !cycle.cycle_year) {
+          return { value: '–', detail: 'Sem ciclo ativo' };
+        }
+        const monthIndex = Number(cycle.cycle_month) - 1;
+        const monthName = fullMonthLabels[monthIndex] || String(cycle.cycle_month);
+        const normalizedMonth = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+        const numericMonth = String(cycle.cycle_month).padStart(2, '0');
+        return {
+          value: `${normalizedMonth} ${cycle.cycle_year}`,
+          detail: `Ciclo ${numericMonth}/${cycle.cycle_year}`
+        };
+      };
+
+      const setMetricValue = (id, value, detail = '') => {
         const el = document.getElementById(id);
-        if (el) {
-          el.textContent = text;
+        if (!el) return;
+        el.textContent = '';
+        el.classList.toggle('stat-card__value--stacked', Boolean(detail));
+        if (detail) {
+          const numberEl = document.createElement('span');
+          numberEl.className = 'stat-card__number';
+          numberEl.textContent = value;
+          const detailEl = document.createElement('span');
+          detailEl.className = 'stat-card__meta';
+          detailEl.textContent = detail;
+          el.append(numberEl, detailEl);
+        } else {
+          el.textContent = value;
         }
       };
+
+      const pluralize = (count, singular, plural) => (count === 1 ? singular : plural);
 
       function renderPlans() {
         const grid = document.getElementById('plan-grid');
@@ -204,15 +253,44 @@
         state.cycle = dashboard.cycle;
         state.plans = dashboard.plans || [];
 
-        setText('cycle-period', `${dashboard.cycle.cycle_month}/${dashboard.cycle.cycle_year}`);
-        setText('cycle-multiplier', `${dashboard.progress.multiplier}x – ${dashboard.progress.multiplierLabel}`);
-        setText('cycle-planned', String(dashboard.progress.plannedDays));
-        setText('cycle-validated', String(dashboard.progress.validatedDays));
-        setText('cycle-pending', String(dashboard.progress.pendingValidations));
-        setText(
-          'cycle-commission',
-          dashboard.commission ? `R$ ${dashboard.commission.total.toFixed(2)}` : '–'
-        );
+        const periodDisplay = formatCyclePeriod(dashboard.cycle);
+        setMetricValue('cycle-period', periodDisplay.value, periodDisplay.detail);
+
+        const progress = dashboard.progress || {};
+        const hasMultiplier = typeof progress.multiplier === 'number';
+        const multiplierValue = hasMultiplier ? `${progress.multiplier}x` : '–';
+        const multiplierDetail = hasMultiplier
+          ? progress.multiplierLabel || 'Multiplicador vigente'
+          : 'Dados indisponíveis';
+        setMetricValue('cycle-multiplier', multiplierValue, multiplierDetail);
+
+        const plannedDays = Number(progress.plannedDays) || 0;
+        const plannedDetail =
+          plannedDays === 0
+            ? 'nenhum dia planejado'
+            : pluralize(plannedDays, 'dia planejado', 'dias planejados');
+        setMetricValue('cycle-planned', String(plannedDays), plannedDetail);
+
+        const validatedDays = Number(progress.validatedDays) || 0;
+        const validatedDetail =
+          validatedDays === 0
+            ? 'nenhum dia validado'
+            : pluralize(validatedDays, 'dia validado', 'dias validados');
+        setMetricValue('cycle-validated', String(validatedDays), validatedDetail);
+
+        const pendingDays = Number(progress.pendingValidations) || 0;
+        const pendingDetail =
+          pendingDays === 0
+            ? 'sem pendências'
+            : pluralize(pendingDays, 'dia aguardando validação', 'dias aguardando validação');
+        setMetricValue('cycle-pending', String(pendingDays), pendingDetail);
+
+        const commissionTotal = dashboard.commission?.total;
+        if (typeof commissionTotal === 'number') {
+          setMetricValue('cycle-commission', formatCurrency(commissionTotal), 'Total estimado do ciclo');
+        } else {
+          setMetricValue('cycle-commission', '–', 'Sem comissão disponível');
+        }
 
         const alerts = document.getElementById('alerts');
         alerts.innerHTML = '';
