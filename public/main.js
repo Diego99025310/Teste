@@ -4180,7 +4180,7 @@
       if (!Array.isArray(rows) || rows.length === 0) {
         const emptyRow = document.createElement('tr');
         const emptyCell = document.createElement('td');
-        emptyCell.colSpan = 4;
+        emptyCell.colSpan = 3;
         emptyCell.className = 'empty';
         emptyCell.textContent = 'Nenhuma venda registrada.';
         emptyRow.appendChild(emptyCell);
@@ -4216,14 +4216,10 @@
         const pointsValue = resolveSalePoints(sale);
         const pointsDisplay = formatInteger(pointsValue);
 
-        const valueAmount = resolveSalePointsValue(sale);
-        const valueDisplay = formatCurrency(valueAmount);
-
         const cells = [
           { label: 'Número do pedido', value: orderDisplay },
           { label: 'Data', value: dateDisplay },
-          { label: 'Pontos', value: pointsDisplay },
-          { label: 'Valor estimado (R$)', value: valueDisplay }
+          { label: 'Pontos', value: pointsDisplay }
         ];
         cells.forEach(({ label, value }) => {
           const td = document.createElement('td');
