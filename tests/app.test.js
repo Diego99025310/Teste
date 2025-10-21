@@ -5,6 +5,7 @@ const path = require('node:path');
 const request = require('supertest');
 
 const { gerarHashTermo } = require('../src/utils/hash');
+const { pointsToBrl, POINT_VALUE_BRL } = require('../src/utils/points');
 
 const tempDbPath = path.join(__dirname, '..', 'test.sqlite');
 
@@ -63,6 +64,12 @@ const authenticateMaster = async () => {
   assert.ok(response.body.token, 'Master login deve retornar token');
   return response.body.token;
 };
+
+const cadastrarSkuPoints = async (token, payload) =>
+  request(app)
+    .post('/sku-points')
+    .set('Authorization', `Bearer ${token}`)
+    .send(payload);
 
 test('master pode registrar novo usuario e realizar login', async () => {
   resetDb();
@@ -445,8 +452,7 @@ test('fluxo completo de ciclo mensal com agendamento, validacao e fechamento', a
       orderNumber: 'PINK-001',
       cupom: 'CICLOPINK',
       date: dates[0],
-      grossValue: 1000,
-      discount: 0
+      points: 100
     });
 
   assert.strictEqual(saleResponse.status, 201);
@@ -465,8 +471,10 @@ test('fluxo completo de ciclo mensal com agendamento, validacao e fechamento', a
   assert.strictEqual(Number(summary.multiplier), 1.25);
   assert.strictEqual(Number(summary.deliveries_planned), 5);
   assert.strictEqual(Number(summary.deliveries_completed), 5);
-  assert.strictEqual(Number(summary.base_commission) > 0, true);
-  assert.strictEqual(Number(summary.total_commission) > Number(summary.base_commission), true);
+  assert.strictEqual(Number(summary.base_points), 100);
+  assert.strictEqual(Number(summary.total_points), 125);
+  assert.strictEqual(Number(summary.base_commission), pointsToBrl(100));
+  assert.strictEqual(Number(summary.total_commission), pointsToBrl(125));
 
   const historyResponse = await request(app)
     .get('/influencer/history')
@@ -710,14 +718,13 @@ test('gestao de vendas vinculada a influenciadora', async () => {
       orderNumber: 'PED-001',
       cupom: influencerPayload.cupom,
       date: '2025-10-01',
-      grossValue: 1000,
-      discount: 100
+      points: 100
     });
 
   assert.strictEqual(saleResponse.status, 201);
   assert.strictEqual(saleResponse.body.order_number, 'PED-001');
-  assert.strictEqual(Number(saleResponse.body.net_value), 900);
-  assert.strictEqual(Number(saleResponse.body.commission), 112.5);
+  assert.strictEqual(Number(saleResponse.body.points), 100);
+  assert.strictEqual(Number(saleResponse.body.points_value), pointsToBrl(100));
   const saleId = saleResponse.body.id;
 
   const createdSaleRecord = selectSaleOrderNumberStmt.get(saleId);
@@ -729,13 +736,14 @@ test('gestao de vendas vinculada a influenciadora', async () => {
     .set('Authorization', `Bearer ${masterToken}`);
   assert.strictEqual(listSales.status, 200);
   assert.strictEqual(listSales.body.length, 1);
+  assert.strictEqual(Number(listSales.body[0].points), 100);
 
   const summaryInitial = await request(app)
     .get(`/sales/summary/${influencerId}`)
     .set('Authorization', `Bearer ${masterToken}`);
   assert.strictEqual(summaryInitial.status, 200);
-  assert.strictEqual(Number(summaryInitial.body.total_net), 900);
-  assert.strictEqual(Number(summaryInitial.body.total_commission), 112.5);
+  assert.strictEqual(Number(summaryInitial.body.total_points), 100);
+  assert.strictEqual(Number(summaryInitial.body.total_points_value), pointsToBrl(100));
 
   const consultResponse = await request(app)
     .get('/influenciadoras/consulta')
@@ -744,7 +752,7 @@ test('gestao de vendas vinculada a influenciadora', async () => {
   const consultRow = consultResponse.body.find((row) => row.id === influencerId);
   assert.ok(consultRow, 'Resumo deve incluir influenciadora criada');
   assert.strictEqual(Number(consultRow.vendas_count), 1);
-  assert.strictEqual(Number(consultRow.vendas_total), 900);
+  assert.strictEqual(Number(consultRow.vendas_total_points), 100);
 
   const duplicateSale = await request(app)
     .post('/sales')
@@ -753,8 +761,7 @@ test('gestao de vendas vinculada a influenciadora', async () => {
       orderNumber: 'PED-001',
       cupom: influencerPayload.cupom,
       date: '2025-10-04',
-      grossValue: 800,
-      discount: 0
+      points: 80
     });
   assert.strictEqual(duplicateSale.status, 409);
   assert.match(duplicateSale.body.error, /numero de pedido/i);
@@ -766,8 +773,7 @@ test('gestao de vendas vinculada a influenciadora', async () => {
       orderNumber: 'PED-002',
       cupom: influencerPayload.cupom,
       date: '2025-10-05',
-      grossValue: 500,
-      discount: 0
+      points: 50
     });
   assert.strictEqual(secondSaleResponse.status, 201);
   const secondSaleId = secondSaleResponse.body.id;
@@ -782,8 +788,7 @@ test('gestao de vendas vinculada a influenciadora', async () => {
       orderNumber: 'PED-002',
       cupom: influencerPayload.cupom,
       date: '2025-10-06',
-      grossValue: 1000,
-      discount: 50
+      points: 120
     });
   assert.strictEqual(conflictingUpdate.status, 409);
   assert.match(conflictingUpdate.body.error, /numero de pedido/i);
@@ -795,13 +800,12 @@ test('gestao de vendas vinculada a influenciadora', async () => {
       orderNumber: 'PED-001-ALT',
       cupom: influencerPayload.cupom,
       date: '2025-10-02',
-      grossValue: 1000,
-      discount: 50
+      points: 200
     });
   assert.strictEqual(updateSale.status, 200);
   assert.strictEqual(updateSale.body.order_number, 'PED-001-ALT');
-  assert.strictEqual(Number(updateSale.body.net_value), 950);
-  assert.strictEqual(Number(updateSale.body.commission), 118.75);
+  assert.strictEqual(Number(updateSale.body.points), 200);
+  assert.strictEqual(Number(updateSale.body.points_value), pointsToBrl(200));
 
   const updatedSaleRecord = selectSaleOrderNumberStmt.get(saleId);
   assert.ok(updatedSaleRecord, 'Venda atualizada deve existir no banco de dados.');
@@ -814,7 +818,7 @@ test('gestao de vendas vinculada a influenciadora', async () => {
   const consultRowUpdated = consultAfterUpdate.body.find((row) => row.id === influencerId);
   assert.ok(consultRowUpdated);
   assert.strictEqual(Number(consultRowUpdated.vendas_count), 2);
-  assert.strictEqual(Number(consultRowUpdated.vendas_total), 1450);
+  assert.strictEqual(Number(consultRowUpdated.vendas_total_points), 250);
 
   const influencerLogin = await login(
     createInfluencer.body.login_email,
@@ -832,7 +836,7 @@ test('gestao de vendas vinculada a influenciadora', async () => {
   const unauthorizedSale = await request(app)
     .post('/sales')
     .set('Authorization', `Bearer ${influencerToken}`)
-    .send({ cupom: influencerPayload.cupom, date: '2025-10-03', grossValue: 500, discount: 0 });
+    .send({ cupom: influencerPayload.cupom, date: '2025-10-03', points: 40 });
   assert.strictEqual(unauthorizedSale.status, 403);
 
   const influencerSalesView = await request(app)
@@ -845,8 +849,8 @@ test('gestao de vendas vinculada a influenciadora', async () => {
     .get(`/sales/summary/${influencerId}`)
     .set('Authorization', `Bearer ${influencerToken}`);
   assert.strictEqual(summaryAfterUpdate.status, 200);
-  assert.strictEqual(Number(summaryAfterUpdate.body.total_net), 1450);
-  assert.strictEqual(Number(summaryAfterUpdate.body.total_commission), 181.25);
+  assert.strictEqual(Number(summaryAfterUpdate.body.total_points), 250);
+  assert.strictEqual(Number(summaryAfterUpdate.body.total_points_value), pointsToBrl(250));
 
   const deleteSale = await request(app)
     .delete(`/sales/${saleId}`)
@@ -857,8 +861,8 @@ test('gestao de vendas vinculada a influenciadora', async () => {
     .get(`/sales/summary/${influencerId}`)
     .set('Authorization', `Bearer ${masterToken}`);
   assert.strictEqual(summaryAfterDelete.status, 200);
-  assert.strictEqual(Number(summaryAfterDelete.body.total_net), 500);
-  assert.strictEqual(Number(summaryAfterDelete.body.total_commission), 62.5);
+  assert.strictEqual(Number(summaryAfterDelete.body.total_points), 50);
+  assert.strictEqual(Number(summaryAfterDelete.body.total_points_value), pointsToBrl(50));
 
   const consultAfterDelete = await request(app)
     .get('/influenciadoras/consulta')
@@ -867,7 +871,7 @@ test('gestao de vendas vinculada a influenciadora', async () => {
   const consultRowAfterDelete = consultAfterDelete.body.find((row) => row.id === influencerId);
   assert.ok(consultRowAfterDelete);
   assert.strictEqual(Number(consultRowAfterDelete.vendas_count), 1);
-  assert.strictEqual(Number(consultRowAfterDelete.vendas_total), 500);
+  assert.strictEqual(Number(consultRowAfterDelete.vendas_total_points), 50);
 });
 
 test('importacao em massa de vendas com validacao', async () => {
@@ -912,10 +916,10 @@ test('importacao em massa de vendas com validacao', async () => {
   assert.strictEqual(ingridResponse.status, 201);
 
   const textWithUnknownCoupon = [
-    'Pedido\tCupom\tData\tValor bruto\tDesconto',
-    '#1040\tBIA8\t02/08/2025 18:08\t62.47\t',
-    '#1041\tINGRID\t02/08/2025 22:25\t62.47\t0',
-    '#1042\tNAOEXISTE\t03/08/2025 10:00\t50,00\t0'
+    'Pedido\tCupom\tData\tPontos',
+    '#1040\tBIA8\t02/08/2025 18:08\t120',
+    '#1041\tINGRID\t02/08/2025 22:25\t130',
+    '#1042\tNAOEXISTE\t03/08/2025 10:00\t50'
   ].join('\n');
 
   const previewWithError = await request(app)
@@ -941,11 +945,12 @@ test('importacao em massa de vendas com validacao', async () => {
   assert.strictEqual(confirmWithErrors.body.inserted, 2);
   assert.strictEqual(confirmWithErrors.body.ignored, 1);
   assert.strictEqual(confirmWithErrors.body.summary.count, 2);
+  assert.strictEqual(Number(confirmWithErrors.body.summary.total_points), 250);
 
   const validText = [
-    'Pedido\tCupom\tData\tValor bruto\tDesconto',
-    '#2040\tINGRID\t02/08/2025 18:08\t62.47\t',
-    '#2041\tINGRID\t02/08/2025 22:25\t62.47\t0'
+    'Pedido\tCupom\tData\tPontos',
+    '#2040\tINGRID\t02/08/2025\t120',
+    '#2041\tINGRID\t02/08/2025\t80'
   ].join('\n');
 
   const validPreview = await request(app)
@@ -956,7 +961,7 @@ test('importacao em massa de vendas com validacao', async () => {
   assert.strictEqual(validPreview.status, 200);
   assert.strictEqual(validPreview.body.hasErrors, false);
   assert.strictEqual(validPreview.body.validCount, 2);
-  assert.strictEqual(Number(validPreview.body.summary.totalNet), 124.94);
+  assert.strictEqual(Number(validPreview.body.summary.total_points), 200);
 
   const confirmImport = await request(app)
     .post('/sales/import/confirm')
@@ -966,6 +971,7 @@ test('importacao em massa de vendas com validacao', async () => {
   assert.strictEqual(confirmImport.status, 201);
   assert.strictEqual(confirmImport.body.inserted, 2);
   assert.strictEqual(confirmImport.body.ignored, 0);
+  assert.strictEqual(Number(confirmImport.body.summary.total_points), 200);
 
   const biaSales = await request(app)
     .get(`/sales/${biaResponse.body.id}`)
@@ -1033,12 +1039,25 @@ test('importacao de vendas a partir de csv do shopify', async () => {
     .send(ingridPayload);
   assert.strictEqual(ingridResponse.status, 201);
 
+  await cadastrarSkuPoints(masterToken, {
+    sku: 'SKU-30ML',
+    description: 'Produto 30ml',
+    points_per_unit: 100,
+    active: 1
+  });
+  await cadastrarSkuPoints(masterToken, {
+    sku: 'SKU-KIT',
+    description: 'Kit especial',
+    points_per_unit: 200,
+    active: 1
+  });
+
   const csvLines = [
-    'Name,Paid at,Subtotal,Discount Code,Discount Amount,Note Attributes',
-    '#2001,2025-08-08 13:35:24 -0300,62.47,debora,5.43,"shipping_street_name: Rua Ciro Fernandes\\nshipping_street_number: 715"',
-    '#2002,,67.90,debora,5.43,"linha ignorada sem pagamento"',
-    '#2003,2025-08-09 15:56:55 -0300,62.47,NAOEXISTE,0,"linha ignorada cupom desconhecido"',
-    '#2004,2025-08-10 10:00:00 -0300,50.00,INGRID,0,"linha valida sem desconto"'
+    'Name,Paid at,Discount Code,Lineitem quantity,Lineitem sku',
+    '#2001,2025-08-08 13:35:24 -0300,debora,1,SKU-30ML',
+    '#2002,,debora,1,SKU-30ML',
+    '#2003,2025-08-09 15:56:55 -0300,NAOEXISTE,1,SKU-30ML',
+    '#2004,2025-08-10 10:00:00 -0300,INGRID,2,SKU-KIT'
   ];
 
   const csvContent = csvLines.join('\n');
@@ -1049,26 +1068,36 @@ test('importacao de vendas a partir de csv do shopify', async () => {
     .send({ text: csvContent });
 
   assert.strictEqual(preview.status, 200);
-  assert.strictEqual(preview.body.hasErrors, false);
-  assert.strictEqual(preview.body.totalCount, 2);
+  assert.strictEqual(preview.body.hasErrors, true);
+  assert.strictEqual(preview.body.totalCount, 4);
   assert.strictEqual(preview.body.validCount, 2);
-  assert.strictEqual(Number(preview.body.summary.totalGross), 117.9);
-  assert.strictEqual(Number(preview.body.summary.totalDiscount), 5.43);
-  assert.strictEqual(Number(preview.body.summary.totalNet), 112.47);
+  assert.strictEqual(Number(preview.body.summary.total_points), 500);
 
   const row2001 = preview.body.rows.find((row) => row.orderNumber === '#2001');
   assert.ok(row2001, 'Pedido #2001 deve estar presente.');
   assert.strictEqual(row2001.cupom, 'debora');
-  assert.strictEqual(Number(row2001.grossValue), 67.9);
-  assert.strictEqual(Number(row2001.discount), 5.43);
+  assert.strictEqual(Number(row2001.points), 100);
   assert.strictEqual(row2001.date, '2025-08-08');
 
   const row2004 = preview.body.rows.find((row) => row.orderNumber === '#2004');
   assert.ok(row2004, 'Pedido #2004 deve estar presente.');
   assert.strictEqual(row2004.cupom, 'INGRID');
-  assert.strictEqual(Number(row2004.grossValue), 50);
-  assert.strictEqual(Number(row2004.discount), 0);
+  assert.strictEqual(Number(row2004.points), 400);
   assert.strictEqual(row2004.date, '2025-08-10');
+
+  const row2002 = preview.body.rows.find((row) => row.orderNumber === '#2002');
+  assert.ok(row2002, 'Pedido #2002 deve ser exibido com erro.');
+  assert.ok(
+    row2002.errors.some((message) => /informe a data da venda/i.test(message)),
+    'Pedido #2002 deve indicar falta de data.'
+  );
+
+  const row2003 = preview.body.rows.find((row) => row.orderNumber === '#2003');
+  assert.ok(row2003, 'Pedido #2003 deve ser exibido com erro.');
+  assert.ok(
+    row2003.errors.some((message) => /cupom nao cadastrado/i.test(message)),
+    'Pedido #2003 deve indicar cupom invalido.'
+  );
 
   const confirm = await request(app)
     .post('/sales/import/confirm')
@@ -1078,6 +1107,21 @@ test('importacao de vendas a partir de csv do shopify', async () => {
   assert.strictEqual(confirm.status, 201);
   assert.strictEqual(confirm.body.inserted, 2);
   assert.strictEqual(confirm.body.summary.count, 2);
+  assert.strictEqual(Number(confirm.body.summary.total_points), 500);
+
+  const deboraSales = await request(app)
+    .get(`/sales/${deboraResponse.body.id}`)
+    .set('Authorization', `Bearer ${masterToken}`);
+  assert.strictEqual(deboraSales.status, 200);
+  assert.strictEqual(deboraSales.body.length, 1);
+  assert.strictEqual(Number(deboraSales.body[0].points), 100);
+
+  const ingridSales = await request(app)
+    .get(`/sales/${ingridResponse.body.id}`)
+    .set('Authorization', `Bearer ${masterToken}`);
+  assert.strictEqual(ingridSales.status, 200);
+  assert.strictEqual(ingridSales.body.length, 1);
+  assert.strictEqual(Number(ingridSales.body[0].points), 400);
 });
 
 after(() => {
