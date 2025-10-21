@@ -4,99 +4,110 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Painel Pinklovers – Influenciadora</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
     <link rel="stylesheet" href="/style.css" />
-    <link rel="stylesheet" href="/styles/pinklovers-influencer.css" />
   </head>
   <body class="pinklover-dashboard">
-    <header class="page-hero">
-      <div class="page-hero__container">
-        <span class="page-hero__eyebrow">Clube Pinklovers</span>
-        <h1>Seu painel de influenciadora</h1>
-        <p>
-          Visualize o progresso do ciclo, acompanhe as entregas de stories e organize seu
-          calendário com a curadoria HidraPink.
-        </p>
-        <div class="page-hero__actions">
-          <a class="primary-button" href="influencer-plan.html">Abrir planejador de roteiros</a>
-          <a class="ghost-button" href="influencer-performance.html">Ver desempenho</a>
+    <div class="pinklover-shell">
+      <header class="pinklover-hero page-hero">
+        <div class="page-hero__container">
+          <span class="page-hero__eyebrow">Clube Pinklovers</span>
+          <h1>Seu painel de influenciadora</h1>
+          <p>
+            Visualize o progresso do ciclo, acompanhe as entregas de stories e organize seu
+            calendário com a curadoria HidraPink.
+          </p>
+          <div class="page-hero__actions">
+            <a class="primary-button" href="influencer-plan.html">Abrir planejador de roteiros</a>
+            <a class="ghost-button" href="influencer-performance.html">Ver desempenho</a>
+          </div>
         </div>
-      </div>
-    </header>
+      </header>
 
-    <main class="page-content">
-      <section id="status" class="card summary-card">
-        <div class="section-heading">
-          <span class="section-heading__eyebrow">Resumo do ciclo</span>
-          <div class="section-heading__copy">
-            <h2>Como está a sua agenda</h2>
+      <main class="page-content">
+        <section id="status" class="card summary-card">
+          <div class="section-heading">
+            <span class="section-heading__eyebrow page-hero__eyebrow">Resumo do ciclo</span>
+            <div class="section-heading__copy">
+              <h2>Como está a sua agenda</h2>
+              <p class="muted">
+                Dados atualizados com base no período vigente e nas validações realizadas até o
+                momento.
+              </p>
+            </div>
+          </div>
+          <div class="stats-grid">
+            <article class="stat-card">
+              <span class="stat-card__label">Período</span>
+              <strong class="stat-card__value" id="cycle-period">–</strong>
+            </article>
+            <article class="stat-card">
+              <span class="stat-card__label">Multiplicador atual</span>
+              <strong class="stat-card__value" id="cycle-multiplier">–</strong>
+            </article>
+            <article class="stat-card">
+              <span class="stat-card__label">Dias planejados</span>
+              <strong class="stat-card__value" id="cycle-planned">–</strong>
+            </article>
+            <article class="stat-card">
+              <span class="stat-card__label">Dias validados</span>
+              <strong class="stat-card__value" id="cycle-validated">–</strong>
+            </article>
+            <article class="stat-card">
+              <span class="stat-card__label">Aguardando validação</span>
+              <strong class="stat-card__value" id="cycle-pending">–</strong>
+            </article>
+            <article class="stat-card">
+              <span class="stat-card__label">Comissão estimada</span>
+              <strong class="stat-card__value" id="cycle-commission">–</strong>
+            </article>
+          </div>
+          <div class="alerts-grid" id="alerts" aria-live="polite"></div>
+        </section>
+
+        <section class="card planner-card">
+          <div class="planner-card__intro">
+            <span class="section-heading__eyebrow page-hero__eyebrow">Planejamento</span>
+            <h2>Stories e entregas</h2>
             <p class="muted">
-              Dados atualizados com base no período vigente e nas validações realizadas até o
-              momento.
+              Prepare-se para cada entrega com antecedência, mantenha as validações em dia e ajuste
+              datas conforme sua rotina.
             </p>
           </div>
-        </div>
-        <div class="stats-grid">
-          <article class="stat-card">
-            <span class="stat-card__label">Período</span>
-            <strong class="stat-card__value" id="cycle-period">–</strong>
-          </article>
-          <article class="stat-card">
-            <span class="stat-card__label">Multiplicador atual</span>
-            <strong class="stat-card__value" id="cycle-multiplier">–</strong>
-          </article>
-          <article class="stat-card">
-            <span class="stat-card__label">Dias planejados</span>
-            <strong class="stat-card__value" id="cycle-planned">–</strong>
-          </article>
-          <article class="stat-card">
-            <span class="stat-card__label">Dias validados</span>
-            <strong class="stat-card__value" id="cycle-validated">–</strong>
-          </article>
-          <article class="stat-card">
-            <span class="stat-card__label">Aguardando validação</span>
-            <strong class="stat-card__value" id="cycle-pending">–</strong>
-          </article>
-          <article class="stat-card">
-            <span class="stat-card__label">Comissão estimada</span>
-            <strong class="stat-card__value" id="cycle-commission">–</strong>
-          </article>
-        </div>
-        <div class="alerts-grid" id="alerts" aria-live="polite"></div>
-      </section>
+          <div class="planner-card__cta">
+            <a class="primary-button" href="influencer-plan.html">Abrir planejador</a>
+            <p class="muted planner-card__helper">
+              Você poderá reagendar roteiros, validar entregas e acompanhar comentários da equipe.
+            </p>
+          </div>
+          <div class="planner-card__schedule">
+            <div class="planner-card__header">
+              <h3>Próximos agendamentos</h3>
+              <p class="muted" id="plan-helper-text">
+                Veja abaixo as datas planejadas para este ciclo. Use o planejador para reagendar ou
+                remover histórias.
+              </p>
+            </div>
+            <div class="plan-grid" id="plan-grid" aria-live="polite"></div>
+            <div class="plan-legend" aria-hidden="true">
+              <span><span class="dot dot--validated"></span> Validado</span>
+              <span><span class="dot dot--pending"></span> Pendente</span>
+              <span><span class="dot dot--review"></span> Em validação</span>
+              <span><span class="dot dot--missed"></span> Não entregue</span>
+            </div>
+          </div>
+        </section>
+      </main>
 
-      <section class="card planner-card">
-        <div class="planner-card__intro">
-          <span class="section-heading__eyebrow">Planejamento</span>
-          <h2>Stories e entregas</h2>
-          <p class="muted">
-            Prepare-se para cada entrega com antecedência, mantenha as validações em dia e ajuste
-            datas conforme sua rotina.
-          </p>
-        </div>
-        <div class="planner-card__cta">
-          <a class="primary-button" href="influencer-plan.html">Abrir planejador</a>
-          <p class="muted planner-card__helper">
-            Você poderá reagendar roteiros, validar entregas e acompanhar comentários da equipe.
-          </p>
-        </div>
-        <div class="planner-card__schedule">
-          <div class="planner-card__header">
-            <h3>Próximos agendamentos</h3>
-            <p class="muted" id="plan-helper-text">
-              Veja abaixo as datas planejadas para este ciclo. Use o planejador para reagendar ou
-              remover histórias.
-            </p>
-          </div>
-          <div class="plan-grid" id="plan-grid" aria-live="polite"></div>
-          <div class="plan-legend" aria-hidden="true">
-            <span><span class="dot dot--validated"></span> Validado</span>
-            <span><span class="dot dot--pending"></span> Pendente</span>
-            <span><span class="dot dot--review"></span> Em validação</span>
-            <span><span class="dot dot--missed"></span> Não entregue</span>
-          </div>
-        </div>
-      </section>
-    </main>
+      <footer class="site-footer">
+        © 2024 HidraPink. Feito com carinho para a comunidade Pinklover.
+      </footer>
+    </div>
 
     <script>
       const token = sessionStorage.getItem('token');
@@ -200,46 +211,41 @@
         });
       }
 
-      const renderStatus = (dashboard) => {
-        state.cycle = dashboard.cycle;
-        state.plans = dashboard.plans || [];
+      function renderCycle() {
+        const cycle = state.cycle;
+        if (!cycle) return;
+        setText('cycle-period', cycle.periodo || '-');
+        setText('cycle-multiplier', cycle.multiplicador || '-');
+        setText('cycle-planned', cycle.planejados ?? '-');
+        setText('cycle-validated', cycle.validados ?? '-');
+        setText('cycle-pending', cycle.pendentes ?? '-');
+        setText('cycle-commission', cycle.comissao ?? '-');
+      }
 
-        setText('cycle-period', `${dashboard.cycle.cycle_month}/${dashboard.cycle.cycle_year}`);
-        setText('cycle-multiplier', `${dashboard.progress.multiplier}x – ${dashboard.progress.multiplierLabel}`);
-        setText('cycle-planned', String(dashboard.progress.plannedDays));
-        setText('cycle-validated', String(dashboard.progress.validatedDays));
-        setText('cycle-pending', String(dashboard.progress.pendingValidations));
-        setText(
-          'cycle-commission',
-          dashboard.commission ? `R$ ${dashboard.commission.total.toFixed(2)}` : '–'
-        );
+      async function loadData() {
+        try {
+          const [cycleResponse, plansResponse] = await Promise.all([
+            fetch('/pinklovers/cycle', { headers: headers() }),
+            fetch('/pinklovers/plans', { headers: headers() })
+          ]);
+          const cycleData = await cycleResponse.json();
+          const plansData = await plansResponse.json();
 
-        const alerts = document.getElementById('alerts');
-        alerts.innerHTML = '';
-        (dashboard.alerts || []).forEach((alert) => {
-          const element = document.createElement('div');
-          element.className = 'alert';
-          element.innerHTML = `<strong>Atenção:</strong> story de ${formatDate(alert.date)} ainda não foi validado.`;
-          alerts.appendChild(element);
-        });
+          state.cycle = cycleData?.cycle || cycleData || null;
+          state.plans = Array.isArray(plansData?.plans) ? plansData.plans : plansData || [];
 
-        renderPlans();
-      };
-
-      const loadDashboard = async () => {
-        const response = await fetch('/influencer/dashboard', { headers: headers() });
-        if (!response.ok) {
-          throw new Error('Falha ao carregar painel');
+          renderCycle();
+          renderPlans();
+        } catch (error) {
+          console.error('Erro ao carregar dados do painel Pinklovers:', error);
+          const grid = document.getElementById('plan-grid');
+          if (grid) {
+            grid.innerHTML = '<div class="empty-state muted">Não foi possível carregar as informações.</div>';
+          }
         }
-        const data = await response.json();
-        renderStatus(data);
-      };
+      }
 
-      loadDashboard().catch((error) => {
-        console.error(error);
-        document.body.innerHTML =
-          '<main class="page-content"><section class="card"><h2>Erro ao carregar painel</h2><p>Tente novamente mais tarde.</p></section></main>';
-      });
+      loadData();
     </script>
   </body>
 </html>
