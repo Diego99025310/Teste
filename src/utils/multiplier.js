@@ -6,7 +6,7 @@ const MULTIPLIER_BANDS = [
   { min: 21, max: 30, multiplier: 2.0, label: '21 a 30 stories validados (200%)' }
 ];
 
-const roundCurrency = (value) => Math.round(Number(value) * 100) / 100;
+const { roundPoints } = require('./points');
 
 const calculateCommissionMultiplier = (validatedDays) => {
   const days = Number(validatedDays);
@@ -51,21 +51,21 @@ const calculateCommissionMultiplier = (validatedDays) => {
   };
 };
 
-const summarizeCommission = (baseCommission, validatedDays) => {
-  const base = Number(baseCommission) > 0 ? Number(baseCommission) : 0;
+const summarizePoints = (basePoints, validatedDays) => {
+  const base = Number(basePoints) > 0 ? roundPoints(basePoints) : 0;
   const multiplierData = calculateCommissionMultiplier(validatedDays);
-  const total = roundCurrency(base * multiplierData.multiplier);
+  const total = roundPoints(base * multiplierData.multiplier);
   return {
-    base: roundCurrency(base),
+    basePoints: base,
     multiplier: multiplierData.multiplier,
     label: multiplierData.label,
     validatedDays: multiplierData.validatedDays,
-    total
+    totalPoints: total
   };
 };
 
 module.exports = {
   MULTIPLIER_BANDS,
   calculateCommissionMultiplier,
-  summarizeCommission
+  summarizePoints
 };

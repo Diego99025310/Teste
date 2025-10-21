@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pontos por SKU | Sistema Influenciadoras</title>
+    <link rel="stylesheet" href="style.css" />
+    <script defer src="main.js"></script>
+  </head>
+  <body data-page="master-sku-points">
+    <div class="container">
+      <header>
+        <h1>Gerenciar pontos por SKU</h1>
+        <p>Cadastre os produtos com a pontuação atribuída a cada unidade.</p>
+        <button type="button" data-action="logout">Sair</button>
+      </header>
+
+      <section class="card">
+        <div class="link-grid" style="margin-bottom: 16px;">
+          <a class="link-card" href="master-create.html">Cadastrar</a>
+          <a class="link-card" href="master-consult.html">Consulta</a>
+          <a class="link-card" href="master-list.html">Lista cadastrada</a>
+          <a class="link-card" href="master-sales.html">Registrar vendas</a>
+        </div>
+
+        <form id="skuPointsForm">
+          <div class="form-grid compact">
+            <label>SKU*<input name="sku" type="text" required /></label>
+            <label>Descrição<input name="description" type="text" /></label>
+            <label>Pontos por unidade*<input name="points" type="number" min="0" step="1" required /></label>
+            <label class="checkbox-inline">
+              <input name="active" type="checkbox" checked /> Ativo
+            </label>
+          </div>
+          <div class="button-row">
+            <button type="submit">Cadastrar SKU</button>
+            <button type="button" class="secondary-button" id="cancelSkuEditButton">Cancelar edição</button>
+          </div>
+        </form>
+        <div id="skuPointsMessage" class="message" aria-live="polite"></div>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-top:16px;">
+          <div>
+            <h2>SKUs cadastrados</h2>
+            <p class="note">Edite ou inative os SKUs para ajustar a pontuação das vendas.</p>
+          </div>
+          <button type="button" id="reloadSkuPointsButton">Recarregar lista</button>
+        </div>
+
+        <div class="table-wrapper">
+          <table id="skuPointsTable">
+            <thead>
+              <tr>
+                <th>SKU</th>
+                <th>Descrição</th>
+                <th>Pontos/un.</th>
+                <th>Status</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </body>
+</html>

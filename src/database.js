@@ -1,5 +1,6 @@
 require('./config/env');
 const path = require('path');
+const { brlToPoints } = require('./utils/points');
 
 const normalizeDigits = (value) => (value || '').replace(/\D/g, '');
 const trimString = (value) => (typeof value === 'string' ? value.trim() : value);
@@ -348,6 +349,7 @@ const createSalesTable = (tableName = 'sales') => `
     discount REAL NOT NULL DEFAULT 0 CHECK (discount >= 0),
     net_value REAL NOT NULL CHECK (net_value >= 0),
     commission REAL NOT NULL CHECK (commission >= 0),
+    points INTEGER NOT NULL DEFAULT 0 CHECK (points >= 0),
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY(influencer_id) REFERENCES influenciadoras(id) ON DELETE CASCADE
   );
@@ -408,8 +410,83 @@ const ensureSalesTable = () => {
     db.exec('ALTER TABLE sales ADD COLUMN order_number TEXT;');
   }
 
+  const hasPointsColumn = tableInfo.some((column) => column.name === 'points');
+  if (!hasPointsColumn) {
+    db.exec('ALTER TABLE sales ADD COLUMN points INTEGER NOT NULL DEFAULT 0 CHECK (points >= 0);');
+    tableInfo = db.prepare('PRAGMA table_info(sales)').all();
+
+    const selectExistingSales = db.prepare('SELECT id, commission FROM sales');
+    const updatePointsStmt = db.prepare('UPDATE sales SET points = ? WHERE id = ?');
+    const rows = selectExistingSales.all();
+    rows.forEach((row) => {
+      if (!row || row.id == null) {
+        return;
+      }
+      const points = brlToPoints(row.commission || 0);
+      updatePointsStmt.run(points, row.id);
+    });
+  }
+
   sanitizeSqliteOrderNumbers();
   db.exec('CREATE UNIQUE INDEX IF NOT EXISTS uniq_sales_order_number ON sales(order_number);');
+};
+
+const createSaleSkuPointsTable = (tableName = 'sale_sku_points') => `
+  CREATE TABLE ${tableName} (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    sale_id INTEGER NOT NULL REFERENCES sales(id) ON DELETE CASCADE,
+    sku TEXT NOT NULL,
+    quantity INTEGER NOT NULL DEFAULT 0 CHECK (quantity >= 0),
+    points_per_unit INTEGER NOT NULL DEFAULT 0 CHECK (points_per_unit >= 0),
+    points INTEGER NOT NULL DEFAULT 0 CHECK (points >= 0),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+`;
+
+const ensureSaleSkuPointsTable = () => {
+  const tableInfo = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='sale_sku_points'").get();
+  if (!tableInfo) {
+    db.exec(createSaleSkuPointsTable());
+  }
+
+  db.exec('CREATE INDEX IF NOT EXISTS idx_sale_sku_points_sale_id ON sale_sku_points(sale_id);');
+};
+
+const createSkuPointsTable = (tableName = 'sku_points') => `
+  CREATE TABLE ${tableName} (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    sku TEXT NOT NULL UNIQUE,
+    description TEXT,
+    points_per_unit INTEGER NOT NULL DEFAULT 0 CHECK (points_per_unit >= 0),
+    active INTEGER NOT NULL DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+`;
+
+const ensureSkuPointsTable = () => {
+  let tableInfo = db.prepare('PRAGMA table_info(sku_points)').all();
+  if (!tableInfo.length) {
+    db.exec(createSkuPointsTable());
+    tableInfo = db.prepare('PRAGMA table_info(sku_points)').all();
+  }
+
+  const hasColumn = (name) => tableInfo.some((column) => column.name === name);
+
+  const ensureColumn = (name, definition) => {
+    if (!hasColumn(name)) {
+      db.exec(`ALTER TABLE sku_points ADD COLUMN ${definition};`);
+      tableInfo = db.prepare('PRAGMA table_info(sku_points)').all();
+    }
+  };
+
+  ensureColumn('description', 'description TEXT');
+  ensureColumn('points_per_unit', 'points_per_unit INTEGER NOT NULL DEFAULT 0 CHECK (points_per_unit >= 0)');
+  ensureColumn('active', 'active INTEGER NOT NULL DEFAULT 1');
+  ensureColumn('created_at', 'created_at DATETIME DEFAULT CURRENT_TIMESTAMP');
+  ensureColumn('updated_at', 'updated_at DATETIME DEFAULT CURRENT_TIMESTAMP');
+
+  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS uniq_sku_points_sku ON sku_points(LOWER(sku));');
 };
 
 const ensureAceiteTermosTable = () => {
@@ -615,6 +692,8 @@ const createMonthlyCommissionsTable = (tableName = 'monthly_commissions') => `
     multiplier REAL NOT NULL DEFAULT 0,
     base_commission REAL NOT NULL DEFAULT 0,
     total_commission REAL NOT NULL DEFAULT 0,
+    base_points INTEGER NOT NULL DEFAULT 0,
+    total_points INTEGER NOT NULL DEFAULT 0,
     deliveries_planned INTEGER NOT NULL DEFAULT 0,
     deliveries_completed INTEGER NOT NULL DEFAULT 0,
     validation_summary TEXT,
@@ -643,6 +722,21 @@ const ensureMonthlyCommissionsTable = () => {
   ensureColumn('validation_summary', 'validation_summary TEXT');
   ensureColumn('deliveries_planned', 'deliveries_planned INTEGER NOT NULL DEFAULT 0');
   ensureColumn('deliveries_completed', 'deliveries_completed INTEGER NOT NULL DEFAULT 0');
+  if (!hasColumn('base_points')) {
+    db.exec('ALTER TABLE monthly_commissions ADD COLUMN base_points INTEGER NOT NULL DEFAULT 0');
+    tableInfo = db.prepare('PRAGMA table_info(monthly_commissions)').all();
+    const selectRows = db.prepare('SELECT id, base_commission, total_commission FROM monthly_commissions');
+    const updateStmt = db.prepare('UPDATE monthly_commissions SET base_points = ?, total_points = ? WHERE id = ?');
+    selectRows.all().forEach((row) => {
+      if (!row || row.id == null) {
+        return;
+      }
+      const basePoints = brlToPoints(row.base_commission || 0);
+      const totalPoints = brlToPoints(row.total_commission || 0);
+      updateStmt.run(basePoints, totalPoints, row.id);
+    });
+  }
+  ensureColumn('total_points', 'total_points INTEGER NOT NULL DEFAULT 0');
 
   db.exec(
     'CREATE UNIQUE INDEX IF NOT EXISTS uniq_monthly_commissions_cycle_influencer ON monthly_commissions(cycle_id, influencer_id);'
@@ -652,6 +746,8 @@ const ensureMonthlyCommissionsTable = () => {
 ensureUsersTable();
 ensureInfluenciadorasTable();
 ensureSalesTable();
+ensureSaleSkuPointsTable();
+ensureSkuPointsTable();
 ensureAceiteTermosTable();
 ensureContentScriptsTable();
 ensureMonthlyCyclesTable();

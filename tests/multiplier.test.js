@@ -1,7 +1,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 
-const { calculateCommissionMultiplier, summarizeCommission } = require('../src/utils/multiplier');
+const { calculateCommissionMultiplier, summarizePoints } = require('../src/utils/multiplier');
 
 test('calculateCommissionMultiplier returns correct multiplier per band', () => {
   assert.deepStrictEqual(calculateCommissionMultiplier(0).multiplier, 0);
@@ -18,9 +18,9 @@ test('calculateCommissionMultiplier returns correct multiplier per band', () => 
   assert.deepStrictEqual(calculateCommissionMultiplier(40).multiplier, 2);
 });
 
-test('summarizeCommission applies multiplier over base amount', () => {
-  const summary = summarizeCommission(100, 12);
-  assert.deepStrictEqual(summary.base, 100);
+test('summarizePoints applies multiplier over base amount', () => {
+  const summary = summarizePoints(100, 12);
+  assert.deepStrictEqual(summary.basePoints, 100);
   assert.deepStrictEqual(summary.multiplier, 1.5);
-  assert.deepStrictEqual(summary.total, 150);
+  assert.deepStrictEqual(summary.totalPoints, 150);
 });

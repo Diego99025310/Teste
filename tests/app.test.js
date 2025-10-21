@@ -5,6 +5,7 @@ const path = require('node:path');
 const request = require('supertest');
 
 const { gerarHashTermo } = require('../src/utils/hash');
+const { pointsToBrl, POINT_VALUE_BRL } = require('../src/utils/points');
 
 const tempDbPath = path.join(__dirname, '..', 'test.sqlite');
 
@@ -27,8 +28,10 @@ const resetDb = () => {
   db.exec('DELETE FROM influencer_plans;');
   db.exec('DELETE FROM monthly_commissions;');
   db.exec('DELETE FROM monthly_cycles;');
+  db.exec('DELETE FROM sale_sku_points;');
   db.exec('DELETE FROM sales;');
   db.exec('DELETE FROM aceite_termos;');
+  db.exec('DELETE FROM sku_points;');
   db.exec('DELETE FROM influenciadoras;');
   db.prepare('DELETE FROM users WHERE email != ?').run(MASTER_EMAIL);
 };
@@ -62,6 +65,254 @@ const authenticateMaster = async () => {
   assert.strictEqual(response.status, 200, 'Master login deve retornar 200');
   assert.ok(response.body.token, 'Master login deve retornar token');
   return response.body.token;
+};
+
+const cadastrarSkuPoints = async (token, payload) =>
+  request(app)
+    .post('/sku-points')
+    .set('Authorization', `Bearer ${token}`)
+    .send(payload);
+
+const stripBomCsv = (value = '') => (value ? value.replace(/^[\uFEFF\u200B]+/, '') : '');
+
+const normalizeCsvHeader = (header) =>
+  stripBomCsv(String(header || ''))
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[^a-z0-9]/g, '');
+
+const detectCsvDelimiter = (line) => {
+  if (line.includes('\t')) return '\t';
+  if (line.includes(';')) return ';';
+  if (line.includes(',')) return ',';
+  return ',';
+};
+
+const parseDelimitedRowsFromCsv = (text, delimiter) => {
+  const rows = [];
+  let current = '';
+  let row = [];
+  let insideQuotes = false;
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index];
+    if (char === '"') {
+      if (insideQuotes && text[index + 1] === '"') {
+        current += '"';
+        index += 1;
+      } else {
+        insideQuotes = !insideQuotes;
+      }
+    } else if (!insideQuotes && char === delimiter) {
+      row.push(current);
+      current = '';
+    } else if (!insideQuotes && (char === '\n' || char === '\r')) {
+      if (char === '\r' && text[index + 1] === '\n') {
+        index += 1;
+      }
+      row.push(current);
+      rows.push(row);
+      row = [];
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  if (row.length || current) {
+    row.push(current);
+    rows.push(row);
+  }
+  return rows.map((cells) => cells.map((value) => stripBomCsv(value).trim())) || [];
+};
+
+const parseCsvRows = (text) => {
+  const normalizedText = stripBomCsv(String(text || ''));
+  const firstLineBreak = normalizedText.indexOf('\n');
+  const headerLine = firstLineBreak >= 0 ? normalizedText.slice(0, firstLineBreak) : normalizedText;
+  const delimiter = detectCsvDelimiter(headerLine);
+  return parseDelimitedRowsFromCsv(normalizedText, delimiter);
+};
+
+const analyzeShopifyCsvFixture = (csvText, pointsPerSku) => {
+  const rows = parseCsvRows(csvText);
+  if (!rows.length) {
+    return {
+      totalOrders: 0,
+      validOrdersCount: 0,
+      totalPoints: 0,
+      coupons: [],
+      missingCouponOrders: [],
+      missingDateOrders: [],
+      ordersByNumber: {},
+      perCoupon: {},
+      validOrders: []
+    };
+  }
+
+  const header = rows[0];
+  const normalizedHeader = header.map((cell) => normalizeCsvHeader(cell));
+  const resolveIndex = (aliases) => {
+    for (const alias of aliases) {
+      const index = normalizedHeader.indexOf(alias);
+      if (index >= 0) {
+        return index;
+      }
+    }
+    return -1;
+  };
+
+  const nameIndex = resolveIndex(['name']);
+  const paidAtIndex = resolveIndex(['paidat']);
+  const couponIndex = resolveIndex(['discountcode', 'discountcodes']);
+  const quantityIndex = resolveIndex(['lineitemquantity']);
+  const skuIndex = resolveIndex(['lineitemsku']);
+
+  assert.ok(nameIndex >= 0, 'Coluna Name deve estar presente no CSV.');
+  assert.ok(paidAtIndex >= 0, 'Coluna Paid at deve estar presente no CSV.');
+  assert.ok(couponIndex >= 0, 'Coluna Discount Code deve estar presente no CSV.');
+  assert.ok(quantityIndex >= 0, 'Coluna Lineitem quantity deve estar presente no CSV.');
+  assert.ok(skuIndex >= 0, 'Coluna Lineitem sku deve estar presente no CSV.');
+
+  const normalizedPoints = new Map(
+    Object.entries(pointsPerSku || {}).map(([sku, points]) => [String(sku || '').trim().toLowerCase(), Number(points) || 0])
+  );
+
+  const entryMap = new Map();
+
+  for (let rowIndex = 1; rowIndex < rows.length; rowIndex += 1) {
+    const cells = rows[rowIndex];
+    if (!cells || !cells.length) {
+      continue;
+    }
+
+    const orderNumber = stripBomCsv(cells[nameIndex] || '').trim();
+    if (!orderNumber) {
+      continue;
+    }
+
+    const paidAt = stripBomCsv(cells[paidAtIndex] || '').trim();
+    const coupon = stripBomCsv(cells[couponIndex] || '').trim();
+    const quantityRaw = stripBomCsv(cells[quantityIndex] || '').trim();
+    const skuRaw = stripBomCsv(cells[skuIndex] || '').trim();
+
+    if (!entryMap.has(orderNumber)) {
+      entryMap.set(orderNumber, {
+        orderNumber,
+        paidAt,
+        coupon,
+        details: []
+      });
+    }
+
+    const entry = entryMap.get(orderNumber);
+    if (paidAt && !entry.paidAt) {
+      entry.paidAt = paidAt;
+    }
+    if (coupon && !entry.coupon) {
+      entry.coupon = coupon;
+    }
+
+    if (!skuRaw && !quantityRaw) {
+      continue;
+    }
+
+    let quantity = Number(quantityRaw);
+    if (!Number.isFinite(quantity)) {
+      const normalizedQuantity = quantityRaw.replace(',', '.');
+      quantity = Number(normalizedQuantity);
+    }
+    entry.details.push({
+      sku: skuRaw,
+      quantity: Number.isFinite(quantity) ? quantity : null
+    });
+  }
+
+  const orders = [];
+  entryMap.forEach((entry) => {
+    const coupon = (entry.coupon || '').trim();
+    const paidAt = (entry.paidAt || '').trim();
+    let totalPoints = null;
+    let hasPoints = entry.details.length > 0;
+    let computed = 0;
+
+    entry.details.forEach((detail) => {
+      const skuKey = (detail.sku || '').trim().toLowerCase();
+      const perUnit = normalizedPoints.get(skuKey);
+      if (perUnit == null || !Number.isFinite(detail.quantity) || detail.quantity <= 0) {
+        hasPoints = false;
+        return;
+      }
+      computed += Math.round(detail.quantity * perUnit);
+    });
+
+    if (hasPoints) {
+      totalPoints = computed;
+    }
+
+    orders.push({
+      orderNumber: entry.orderNumber,
+      coupon,
+      paidAt,
+      totalPoints,
+      hasCoupon: Boolean(coupon),
+      hasPaidAt: Boolean(paidAt)
+    });
+  });
+
+  const coupons = Array.from(new Set(orders.map((order) => order.coupon).filter((coupon) => coupon)));
+  const missingCouponOrders = orders.filter((order) => !order.hasCoupon);
+  const missingDateOrders = orders.filter((order) => order.hasCoupon && !order.hasPaidAt);
+  const validOrders = orders.filter(
+    (order) => order.hasCoupon && order.hasPaidAt && order.totalPoints != null && order.totalPoints > 0
+  );
+
+  const perCoupon = {};
+  validOrders.forEach((order) => {
+    if (!perCoupon[order.coupon]) {
+      perCoupon[order.coupon] = { count: 0, points: 0 };
+    }
+    perCoupon[order.coupon].count += 1;
+    perCoupon[order.coupon].points += order.totalPoints || 0;
+  });
+
+  const ordersByNumber = {};
+  orders.forEach((order) => {
+    ordersByNumber[order.orderNumber] = order;
+  });
+
+  const totalPoints = validOrders.reduce((sum, order) => sum + (order.totalPoints || 0), 0);
+
+  return {
+    totalOrders: orders.length,
+    validOrdersCount: validOrders.length,
+    totalPoints,
+    coupons,
+    missingCouponOrders,
+    missingDateOrders,
+    ordersByNumber,
+    perCoupon,
+    validOrders
+  };
+};
+
+const generateValidCpf = (index) => {
+  const seed = (index * 97 + 123456789) % 1_000_000_000;
+  const base = String(seed).padStart(9, '0');
+  if (/^(\d)\1*$/.test(base)) {
+    return generateValidCpf(index + 37);
+  }
+  const baseDigits = base.split('').map(Number);
+  const calcDigit = (digits) => {
+    let sum = 0;
+    for (let i = 0; i < digits.length; i += 1) {
+      sum += digits[i] * (digits.length + 1 - i);
+    }
+    const result = (sum * 10) % 11;
+    return result === 10 ? 0 : result;
+  };
+  const firstDigit = calcDigit(baseDigits);
+  const digitsWithFirst = [...baseDigits, firstDigit];
+  const secondDigit = calcDigit(digitsWithFirst);
+  return [...digitsWithFirst, secondDigit].join('');
 };
 
 test('master pode registrar novo usuario e realizar login', async () => {
@@ -438,6 +689,14 @@ test('fluxo completo de ciclo mensal com agendamento, validacao e fechamento', a
   assert.strictEqual(dashboard.body.progress.multiplier, 1.25);
   assert.strictEqual(dashboard.body.progress.pendingValidations, 0);
 
+  const skuCadastro = await cadastrarSkuPoints(masterToken, {
+    sku: 'SKU-PINK-BASE',
+    description: 'SKU para testes de ciclo',
+    points_per_unit: 100,
+    active: 1
+  });
+  assert.strictEqual(skuCadastro.status, 201);
+
   const saleResponse = await request(app)
     .post('/sales')
     .set('Authorization', `Bearer ${masterToken}`)
@@ -445,8 +704,7 @@ test('fluxo completo de ciclo mensal com agendamento, validacao e fechamento', a
       orderNumber: 'PINK-001',
       cupom: 'CICLOPINK',
       date: dates[0],
-      grossValue: 1000,
-      discount: 0
+      items: [{ sku: 'SKU-PINK-BASE', quantity: 1 }]
     });
 
   assert.strictEqual(saleResponse.status, 201);
@@ -465,8 +723,10 @@ test('fluxo completo de ciclo mensal com agendamento, validacao e fechamento', a
   assert.strictEqual(Number(summary.multiplier), 1.25);
   assert.strictEqual(Number(summary.deliveries_planned), 5);
   assert.strictEqual(Number(summary.deliveries_completed), 5);
-  assert.strictEqual(Number(summary.base_commission) > 0, true);
-  assert.strictEqual(Number(summary.total_commission) > Number(summary.base_commission), true);
+  assert.strictEqual(Number(summary.base_points), 100);
+  assert.strictEqual(Number(summary.total_points), 125);
+  assert.strictEqual(Number(summary.base_commission), pointsToBrl(100));
+  assert.strictEqual(Number(summary.total_commission), pointsToBrl(125));
 
   const historyResponse = await request(app)
     .get('/influencer/history')
@@ -703,6 +963,22 @@ test('gestao de vendas vinculada a influenciadora', async () => {
   assert.strictEqual(createInfluencer.status, 201);
   const influencerId = createInfluencer.body.id;
 
+  const skuBase = await cadastrarSkuPoints(masterToken, {
+    sku: 'SKU-BASE',
+    description: 'Produto base',
+    points_per_unit: 100,
+    active: 1
+  });
+  assert.strictEqual(skuBase.status, 201);
+
+  const skuBonus = await cadastrarSkuPoints(masterToken, {
+    sku: 'SKU-BONUS',
+    description: 'Produto bonus',
+    points_per_unit: 50,
+    active: 1
+  });
+  assert.strictEqual(skuBonus.status, 201);
+
   const saleResponse = await request(app)
     .post('/sales')
     .set('Authorization', `Bearer ${masterToken}`)
@@ -710,14 +986,17 @@ test('gestao de vendas vinculada a influenciadora', async () => {
       orderNumber: 'PED-001',
       cupom: influencerPayload.cupom,
       date: '2025-10-01',
-      grossValue: 1000,
-      discount: 100
+      items: [{ sku: 'SKU-BASE', quantity: 1 }]
     });
 
   assert.strictEqual(saleResponse.status, 201);
   assert.strictEqual(saleResponse.body.order_number, 'PED-001');
-  assert.strictEqual(Number(saleResponse.body.net_value), 900);
-  assert.strictEqual(Number(saleResponse.body.commission), 112.5);
+  assert.strictEqual(Number(saleResponse.body.points), 100);
+  assert.strictEqual(Number(saleResponse.body.points_value), pointsToBrl(100));
+  assert.ok(Array.isArray(saleResponse.body.sku_details));
+  assert.strictEqual(saleResponse.body.sku_details.length, 1);
+  assert.strictEqual(saleResponse.body.sku_details[0].sku, 'SKU-BASE');
+  assert.strictEqual(Number(saleResponse.body.sku_details[0].quantity), 1);
   const saleId = saleResponse.body.id;
 
   const createdSaleRecord = selectSaleOrderNumberStmt.get(saleId);
@@ -729,13 +1008,16 @@ test('gestao de vendas vinculada a influenciadora', async () => {
     .set('Authorization', `Bearer ${masterToken}`);
   assert.strictEqual(listSales.status, 200);
   assert.strictEqual(listSales.body.length, 1);
+  assert.strictEqual(Number(listSales.body[0].points), 100);
+  assert.ok(Array.isArray(listSales.body[0].sku_details));
+  assert.strictEqual(listSales.body[0].sku_details[0].sku, 'SKU-BASE');
 
   const summaryInitial = await request(app)
     .get(`/sales/summary/${influencerId}`)
     .set('Authorization', `Bearer ${masterToken}`);
   assert.strictEqual(summaryInitial.status, 200);
-  assert.strictEqual(Number(summaryInitial.body.total_net), 900);
-  assert.strictEqual(Number(summaryInitial.body.total_commission), 112.5);
+  assert.strictEqual(Number(summaryInitial.body.total_points), 100);
+  assert.strictEqual(Number(summaryInitial.body.total_points_value), pointsToBrl(100));
 
   const consultResponse = await request(app)
     .get('/influenciadoras/consulta')
@@ -744,7 +1026,7 @@ test('gestao de vendas vinculada a influenciadora', async () => {
   const consultRow = consultResponse.body.find((row) => row.id === influencerId);
   assert.ok(consultRow, 'Resumo deve incluir influenciadora criada');
   assert.strictEqual(Number(consultRow.vendas_count), 1);
-  assert.strictEqual(Number(consultRow.vendas_total), 900);
+  assert.strictEqual(Number(consultRow.vendas_total_points), 100);
 
   const duplicateSale = await request(app)
     .post('/sales')
@@ -753,8 +1035,7 @@ test('gestao de vendas vinculada a influenciadora', async () => {
       orderNumber: 'PED-001',
       cupom: influencerPayload.cupom,
       date: '2025-10-04',
-      grossValue: 800,
-      discount: 0
+      items: [{ sku: 'SKU-BASE', quantity: 1 }]
     });
   assert.strictEqual(duplicateSale.status, 409);
   assert.match(duplicateSale.body.error, /numero de pedido/i);
@@ -766,8 +1047,7 @@ test('gestao de vendas vinculada a influenciadora', async () => {
       orderNumber: 'PED-002',
       cupom: influencerPayload.cupom,
       date: '2025-10-05',
-      grossValue: 500,
-      discount: 0
+      items: [{ sku: 'SKU-BONUS', quantity: 1 }]
     });
   assert.strictEqual(secondSaleResponse.status, 201);
   const secondSaleId = secondSaleResponse.body.id;
@@ -782,8 +1062,7 @@ test('gestao de vendas vinculada a influenciadora', async () => {
       orderNumber: 'PED-002',
       cupom: influencerPayload.cupom,
       date: '2025-10-06',
-      grossValue: 1000,
-      discount: 50
+      items: [{ sku: 'SKU-BASE', quantity: 2 }]
     });
   assert.strictEqual(conflictingUpdate.status, 409);
   assert.match(conflictingUpdate.body.error, /numero de pedido/i);
@@ -795,13 +1074,15 @@ test('gestao de vendas vinculada a influenciadora', async () => {
       orderNumber: 'PED-001-ALT',
       cupom: influencerPayload.cupom,
       date: '2025-10-02',
-      grossValue: 1000,
-      discount: 50
+      items: [{ sku: 'SKU-BASE', quantity: 2 }]
     });
   assert.strictEqual(updateSale.status, 200);
   assert.strictEqual(updateSale.body.order_number, 'PED-001-ALT');
-  assert.strictEqual(Number(updateSale.body.net_value), 950);
-  assert.strictEqual(Number(updateSale.body.commission), 118.75);
+  assert.strictEqual(Number(updateSale.body.points), 200);
+  assert.strictEqual(Number(updateSale.body.points_value), pointsToBrl(200));
+  assert.ok(Array.isArray(updateSale.body.sku_details));
+  assert.strictEqual(updateSale.body.sku_details.length, 1);
+  assert.strictEqual(Number(updateSale.body.sku_details[0].quantity), 2);
 
   const updatedSaleRecord = selectSaleOrderNumberStmt.get(saleId);
   assert.ok(updatedSaleRecord, 'Venda atualizada deve existir no banco de dados.');
@@ -814,7 +1095,7 @@ test('gestao de vendas vinculada a influenciadora', async () => {
   const consultRowUpdated = consultAfterUpdate.body.find((row) => row.id === influencerId);
   assert.ok(consultRowUpdated);
   assert.strictEqual(Number(consultRowUpdated.vendas_count), 2);
-  assert.strictEqual(Number(consultRowUpdated.vendas_total), 1450);
+  assert.strictEqual(Number(consultRowUpdated.vendas_total_points), 250);
 
   const influencerLogin = await login(
     createInfluencer.body.login_email,
@@ -832,7 +1113,11 @@ test('gestao de vendas vinculada a influenciadora', async () => {
   const unauthorizedSale = await request(app)
     .post('/sales')
     .set('Authorization', `Bearer ${influencerToken}`)
-    .send({ cupom: influencerPayload.cupom, date: '2025-10-03', grossValue: 500, discount: 0 });
+    .send({
+      cupom: influencerPayload.cupom,
+      date: '2025-10-03',
+      items: [{ sku: 'SKU-BASE', quantity: 1 }]
+    });
   assert.strictEqual(unauthorizedSale.status, 403);
 
   const influencerSalesView = await request(app)
@@ -845,8 +1130,8 @@ test('gestao de vendas vinculada a influenciadora', async () => {
     .get(`/sales/summary/${influencerId}`)
     .set('Authorization', `Bearer ${influencerToken}`);
   assert.strictEqual(summaryAfterUpdate.status, 200);
-  assert.strictEqual(Number(summaryAfterUpdate.body.total_net), 1450);
-  assert.strictEqual(Number(summaryAfterUpdate.body.total_commission), 181.25);
+  assert.strictEqual(Number(summaryAfterUpdate.body.total_points), 250);
+  assert.strictEqual(Number(summaryAfterUpdate.body.total_points_value), pointsToBrl(250));
 
   const deleteSale = await request(app)
     .delete(`/sales/${saleId}`)
@@ -857,8 +1142,8 @@ test('gestao de vendas vinculada a influenciadora', async () => {
     .get(`/sales/summary/${influencerId}`)
     .set('Authorization', `Bearer ${masterToken}`);
   assert.strictEqual(summaryAfterDelete.status, 200);
-  assert.strictEqual(Number(summaryAfterDelete.body.total_net), 500);
-  assert.strictEqual(Number(summaryAfterDelete.body.total_commission), 62.5);
+  assert.strictEqual(Number(summaryAfterDelete.body.total_points), 50);
+  assert.strictEqual(Number(summaryAfterDelete.body.total_points_value), pointsToBrl(50));
 
   const consultAfterDelete = await request(app)
     .get('/influenciadoras/consulta')
@@ -867,7 +1152,7 @@ test('gestao de vendas vinculada a influenciadora', async () => {
   const consultRowAfterDelete = consultAfterDelete.body.find((row) => row.id === influencerId);
   assert.ok(consultRowAfterDelete);
   assert.strictEqual(Number(consultRowAfterDelete.vendas_count), 1);
-  assert.strictEqual(Number(consultRowAfterDelete.vendas_total), 500);
+  assert.strictEqual(Number(consultRowAfterDelete.vendas_total_points), 50);
 });
 
 test('importacao em massa de vendas com validacao', async () => {
@@ -912,10 +1197,10 @@ test('importacao em massa de vendas com validacao', async () => {
   assert.strictEqual(ingridResponse.status, 201);
 
   const textWithUnknownCoupon = [
-    'Pedido\tCupom\tData\tValor bruto\tDesconto',
-    '#1040\tBIA8\t02/08/2025 18:08\t62.47\t',
-    '#1041\tINGRID\t02/08/2025 22:25\t62.47\t0',
-    '#1042\tNAOEXISTE\t03/08/2025 10:00\t50,00\t0'
+    'Pedido\tCupom\tData\tPontos',
+    '#1040\tBIA8\t02/08/2025 18:08\t120',
+    '#1041\tINGRID\t02/08/2025 22:25\t130',
+    '#1042\tNAOEXISTE\t03/08/2025 10:00\t50'
   ].join('\n');
 
   const previewWithError = await request(app)
@@ -941,11 +1226,12 @@ test('importacao em massa de vendas com validacao', async () => {
   assert.strictEqual(confirmWithErrors.body.inserted, 2);
   assert.strictEqual(confirmWithErrors.body.ignored, 1);
   assert.strictEqual(confirmWithErrors.body.summary.count, 2);
+  assert.strictEqual(Number(confirmWithErrors.body.summary.total_points), 250);
 
   const validText = [
-    'Pedido\tCupom\tData\tValor bruto\tDesconto',
-    '#2040\tINGRID\t02/08/2025 18:08\t62.47\t',
-    '#2041\tINGRID\t02/08/2025 22:25\t62.47\t0'
+    'Pedido\tCupom\tData\tPontos',
+    '#2040\tINGRID\t02/08/2025\t120',
+    '#2041\tINGRID\t02/08/2025\t80'
   ].join('\n');
 
   const validPreview = await request(app)
@@ -956,7 +1242,7 @@ test('importacao em massa de vendas com validacao', async () => {
   assert.strictEqual(validPreview.status, 200);
   assert.strictEqual(validPreview.body.hasErrors, false);
   assert.strictEqual(validPreview.body.validCount, 2);
-  assert.strictEqual(Number(validPreview.body.summary.totalNet), 124.94);
+  assert.strictEqual(Number(validPreview.body.summary.total_points), 200);
 
   const confirmImport = await request(app)
     .post('/sales/import/confirm')
@@ -966,6 +1252,7 @@ test('importacao em massa de vendas com validacao', async () => {
   assert.strictEqual(confirmImport.status, 201);
   assert.strictEqual(confirmImport.body.inserted, 2);
   assert.strictEqual(confirmImport.body.ignored, 0);
+  assert.strictEqual(Number(confirmImport.body.summary.total_points), 200);
 
   const biaSales = await request(app)
     .get(`/sales/${biaResponse.body.id}`)
@@ -1033,12 +1320,25 @@ test('importacao de vendas a partir de csv do shopify', async () => {
     .send(ingridPayload);
   assert.strictEqual(ingridResponse.status, 201);
 
+  await cadastrarSkuPoints(masterToken, {
+    sku: 'SKU-30ML',
+    description: 'Produto 30ml',
+    points_per_unit: 100,
+    active: 1
+  });
+  await cadastrarSkuPoints(masterToken, {
+    sku: 'SKU-KIT',
+    description: 'Kit especial',
+    points_per_unit: 200,
+    active: 1
+  });
+
   const csvLines = [
-    'Name,Paid at,Subtotal,Discount Code,Discount Amount,Note Attributes',
-    '#2001,2025-08-08 13:35:24 -0300,62.47,debora,5.43,"shipping_street_name: Rua Ciro Fernandes\\nshipping_street_number: 715"',
-    '#2002,,67.90,debora,5.43,"linha ignorada sem pagamento"',
-    '#2003,2025-08-09 15:56:55 -0300,62.47,NAOEXISTE,0,"linha ignorada cupom desconhecido"',
-    '#2004,2025-08-10 10:00:00 -0300,50.00,INGRID,0,"linha valida sem desconto"'
+    'Name,Paid at,Discount Code,Lineitem quantity,Lineitem sku',
+    '#2001,2025-08-08 13:35:24 -0300,debora,1,SKU-30ML',
+    '#2002,,debora,1,SKU-30ML',
+    '#2003,2025-08-09 15:56:55 -0300,NAOEXISTE,1,SKU-30ML',
+    '#2004,2025-08-10 10:00:00 -0300,INGRID,2,SKU-KIT'
   ];
 
   const csvContent = csvLines.join('\n');
@@ -1049,26 +1349,36 @@ test('importacao de vendas a partir de csv do shopify', async () => {
     .send({ text: csvContent });
 
   assert.strictEqual(preview.status, 200);
-  assert.strictEqual(preview.body.hasErrors, false);
-  assert.strictEqual(preview.body.totalCount, 2);
+  assert.strictEqual(preview.body.hasErrors, true);
+  assert.strictEqual(preview.body.totalCount, 4);
   assert.strictEqual(preview.body.validCount, 2);
-  assert.strictEqual(Number(preview.body.summary.totalGross), 117.9);
-  assert.strictEqual(Number(preview.body.summary.totalDiscount), 5.43);
-  assert.strictEqual(Number(preview.body.summary.totalNet), 112.47);
+  assert.strictEqual(Number(preview.body.summary.total_points), 500);
 
   const row2001 = preview.body.rows.find((row) => row.orderNumber === '#2001');
   assert.ok(row2001, 'Pedido #2001 deve estar presente.');
   assert.strictEqual(row2001.cupom, 'debora');
-  assert.strictEqual(Number(row2001.grossValue), 67.9);
-  assert.strictEqual(Number(row2001.discount), 5.43);
+  assert.strictEqual(Number(row2001.points), 100);
   assert.strictEqual(row2001.date, '2025-08-08');
 
   const row2004 = preview.body.rows.find((row) => row.orderNumber === '#2004');
   assert.ok(row2004, 'Pedido #2004 deve estar presente.');
   assert.strictEqual(row2004.cupom, 'INGRID');
-  assert.strictEqual(Number(row2004.grossValue), 50);
-  assert.strictEqual(Number(row2004.discount), 0);
+  assert.strictEqual(Number(row2004.points), 400);
   assert.strictEqual(row2004.date, '2025-08-10');
+
+  const row2002 = preview.body.rows.find((row) => row.orderNumber === '#2002');
+  assert.ok(row2002, 'Pedido #2002 deve ser exibido com erro.');
+  assert.ok(
+    row2002.errors.some((message) => /informe a data da venda/i.test(message)),
+    'Pedido #2002 deve indicar falta de data.'
+  );
+
+  const row2003 = preview.body.rows.find((row) => row.orderNumber === '#2003');
+  assert.ok(row2003, 'Pedido #2003 deve ser exibido com erro.');
+  assert.ok(
+    row2003.errors.some((message) => /cupom nao cadastrado/i.test(message)),
+    'Pedido #2003 deve indicar cupom invalido.'
+  );
 
   const confirm = await request(app)
     .post('/sales/import/confirm')
@@ -1078,6 +1388,177 @@ test('importacao de vendas a partir de csv do shopify', async () => {
   assert.strictEqual(confirm.status, 201);
   assert.strictEqual(confirm.body.inserted, 2);
   assert.strictEqual(confirm.body.summary.count, 2);
+  assert.strictEqual(Number(confirm.body.summary.total_points), 500);
+
+  const deboraSales = await request(app)
+    .get(`/sales/${deboraResponse.body.id}`)
+    .set('Authorization', `Bearer ${masterToken}`);
+  assert.strictEqual(deboraSales.status, 200);
+  assert.strictEqual(deboraSales.body.length, 1);
+  assert.strictEqual(Number(deboraSales.body[0].points), 100);
+  assert.ok(Array.isArray(deboraSales.body[0].sku_details));
+  assert.strictEqual(deboraSales.body[0].sku_details[0].sku, 'SKU-30ML');
+
+  const ingridSales = await request(app)
+    .get(`/sales/${ingridResponse.body.id}`)
+    .set('Authorization', `Bearer ${masterToken}`);
+  assert.strictEqual(ingridSales.status, 200);
+  assert.strictEqual(ingridSales.body.length, 1);
+  assert.strictEqual(Number(ingridSales.body[0].points), 400);
+  assert.ok(Array.isArray(ingridSales.body[0].sku_details));
+  assert.strictEqual(ingridSales.body[0].sku_details[0].sku, 'SKU-KIT');
+});
+
+test('importacao de csv real da shopify com pontos por SKU', async () => {
+  resetDb();
+
+  const masterToken = await authenticateMaster();
+
+  const csvPath = path.join(__dirname, '..', 'orders_export.csv');
+  const csvContent = fs.readFileSync(csvPath, 'utf8');
+
+  const pointsPerSku = {
+    'HPNK-30ML-V1': 100,
+    'HPNK-30ML-V2': 150,
+    'HPNK-30ML-V3': 200
+  };
+
+  const analysis = analyzeShopifyCsvFixture(csvContent, pointsPerSku);
+
+  assert.ok(analysis.totalOrders > 0, 'CSV deve conter pedidos.');
+  assert.ok(analysis.validOrdersCount > 0, 'CSV deve conter pedidos validos.');
+  assert.ok(analysis.missingCouponOrders.length > 0, 'CSV deve incluir pedidos sem cupom.');
+  assert.ok(analysis.missingDateOrders.length > 0, 'CSV deve incluir pedidos sem data.');
+
+  for (const [sku, points] of Object.entries(pointsPerSku)) {
+    const response = await cadastrarSkuPoints(masterToken, {
+      sku,
+      description: `SKU ${sku}`,
+      points_per_unit: points,
+      active: 1
+    });
+    assert.strictEqual(response.status, 201, `Cadastro do SKU ${sku} deve retornar 201.`);
+  }
+
+  const influencerMap = new Map();
+  assert.ok(analysis.coupons.length > 0, 'Lista de cupons nao pode estar vazia.');
+
+  for (let index = 0; index < analysis.coupons.length; index += 1) {
+    const coupon = analysis.coupons[index];
+    const cpf = generateValidCpf(index);
+    const contactDigits = `11${String(900000000 + index).padStart(9, '0')}`;
+    const payload = {
+      ...influencerPayload,
+      nome: `Shopify Influencer ${index + 1}`,
+      instagram: `@shopify${index + 1}`,
+      email: `shopify${index + 1}@example.com`,
+      contato: contactDigits,
+      cupom: coupon,
+      cpf,
+      loginEmail: `shopify${index + 1}.login@example.com`,
+      loginPassword: `Senha${index + 1}abc`
+    };
+
+    const response = await request(app)
+      .post('/influenciadora')
+      .set('Authorization', `Bearer ${masterToken}`)
+      .send(payload);
+
+    assert.strictEqual(response.status, 201, `Cadastro da influenciadora ${coupon} deve retornar 201.`);
+    influencerMap.set(coupon, response.body.id);
+  }
+
+  const preview = await request(app)
+    .post('/sales/import/preview')
+    .set('Authorization', `Bearer ${masterToken}`)
+    .send({ text: csvContent });
+
+  assert.strictEqual(preview.status, 200);
+  assert.ok(Array.isArray(preview.body.rows), 'Resposta deve conter linhas analisadas.');
+  assert.strictEqual(preview.body.rows.length, analysis.totalOrders);
+  assert.strictEqual(preview.body.totalCount, analysis.totalOrders);
+  assert.strictEqual(preview.body.validCount, analysis.validOrdersCount);
+  assert.strictEqual(Number(preview.body.summary.total_points), analysis.totalPoints);
+  assert.strictEqual(
+    Number(preview.body.summary.total_points_value),
+    Number(pointsToBrl(analysis.totalPoints))
+  );
+  assert.strictEqual(Number(preview.body.summary.point_value_brl), POINT_VALUE_BRL);
+
+  const sampleValidOrder = analysis.validOrders[0];
+  assert.ok(sampleValidOrder, 'Deve existir ao menos um pedido valido.');
+  const validRow = preview.body.rows.find((row) => row.orderNumber === sampleValidOrder.orderNumber);
+  assert.ok(validRow, `Pedido ${sampleValidOrder.orderNumber} deve constar no preview.`);
+  assert.strictEqual(validRow.cupom.toLowerCase(), sampleValidOrder.coupon.toLowerCase());
+  assert.strictEqual(Number(validRow.points), sampleValidOrder.totalPoints);
+
+  const missingCouponOrder = analysis.missingCouponOrders[0];
+  assert.ok(missingCouponOrder, 'Deve existir ao menos um pedido sem cupom.');
+  const missingCouponRow = preview.body.rows.find(
+    (row) => row.orderNumber === missingCouponOrder.orderNumber
+  );
+  assert.ok(missingCouponRow, 'Pedido sem cupom deve aparecer na analise.');
+  assert.ok(
+    missingCouponRow.errors.some((message) => /cupom nao cadastrado/i.test(message)),
+    'Pedido sem cupom deve exibir erro apropriado.'
+  );
+  const expectedMissingCouponPoints =
+    analysis.ordersByNumber[missingCouponOrder.orderNumber]?.totalPoints ?? null;
+  if (expectedMissingCouponPoints != null) {
+    assert.strictEqual(Number(missingCouponRow.points), expectedMissingCouponPoints);
+  }
+
+  const missingDateOrder = analysis.missingDateOrders[0];
+  assert.ok(missingDateOrder, 'Deve existir ao menos um pedido sem data.');
+  const missingDateRow = preview.body.rows.find(
+    (row) => row.orderNumber === missingDateOrder.orderNumber
+  );
+  assert.ok(missingDateRow, 'Pedido sem data deve aparecer na analise.');
+  assert.ok(
+    missingDateRow.errors.some((message) => /informe a data da venda/i.test(message)),
+    'Pedido sem data deve exibir mensagem de erro.'
+  );
+
+  const confirm = await request(app)
+    .post('/sales/import/confirm')
+    .set('Authorization', `Bearer ${masterToken}`)
+    .send({ text: csvContent });
+
+  assert.strictEqual(confirm.status, 201);
+  assert.strictEqual(confirm.body.inserted, analysis.validOrdersCount);
+  assert.strictEqual(confirm.body.ignored, analysis.totalOrders - analysis.validOrdersCount);
+  assert.strictEqual(Number(confirm.body.summary.total_points), analysis.totalPoints);
+  assert.strictEqual(
+    Number(confirm.body.summary.total_points_value),
+    Number(pointsToBrl(analysis.totalPoints))
+  );
+
+  const couponsWithSales = Object.keys(analysis.perCoupon);
+  assert.ok(couponsWithSales.length > 0, 'Ao menos um cupom deve ter vendas validas.');
+  const couponWithValidOrders = couponsWithSales[0];
+  const influencerId = influencerMap.get(couponWithValidOrders);
+  assert.ok(influencerId, 'Influenciadora deve ter sido cadastrada para o cupom analisado.');
+
+  const salesResponse = await request(app)
+    .get(`/sales/${influencerId}`)
+    .set('Authorization', `Bearer ${masterToken}`);
+
+  assert.strictEqual(salesResponse.status, 200);
+  assert.strictEqual(
+    salesResponse.body.length,
+    analysis.perCoupon[couponWithValidOrders].count
+  );
+  assert.ok(
+    salesResponse.body.every(
+      (sale) => Array.isArray(sale.sku_details) && sale.sku_details.length > 0
+    ),
+    'Cada venda importada deve incluir o detalhamento de SKUs.'
+  );
+  const totalPointsForCoupon = salesResponse.body.reduce(
+    (sum, sale) => sum + Number(sale.points || 0),
+    0
+  );
+  assert.strictEqual(totalPointsForCoupon, analysis.perCoupon[couponWithValidOrders].points);
 });
 
 after(() => {

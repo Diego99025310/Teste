@@ -8,7 +8,8 @@ const jwt = require('jsonwebtoken');
 const db = require('./database');
 const createAceiteRouter = require('./routes/aceite');
 const verificarAceite = require('./middlewares/verificarAceite');
-const { calculateCommissionMultiplier, summarizeCommission } = require('./utils/multiplier');
+const { calculateCommissionMultiplier, summarizePoints } = require('./utils/multiplier');
+const { pointsToBrl, POINT_VALUE_BRL, roundCurrency, roundPoints } = require('./utils/points');
 
 const app = express();
 
@@ -59,14 +60,27 @@ const generateRandomPassword = (length = 6) => {
   return result;
 };
 
-const roundCurrency = (value) => Math.round(Number(value) * 100) / 100;
-
 const parseCurrency = (value, fieldLabel) => {
   const num = Number(value);
   if (!Number.isFinite(num) || num < 0) {
     return { error: `${fieldLabel} deve ser um numero maior ou igual a zero.` };
   }
   return { value: roundCurrency(num) };
+};
+
+const parsePointsValue = (value, fieldLabel) => {
+  if (value == null || value === '') {
+    return { error: `${fieldLabel} deve ser informado.` };
+  }
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return { error: `${fieldLabel} deve ser um numero inteiro maior ou igual a zero.` };
+  }
+  const rounded = roundPoints(parsed);
+  if (Math.abs(rounded - parsed) > 0.0001) {
+    return { error: `${fieldLabel} deve ser um numero inteiro.` };
+  }
+  return { value: rounded };
 };
 
 const trimString = (value) => (typeof value === 'string' ? value.trim() : value);
@@ -291,6 +305,35 @@ const updateInfluencerSignatureStmt = db.prepare(
   'UPDATE influenciadoras SET contract_signature_code_hash = ?, contract_signature_code_generated_at = ? WHERE id = ?'
 );
 
+const listSkuPointsStmt = db.prepare(
+  `SELECT id, sku, description, points_per_unit, active, created_at, updated_at
+     FROM sku_points
+    ORDER BY LOWER(sku)`
+);
+const listActiveSkuPointsStmt = db.prepare(
+  'SELECT sku, points_per_unit FROM sku_points WHERE active = 1'
+);
+const findSkuPointByIdStmt = db.prepare(
+  'SELECT id, sku, description, points_per_unit, active, created_at, updated_at FROM sku_points WHERE id = ?'
+);
+const findSkuPointBySkuStmt = db.prepare(
+  'SELECT id, sku, description, points_per_unit, active FROM sku_points WHERE LOWER(sku) = LOWER(?)'
+);
+const insertSkuPointStmt = db.prepare(
+  `INSERT INTO sku_points (sku, description, points_per_unit, active)
+   VALUES (@sku, @description, @points_per_unit, @active)`
+);
+const updateSkuPointStmt = db.prepare(
+  `UPDATE sku_points
+      SET sku = @sku,
+          description = @description,
+          points_per_unit = @points_per_unit,
+          active = @active,
+          updated_at = CURRENT_TIMESTAMP
+    WHERE id = @id`
+);
+const deleteSkuPointStmt = db.prepare('DELETE FROM sku_points WHERE id = ?');
+
 const insertSaleStmt = db.prepare(`
   INSERT INTO sales (
     influencer_id,
@@ -299,7 +342,8 @@ const insertSaleStmt = db.prepare(`
     gross_value,
     discount,
     net_value,
-    commission
+    commission,
+    points
   ) VALUES (
     @influencer_id,
     @order_number,
@@ -307,7 +351,8 @@ const insertSaleStmt = db.prepare(`
     @gross_value,
     @discount,
     @net_value,
-    @commission
+    @commission,
+    @points
   )
 `);
 
@@ -319,7 +364,8 @@ const updateSaleStmt = db.prepare(`
     gross_value = @gross_value,
     discount = @discount,
     net_value = @net_value,
-    commission = @commission
+    commission = @commission,
+    points = @points
   WHERE id = @id
 `);
 
@@ -334,6 +380,7 @@ const findSaleByIdStmt = db.prepare(`
          s.discount,
          s.net_value,
          s.commission,
+         s.points,
          s.created_at,
          i.cupom,
          i.nome,
@@ -351,6 +398,7 @@ const listSalesByInfluencerStmt = db.prepare(`
          s.discount,
          s.net_value,
          s.commission,
+         s.points,
          s.created_at,
          i.cupom,
          i.nome,
@@ -360,7 +408,26 @@ const listSalesByInfluencerStmt = db.prepare(`
   WHERE s.influencer_id = ?
   ORDER BY s.date DESC, s.id DESC
 `);
-const salesSummaryStmt = db.prepare('SELECT COALESCE(SUM(net_value), 0) AS total_net, COALESCE(SUM(commission), 0) AS total_commission FROM sales WHERE influencer_id = ?');
+const salesSummaryStmt = db.prepare(
+  'SELECT COALESCE(SUM(points), 0) AS total_points FROM sales WHERE influencer_id = ?'
+);
+const listSaleSkuPointsStmt = db.prepare(`
+  SELECT id,
+         sale_id,
+         sku,
+         quantity,
+         points_per_unit,
+         points,
+         created_at
+    FROM sale_sku_points
+   WHERE sale_id = ?
+   ORDER BY id
+`);
+const insertSaleSkuPointStmt = db.prepare(`
+  INSERT INTO sale_sku_points (sale_id, sku, quantity, points_per_unit, points)
+  VALUES (@sale_id, @sku, @quantity, @points_per_unit, @points)
+`);
+const deleteSaleSkuPointsBySaleStmt = db.prepare('DELETE FROM sale_sku_points WHERE sale_id = ?');
 const listInfluencerSummaryStmt = db.prepare(`
   SELECT i.id,
          i.nome,
@@ -368,7 +435,7 @@ const listInfluencerSummaryStmt = db.prepare(`
          i.cupom,
          i.commission_rate,
          COALESCE(COUNT(s.id), 0) AS vendas_count,
-         COALESCE(SUM(s.net_value), 0) AS vendas_total
+         COALESCE(SUM(s.points), 0) AS vendas_total
   FROM influenciadoras i
   LEFT JOIN sales s ON s.influencer_id = i.id
   GROUP BY i.id
@@ -565,16 +632,20 @@ const insertMonthlyCommissionStmt = db.prepare(
       multiplier,
       base_commission,
       total_commission,
+      base_points,
+      total_points,
       deliveries_planned,
       deliveries_completed,
       validation_summary,
       closed_at
-    ) VALUES (@cycle_id, @influencer_id, @validated_days, @multiplier, @base_commission, @total_commission, @deliveries_planned, @deliveries_completed, @validation_summary, CURRENT_TIMESTAMP)
+    ) VALUES (@cycle_id, @influencer_id, @validated_days, @multiplier, @base_commission, @total_commission, @base_points, @total_points, @deliveries_planned, @deliveries_completed, @validation_summary, CURRENT_TIMESTAMP)
     ON CONFLICT(cycle_id, influencer_id) DO UPDATE SET
       validated_days = excluded.validated_days,
       multiplier = excluded.multiplier,
       base_commission = excluded.base_commission,
       total_commission = excluded.total_commission,
+      base_points = excluded.base_points,
+      total_points = excluded.total_points,
       deliveries_planned = excluded.deliveries_planned,
       deliveries_completed = excluded.deliveries_completed,
       validation_summary = excluded.validation_summary,
@@ -587,6 +658,8 @@ const listMonthlyCommissionsByInfluencerStmt = db.prepare(
           mc.multiplier,
           mc.base_commission,
           mc.total_commission,
+          mc.base_points,
+          mc.total_points,
           mc.deliveries_planned,
           mc.deliveries_completed,
           mc.validation_summary,
@@ -606,6 +679,8 @@ const listMonthlyRankingStmt = db.prepare(
           mc.multiplier,
           mc.total_commission,
           mc.base_commission,
+          mc.total_points,
+          mc.base_points,
           mc.deliveries_completed,
           i.nome,
           i.instagram,
@@ -1017,12 +1092,6 @@ const normalizeInfluencerPayload = (body) => {
   }
 
   return { data };
-};
-
-const computeSaleTotals = (grossValue, discountValue, commissionPercent) => {
-  const netValue = roundCurrency(Math.max(0, grossValue - discountValue));
-  const commissionValue = roundCurrency(netValue * (Number(commissionPercent) / 100));
-  return { netValue, commissionValue };
 };
 
 const normalizeOrderNumber = (value) => {
@@ -1468,54 +1537,87 @@ const buildSalesImportAnalysis = (entries) => {
     orderNumber: entry.orderNumber ?? '',
     cupom: entry.cupom ?? '',
     rawDate: entry.rawDate ?? '',
-    rawGross: entry.rawGross ?? '',
-    rawDiscount: entry.rawDiscount ?? '',
-    errors: []
+    rawPoints: entry.rawPoints ?? (entry.totalPoints != null ? String(entry.totalPoints) : ''),
+    skuDetails: Array.isArray(entry.skuDetails) ? entry.skuDetails : [],
+    errors: [],
+    source: entry
   }));
 
   rows.forEach((row) => {
+    const normalizedOrder = normalizeOrderNumber(row.orderNumber);
+    const normalizedCupom = trimString(row.cupom) || '';
+
     const { value: isoDate, error: dateError } = parseImportDate(row.rawDate);
     if (dateError) {
       row.errors.push(dateError);
     }
 
-    const grossParsed = parseImportDecimal(row.rawGross);
-    if (grossParsed.error) {
-      row.errors.push('Valor bruto invalido.');
-    }
-
-    const discountParsed = parseImportDecimal(row.rawDiscount);
-    if (discountParsed.error) {
-      row.errors.push('Desconto invalido.');
-    }
-
-    const normalizedPayload = {
-      orderNumber: row.orderNumber,
-      cupom: row.cupom,
-      date: isoDate,
-      grossValue: grossParsed.value,
-      discount: discountParsed.value
-    };
-
-    if (!row.errors.length) {
-      const { data, error } = normalizeSaleBody({
-        orderNumber: normalizedPayload.orderNumber,
-        cupom: normalizedPayload.cupom,
-        date: normalizedPayload.date,
-        grossValue: normalizedPayload.grossValue,
-        discount: normalizedPayload.discount
-      });
-      if (error) {
-        row.errors.push(error.error || 'Linha invalida.');
+    let points = null;
+    if (row.source && row.source.totalPoints != null) {
+      points = roundPoints(row.source.totalPoints);
+    } else {
+      const parsedPoints = parsePointsValue(row.rawPoints, 'Pontos');
+      if (parsedPoints.error) {
+        row.errors.push(parsedPoints.error);
       } else {
-        row.normalized = data;
+        points = parsedPoints.value;
       }
     }
+
+    const normalizedDetails = row.skuDetails.map((detail) => {
+      const sku = trimString(detail?.sku) || '';
+      const quantityValue = Number(detail?.quantity ?? detail?.quantityRaw);
+      const quantity = Number.isFinite(quantityValue) ? quantityValue : null;
+      const pointsPerUnit = detail?.pointsPerUnit != null ? Number(detail.pointsPerUnit) : null;
+      const lineNumber = detail?.line != null ? detail.line : row.line;
+
+      if (!sku) {
+        row.errors.push(`SKU nao informado na linha ${lineNumber}.`);
+      }
+
+      if (!Number.isFinite(quantityValue) || quantityValue <= 0) {
+        row.errors.push(`Quantidade invalida para SKU ${sku || '(sem SKU)'} na linha ${lineNumber}.`);
+      }
+
+      if (pointsPerUnit == null || pointsPerUnit < 0) {
+        row.errors.push(`SKU ${sku || '(sem SKU)'} nao possui pontuacao cadastrada.`);
+      }
+
+      const computedPoints =
+        pointsPerUnit != null && quantity != null && quantity > 0 ? roundPoints(quantity * pointsPerUnit) : null;
+
+      return {
+        sku,
+        quantity,
+        line: lineNumber,
+        pointsPerUnit,
+        points: computedPoints
+      };
+    });
+
+    let influencer = null;
+    if (!normalizedCupom) {
+      row.errors.push('Cupom nao cadastrado.');
+    } else {
+      influencer = findInfluencerByCouponStmt.get(normalizedCupom);
+      if (!influencer) {
+        row.errors.push('Cupom nao cadastrado.');
+      }
+    }
+
+    row.normalized = {
+      orderNumber: normalizedOrder,
+      cupom: normalizedCupom,
+      date: isoDate,
+      points,
+      skuDetails: normalizedDetails,
+      influencer
+    };
   });
 
   const orderOccurrences = new Map();
   rows.forEach((row) => {
-    const order = normalizeOrderNumber(row.normalized?.orderNumber ?? row.orderNumber);
+    const order = row.normalized?.orderNumber ?? normalizeOrderNumber(row.orderNumber);
     if (!order) return;
     if (!orderOccurrences.has(order)) {
       orderOccurrences.set(order, []);
@@ -1523,35 +1625,10 @@ const buildSalesImportAnalysis = (entries) => {
     orderOccurrences.get(order).push(row);
   });
 
-  const results = rows.map((row) => {
-    if (!row.normalized) {
-      return {
-        line: row.line,
-        orderNumber: normalizeOrderNumber(row.orderNumber),
-        cupom: trimString(row.cupom) || '',
-        date: null,
-        grossValue: null,
-        discount: null,
-        netValue: null,
-        commission: null,
-        influencerId: null,
-        influencerName: null,
-        commissionRate: null,
-        errors: row.errors,
-        rawDate: row.rawDate,
-        rawGross: row.rawGross,
-        rawDiscount: row.rawDiscount
-      };
-    }
-
-    const normalizedOrder = normalizeOrderNumber(row.normalized.orderNumber);
-    const influencer = findInfluencerByCouponStmt.get(row.normalized.cupom);
-    if (!influencer) {
-      row.errors.push('Cupom nao cadastrado.');
-    }
-
-    const duplicateRows = orderOccurrences.get(normalizedOrder) || [];
-    if (duplicateRows.length > 1) {
+  rows.forEach((row) => {
+    const normalizedOrder = row.normalized?.orderNumber ?? null;
+    const duplicates = normalizedOrder ? orderOccurrences.get(normalizedOrder) || [] : [];
+    if (duplicates.length > 1) {
       row.errors.push('Numero de pedido repetido nos dados importados.');
     }
 
@@ -1560,35 +1637,57 @@ const buildSalesImportAnalysis = (entries) => {
       row.errors.push('Numero de pedido ja cadastrado.');
     }
 
-    const commissionRate = influencer?.commission_rate != null ? Number(influencer.commission_rate) : 0;
-    const totals = computeSaleTotals(row.normalized.grossValue, row.normalized.discount, commissionRate);
+    if (!normalizedOrder) {
+      row.errors.push('Informe o numero do pedido.');
+    }
+
+    if (!row.normalized?.date) {
+      row.errors.push('Informe a data da venda.');
+    }
+
+    if (row.normalized?.points == null && row.normalized?.skuDetails?.length) {
+      const hasAllDetails = row.normalized.skuDetails.every((detail) => detail.points != null);
+      if (hasAllDetails) {
+        const totalFromSkus = row.normalized.skuDetails.reduce((sum, detail) => sum + (detail.points || 0), 0);
+        row.normalized.points = roundPoints(totalFromSkus);
+      }
+    }
+
+    if (row.normalized?.points == null) {
+      row.errors.push('Informe a pontuacao da venda.');
+    }
+  });
+
+  const results = rows.map((row) => {
+    const influencer = row.normalized?.influencer;
+    const points = row.normalized?.points != null ? roundPoints(row.normalized.points) : 0;
+    const pointsValue = pointsToBrl(points);
+    const normalizedOrder = row.normalized?.orderNumber ?? normalizeOrderNumber(row.orderNumber);
 
     return {
       line: row.line,
       orderNumber: normalizedOrder,
-      cupom: row.normalized.cupom,
-      date: row.normalized.date,
-      grossValue: row.normalized.grossValue,
-      discount: row.normalized.discount,
-      netValue: totals.netValue,
-      commission: totals.commissionValue,
+      cupom: row.normalized?.cupom || '',
+      date: row.normalized?.date || null,
+      points,
+      pointsValue,
+      points_value: pointsValue,
       influencerId: influencer?.id ?? null,
       influencerName: influencer?.nome ?? null,
-      commissionRate,
       errors: row.errors,
       rawDate: row.rawDate,
-      rawGross: row.rawGross,
-      rawDiscount: row.rawDiscount
+      rawPoints: row.rawPoints,
+      skuDetails: row.normalized?.skuDetails || []
     };
   });
 
-  const validRows = results.filter((row) => !row.errors.length);
+  const validRows = results.filter((row) => row && !row.errors.length && row.influencerId);
+  const totalPoints = validRows.reduce((sum, row) => sum + (row.points || 0), 0);
   const summary = {
     count: validRows.length,
-    totalGross: roundCurrency(validRows.reduce((sum, row) => sum + row.grossValue, 0)),
-    totalDiscount: roundCurrency(validRows.reduce((sum, row) => sum + row.discount, 0)),
-    totalNet: roundCurrency(validRows.reduce((sum, row) => sum + row.netValue, 0)),
-    totalCommission: roundCurrency(validRows.reduce((sum, row) => sum + row.commission, 0))
+    total_points: totalPoints,
+    total_points_value: pointsToBrl(totalPoints),
+    point_value_brl: POINT_VALUE_BRL
   };
 
   return {
@@ -1615,11 +1714,10 @@ const parseManualSalesImport = (text) => {
     orderNumber: ['pedido', 'numero', 'ordem', 'ordernumber', 'numeropedido'],
     cupom: ['cupom', 'coupon'],
     date: ['data', 'date'],
-    grossValue: ['valorbruto', 'bruto', 'gross', 'valor'],
-    discount: ['desconto', 'discount']
+    points: ['pontos', 'points', 'pontuacao', 'pontuacoes', 'pontuacao_total']
   };
 
-  const columnIndexes = { orderNumber: 0, cupom: 1, date: 2, grossValue: 3, discount: 4 };
+  const columnIndexes = { orderNumber: 0, cupom: 1, date: 2, points: 3 };
   let delimiter = null;
   let dataStarted = false;
   let lineNumber = 0;
@@ -1667,8 +1765,7 @@ const parseManualSalesImport = (text) => {
       orderNumber: getCell('orderNumber'),
       cupom: getCell('cupom'),
       rawDate: getCell('date'),
-      rawGross: getCell('grossValue'),
-      rawDiscount: getCell('discount')
+      rawPoints: getCell('points')
     });
   }
 
@@ -1690,7 +1787,7 @@ const tryParseShopifySalesImport = (text) => {
   const firstLineBreak = text.indexOf('\n');
   const headerLine = firstLineBreak >= 0 ? text.slice(0, firstLineBreak) : text;
   const normalizedHeaderLine = normalizeImportHeader(headerLine);
-  const requiredHeaders = ['name', 'paidat', 'discountcode', 'subtotal'];
+  const requiredHeaders = ['name', 'paidat', 'discountcode', 'lineitemquantity', 'lineitemsku'];
   const isShopifyExport = requiredHeaders.every((header) => normalizedHeaderLine.includes(header));
   if (!isShopifyExport) {
     return null;
@@ -1717,15 +1814,29 @@ const tryParseShopifySalesImport = (text) => {
 
   const nameIndex = resolveIndex(['name']);
   const paidAtIndex = resolveIndex(['paidat']);
-  const couponIndex = resolveIndex(['discountcode']);
-  const subtotalIndex = resolveIndex(['subtotal']);
-  const discountIndex = resolveIndex(['discountamount', 'discount', 'discountvalue']);
+  const couponIndex = resolveIndex(['discountcode', 'discountcodes']);
+  const quantityIndex = resolveIndex(['lineitemquantity']);
+  const skuIndex = resolveIndex(['lineitemsku']);
 
-  if (nameIndex < 0 || paidAtIndex < 0 || couponIndex < 0 || subtotalIndex < 0) {
+  if (nameIndex < 0 || paidAtIndex < 0 || couponIndex < 0 || quantityIndex < 0 || skuIndex < 0) {
     return { error: 'Nao foi possivel identificar as colunas obrigatorias do CSV.' };
   }
 
-  const entries = [];
+  const skuPointsMap = new Map();
+  listActiveSkuPointsStmt
+    .all()
+    .filter((row) => row && row.sku)
+    .forEach((row) => {
+      const skuKey = String(row.sku).trim().toLowerCase();
+      if (!skuKey) {
+        return;
+      }
+      const points = Number(row.points_per_unit);
+      skuPointsMap.set(skuKey, Number.isFinite(points) && points >= 0 ? points : 0);
+    });
+
+  const entryMap = new Map();
+
   for (let rowIndex = 1; rowIndex < rows.length; rowIndex += 1) {
     const cells = rows[rowIndex];
     if (!cells || !cells.length) {
@@ -1738,58 +1849,101 @@ const tryParseShopifySalesImport = (text) => {
     }
 
     const orderRaw = stripBom(cells[nameIndex] || '').trim();
-    if (!orderRaw || !orderRaw.startsWith('#')) {
+    if (!orderRaw) {
       continue;
     }
 
     const paidAtRaw = stripBom(cells[paidAtIndex] || '').trim();
-    if (!paidAtRaw) {
-      continue;
-    }
-
     const couponRaw = stripBom(cells[couponIndex] || '').trim();
-    if (!couponRaw) {
+    const quantityRaw = stripBom(cells[quantityIndex] || '').trim();
+    const skuRaw = stripBom(cells[skuIndex] || '').trim();
+
+    const key = orderRaw;
+    if (!entryMap.has(key)) {
+      entryMap.set(key, {
+        line: rowIndex + 1,
+        orderNumber: orderRaw,
+        rawDate: paidAtRaw ? formatShopifyPaidAtDate(paidAtRaw) : '',
+        cupom: couponRaw,
+        skuDetails: []
+      });
+    }
+
+    const entry = entryMap.get(key);
+    if (!entry) {
       continue;
     }
 
-    const influencer = findInfluencerByCouponStmt.get(couponRaw);
-    if (!influencer) {
+    if (paidAtRaw && !entry.rawDate) {
+      entry.rawDate = formatShopifyPaidAtDate(paidAtRaw);
+    }
+    if (couponRaw && !entry.cupom) {
+      entry.cupom = couponRaw;
+    }
+
+    if (!skuRaw && !quantityRaw) {
       continue;
     }
 
-    const subtotalRaw = stripBom(cells[subtotalIndex] || '').trim();
-    const subtotalParsed = parseImportDecimal(subtotalRaw);
-    if (subtotalParsed.error || subtotalParsed.value <= 0) {
-      continue;
-    }
+    const quantity = Number(quantityRaw);
+    const skuKey = skuRaw ? skuRaw.toLowerCase() : '';
+    const pointsPerUnit = skuKey ? skuPointsMap.get(skuKey) ?? null : null;
 
-    let discountValue = 0;
-    let discountRaw = '';
-    if (discountIndex >= 0 && discountIndex < cells.length) {
-      discountRaw = stripBom(cells[discountIndex] || '').trim();
-      const parsed = parseImportDecimal(discountRaw);
-      if (!parsed.error) {
-        discountValue = Math.abs(parsed.value);
-      }
-    }
-
-    const grossValue = roundCurrency(subtotalParsed.value + discountValue);
-
-    entries.push({
-      line: rowIndex + 1,
-      orderNumber: orderRaw,
-      cupom: couponRaw,
-      rawDate: formatShopifyPaidAtDate(paidAtRaw),
-      rawGross: String(grossValue),
-      rawDiscount: discountValue ? String(discountValue) : '0'
+    entry.skuDetails.push({
+      sku: skuRaw,
+      quantityRaw,
+      quantity: Number.isFinite(quantity) ? quantity : null,
+      pointsPerUnit,
+      points:
+        Number.isFinite(quantity) && pointsPerUnit != null
+          ? roundPoints(quantity * pointsPerUnit)
+          : null,
+      line: rowIndex + 1
     });
   }
 
-  if (!entries.length) {
+  const entries = Array.from(entryMap.values()).map((entry) => {
+    const details = entry.skuDetails.map((detail) => {
+      let quantity = detail.quantity;
+      if (quantity == null) {
+        const parsed = Number(String(detail.quantityRaw || '').replace(',', '.'));
+        quantity = Number.isFinite(parsed) ? parsed : null;
+      }
+      const pointsPerUnit = detail.pointsPerUnit != null ? Number(detail.pointsPerUnit) : null;
+      const computedPoints =
+        pointsPerUnit != null && quantity != null ? roundPoints(quantity * pointsPerUnit) : null;
+      return {
+        sku: detail.sku,
+        quantity,
+        quantityRaw: detail.quantityRaw,
+        pointsPerUnit,
+        points: computedPoints,
+        line: detail.line
+      };
+    });
+
+    const allPointsKnown = details.length > 0 && details.every((detail) => detail.points != null);
+    const totalPoints = allPointsKnown
+      ? details.reduce((sum, detail) => sum + (detail.points || 0), 0)
+      : null;
+
+    return {
+      line: entry.line,
+      orderNumber: entry.orderNumber,
+      cupom: entry.cupom || '',
+      rawDate: entry.rawDate || '',
+      rawPoints: totalPoints != null ? String(totalPoints) : '',
+      totalPoints,
+      skuDetails: details
+    };
+  });
+
+  const filteredEntries = entries.filter((entry) => entry && entry.orderNumber);
+  if (!filteredEntries.length) {
     return { error: 'Nenhum pedido valido foi encontrado no arquivo CSV informado.' };
   }
 
-  return { rows: entries };
+  return { rows: filteredEntries };
 };
 
 const analyzeSalesImport = (rawText) => {
@@ -1819,11 +1973,13 @@ const insertImportedSales = db.transaction((rows) => {
         influencer_id: row.influencerId,
         order_number: row.orderNumber,
         date: row.date,
-        gross_value: row.grossValue,
-        discount: row.discount,
-        net_value: row.netValue,
-        commission: row.commission
+        gross_value: 0,
+        discount: 0,
+        net_value: 0,
+        commission: pointsToBrl(row.points),
+        points: row.points
       });
+      persistSaleSkuDetails(result.lastInsertRowid, row.skuDetails || []);
       const sale = findSaleByIdStmt.get(result.lastInsertRowid);
       created.push(formatSaleRow(sale));
     });
@@ -1864,10 +2020,40 @@ const insertImportedInfluencers = db.transaction((rows) => {
   return created;
 });
 
+const formatSaleSkuDetailRow = (row) => {
+  if (!row) {
+    return null;
+  }
+
+  const quantity = Number(row.quantity ?? 0);
+  const pointsPerUnit = Number(row.points_per_unit ?? 0);
+  const points = Number(row.points ?? 0);
+  const pointsValue = pointsToBrl(points);
+
+  return {
+    id: row.id,
+    sale_id: row.sale_id,
+    sku: row.sku,
+    quantity,
+    points_per_unit: pointsPerUnit,
+    points,
+    points_value: pointsValue,
+    pointsValue,
+    created_at: row.created_at
+  };
+};
+
 const formatSaleRow = (row) => {
   const orderNumber = normalizeOrderNumber(
     row?.order_number ?? row?.orderNumber ?? row?.pedido ?? null
   );
+
+  const points = row?.points != null ? Number(row.points) : 0;
+  const pointsValue = pointsToBrl(points);
+  const skuDetails = listSaleSkuPointsStmt
+    .all(row?.id)
+    .map((detail) => formatSaleSkuDetailRow(detail))
+    .filter(Boolean);
 
   return {
     id: row.id,
@@ -1881,8 +2067,81 @@ const formatSaleRow = (row) => {
     discount: Number(row.discount),
     net_value: Number(row.net_value),
     commission: Number(row.commission),
+    points,
+    points_value: pointsValue,
+    pointsValue,
+    sku_details: skuDetails,
+    skuDetails,
     commission_rate: row.commission_rate != null ? Number(row.commission_rate) : 0,
     created_at: row.created_at
+  };
+};
+
+const persistSaleSkuDetails = (saleId, items = []) => {
+  if (!Number.isInteger(Number(saleId)) || Number(saleId) <= 0) {
+    return;
+  }
+
+  deleteSaleSkuPointsBySaleStmt.run(saleId);
+
+  if (!Array.isArray(items) || !items.length) {
+    return;
+  }
+
+  items.forEach((item) => {
+    if (!item) {
+      return;
+    }
+
+    const sku = trimString(item.sku ?? item.SKU ?? item.code);
+    if (!sku) {
+      return;
+    }
+
+    const quantityRaw =
+      item.quantity ?? item.qty ?? item.quantidade ?? item.quantityRaw ?? item.amount ?? 0;
+    const quantityNumber = Number(quantityRaw);
+    if (!Number.isFinite(quantityNumber) || quantityNumber < 0) {
+      return;
+    }
+    const quantity = Math.round(quantityNumber);
+    if (Math.abs(quantity - quantityNumber) > 0.0001) {
+      return;
+    }
+
+    const pointsPerUnitRaw = item.points_per_unit ?? item.pointsPerUnit ?? item.unitPoints ?? 0;
+    const pointsPerUnitNumber = Number(pointsPerUnitRaw);
+    const pointsPerUnit =
+      Number.isFinite(pointsPerUnitNumber) && pointsPerUnitNumber >= 0
+        ? roundPoints(pointsPerUnitNumber)
+        : 0;
+
+    const pointsRaw = item.points ?? item.totalPoints ?? item.pontos ?? 0;
+    const pointsNumber = Number(pointsRaw);
+    const points = Number.isFinite(pointsNumber) && pointsNumber >= 0 ? roundPoints(pointsNumber) : 0;
+
+    insertSaleSkuPointStmt.run({
+      sale_id: saleId,
+      sku,
+      quantity,
+      points_per_unit: pointsPerUnit,
+      points
+    });
+  });
+};
+
+const formatSkuPointRow = (row) => {
+  if (!row) {
+    return null;
+  }
+  return {
+    id: row.id,
+    sku: row.sku,
+    description: row.description || null,
+    points_per_unit: row.points_per_unit != null ? Number(row.points_per_unit) : 0,
+    active: row.active ? 1 : 0,
+    created_at: row.created_at,
+    updated_at: row.updated_at
   };
 };
 
@@ -2227,13 +2486,83 @@ const buildExtendedPlanResponse = (cycle, influencer, options = {}) => {
   };
 };
 
+const normalizeSaleSkuItems = (body) => {
+  const candidateArrays = [
+    Array.isArray(body?.skuDetails) ? body.skuDetails : null,
+    Array.isArray(body?.sku_items) ? body.sku_items : null,
+    Array.isArray(body?.items) ? body.items : null,
+    Array.isArray(body?.skus) ? body.skus : null,
+    Array.isArray(body?.itens) ? body.itens : null
+  ];
+
+  const source = candidateArrays.find((entry) => Array.isArray(entry)) || [];
+
+  if (!source.length) {
+    return { items: [], totalPoints: 0, errors: [] };
+  }
+
+  const items = [];
+  const errors = [];
+
+  source.forEach((rawItem, index) => {
+    if (!rawItem) {
+      return;
+    }
+
+    const positionLabel = `Item ${index + 1}`;
+    const sku = trimString(rawItem.sku ?? rawItem.SKU ?? rawItem.code ?? rawItem.codigo);
+    if (!sku) {
+      errors.push(`${positionLabel}: informe o SKU.`);
+      return;
+    }
+
+    const skuRecord = findSkuPointBySkuStmt.get(sku);
+    if (!skuRecord || !skuRecord.active) {
+      errors.push(`SKU ${sku} nao possui pontuacao cadastrada.`);
+      return;
+    }
+
+    const quantityRaw =
+      rawItem.quantity ?? rawItem.qty ?? rawItem.quantidade ?? rawItem.amount ?? rawItem.quantityRaw;
+    const quantityNumber = Number(quantityRaw);
+    if (!Number.isFinite(quantityNumber) || quantityNumber <= 0) {
+      errors.push(`${positionLabel}: quantidade invalida.`);
+      return;
+    }
+    const quantity = Math.round(quantityNumber);
+    if (Math.abs(quantity - quantityNumber) > 0.0001) {
+      errors.push(`${positionLabel}: quantidade deve ser um numero inteiro.`);
+      return;
+    }
+
+    const pointsPerUnit = roundPoints(Number(skuRecord.points_per_unit ?? 0));
+    const points = roundPoints(quantity * pointsPerUnit);
+
+    items.push({
+      sku: skuRecord.sku || sku,
+      quantity,
+      pointsPerUnit,
+      points
+    });
+  });
+
+  const totalPoints = items.reduce((sum, item) => sum + (item.points || 0), 0);
+
+  return { items, totalPoints, errors };
+};
+
 const normalizeSaleBody = (body) => {
   const orderNumberRaw = body?.orderNumber ?? body?.order_number ?? body?.pedido ?? body?.order;
   const orderNumber = orderNumberRaw == null ? '' : String(trimString(orderNumberRaw)).trim();
   const cupom = trimString(body?.cupom);
   const date = trimString(body?.date);
-  const grossRaw = body?.grossValue ?? body?.gross_value;
-  const discountRaw = body?.discount ?? body?.discountValue ?? body?.discount_value ?? 0;
+  const pointsRaw =
+    body?.points ??
+    body?.pointsValue ??
+    body?.points_value ??
+    body?.pontuacao ??
+    body?.pontuacaoTotal ??
+    body?.salePoints;
 
   if (!orderNumber) {
     return { error: { error: 'Informe o numero do pedido.' } };
@@ -2248,18 +2577,39 @@ const normalizeSaleBody = (body) => {
     return { error: { error: 'Informe uma data valida (YYYY-MM-DD).' } };
   }
 
-  const grossParsed = parseCurrency(grossRaw, 'Valor bruto');
-  if (grossParsed.error) {
-    return { error: { error: grossParsed.error } };
+  const { items, totalPoints, errors } = normalizeSaleSkuItems(body);
+  if (errors.length) {
+    return { error: { error: errors[0], details: errors } };
   }
 
-  const discountParsed = parseCurrency(discountRaw, 'Desconto');
-  if (discountParsed.error) {
-    return { error: { error: discountParsed.error } };
+  let pointsValue = null;
+  if (pointsRaw != null && pointsRaw !== '') {
+    const pointsParsed = parsePointsValue(pointsRaw, 'Pontos');
+    if (pointsParsed.error) {
+      return { error: { error: pointsParsed.error } };
+    }
+    pointsValue = pointsParsed.value;
   }
 
-  if (discountParsed.value > grossParsed.value) {
-    return { error: { error: 'Desconto nao pode ser maior que o valor bruto.' } };
+  if (items.length) {
+    if (pointsValue != null && pointsValue !== totalPoints) {
+      return {
+        error: {
+          error: 'A pontuacao informada nao corresponde ao total calculado pelos SKUs.',
+          details: ['Ajuste os pontos ou os itens cadastrados para prosseguir.']
+        }
+      };
+    }
+    pointsValue = totalPoints;
+  }
+
+  if (pointsValue == null) {
+    return {
+      error: {
+        error: 'Informe a pontuacao da venda ou cadastre pelo menos um SKU valido.',
+        details: ['Adicione itens com SKU cadastrado para calcular os pontos automaticamente.']
+      }
+    };
   }
 
   return {
@@ -2267,8 +2617,44 @@ const normalizeSaleBody = (body) => {
       orderNumber,
       cupom,
       date,
-      grossValue: grossParsed.value,
-      discount: discountParsed.value
+      points: pointsValue,
+      items
+    }
+  };
+};
+
+const normalizeSkuPointsPayload = (body) => {
+  const skuRaw = body?.sku ?? body?.SKU ?? body?.code;
+  const sku = trimString(skuRaw);
+  if (!sku) {
+    return { error: { error: 'Informe o SKU.' } };
+  }
+
+  const description = trimString(body?.description ?? body?.descricao ?? body?.name) || null;
+  const pointsRaw =
+    body?.points_per_unit ??
+    body?.pointsPerUnit ??
+    body?.points ??
+    body?.pontuacao ??
+    body?.pontuacao_por_unidade;
+  const pointsParsed = parsePointsValue(pointsRaw, 'Pontos por unidade');
+  if (pointsParsed.error) {
+    return { error: { error: pointsParsed.error } };
+  }
+
+  let active = 1;
+  if (body?.active != null) {
+    active = body.active ? 1 : 0;
+  } else if (body?.ativo != null) {
+    active = body.ativo ? 1 : 0;
+  }
+
+  return {
+    data: {
+      sku,
+      description,
+      points_per_unit: pointsParsed.value,
+      active
     }
   };
 };
@@ -3216,8 +3602,18 @@ app.get('/influencer/dashboard', authenticate, verificarAceite, (req, res) => {
     .slice(0, 15)
     .map((script) => ({ id: script.id, titulo: script.titulo, descricao: script.descricao }));
 
-  const salesSummary = salesSummaryStmt.get(influencer.id) || { total_commission: 0 };
-  const commission = summarizeCommission(salesSummary.total_commission || 0, validatedDays);
+  const salesSummary = salesSummaryStmt.get(influencer.id) || { total_points: 0 };
+  const commissionSummary = summarizePoints(salesSummary.total_points || 0, validatedDays);
+  const commission = {
+    basePoints: commissionSummary.basePoints,
+    totalPoints: commissionSummary.totalPoints,
+    multiplier: commissionSummary.multiplier,
+    label: commissionSummary.label,
+    validatedDays: commissionSummary.validatedDays,
+    baseValue: pointsToBrl(commissionSummary.basePoints),
+    totalValue: pointsToBrl(commissionSummary.totalPoints),
+    pointValue: POINT_VALUE_BRL
+  };
   const nextPlan = plans.find((plan) => plan.scheduled_date >= todayIso) || null;
 
   return res.status(200).json({
@@ -3236,7 +3632,8 @@ app.get('/influencer/dashboard', authenticate, verificarAceite, (req, res) => {
       pendingValidations,
       multiplier: commission.multiplier,
       multiplierLabel: commission.label,
-      estimatedCommission: commission.total
+      estimatedCommission: commission.totalValue,
+      estimatedPoints: commission.totalPoints
     },
     commission,
     alerts,
@@ -3380,8 +3777,10 @@ app.post('/master/cycles/:id/close', authenticate, authorizeMaster, (req, res) =
       const validatedDays = Number(validatedRow.total) || 0;
       const plannedDays = Number(plannedRow.total) || 0;
 
-      const salesSummary = salesSummaryStmt.get(influencer.id) || { total_commission: 0 };
-      const commissionSummary = summarizeCommission(salesSummary.total_commission || 0, validatedDays);
+      const salesSummary = salesSummaryStmt.get(influencer.id) || { total_points: 0 };
+      const commissionSummary = summarizePoints(salesSummary.total_points || 0, validatedDays);
+      const baseValue = pointsToBrl(commissionSummary.basePoints);
+      const totalValue = pointsToBrl(commissionSummary.totalPoints);
       const validatedPlans = listValidatedPlansStmt.all(cycle.id, influencer.id) || [];
       const validationSummary = validatedPlans.length ? JSON.stringify(validatedPlans) : null;
 
@@ -3390,8 +3789,10 @@ app.post('/master/cycles/:id/close', authenticate, authorizeMaster, (req, res) =
         influencer_id: influencer.id,
         validated_days: validatedDays,
         multiplier: commissionSummary.multiplier,
-        base_commission: commissionSummary.base,
-        total_commission: commissionSummary.total,
+        base_commission: baseValue,
+        total_commission: totalValue,
+        base_points: commissionSummary.basePoints,
+        total_points: commissionSummary.totalPoints,
         deliveries_planned: plannedDays,
         deliveries_completed: validatedDays,
         validation_summary: validationSummary
@@ -3406,8 +3807,10 @@ app.post('/master/cycles/:id/close', authenticate, authorizeMaster, (req, res) =
         influencer_nome: influencer.nome,
         validated_days: validatedDays,
         multiplier: commissionSummary.multiplier,
-        total_commission: commissionSummary.total,
-        base_commission: commissionSummary.base,
+        total_commission: totalValue,
+        base_commission: baseValue,
+        total_points: commissionSummary.totalPoints,
+        base_points: commissionSummary.basePoints,
         deliveries_planned: plannedDays,
         deliveries_completed: validatedDays
       });
@@ -3461,6 +3864,99 @@ app.post('/scripts', authenticate, authorizeMaster, (req, res) => {
   }
 });
 
+app.get('/sku-points', authenticate, authorizeMaster, (req, res) => {
+  try {
+    const rows = listSkuPointsStmt.all().map((row) => formatSkuPointRow(row)).filter(Boolean);
+    return res.status(200).json(rows);
+  } catch (error) {
+    console.error('Erro ao listar pontos por SKU:', error);
+    return res.status(500).json({ error: 'Nao foi possivel listar os pontos por SKU.' });
+  }
+});
+
+app.post('/sku-points', authenticate, authorizeMaster, (req, res) => {
+  const { data, error } = normalizeSkuPointsPayload(req.body || {});
+  if (error) {
+    return res.status(400).json(error);
+  }
+
+  const existing = findSkuPointBySkuStmt.get(data.sku);
+  if (existing) {
+    return res.status(409).json({ error: 'SKU ja cadastrado.' });
+  }
+
+  try {
+    const result = insertSkuPointStmt.run({
+      sku: data.sku,
+      description: data.description,
+      points_per_unit: data.points_per_unit,
+      active: data.active ? 1 : 0
+    });
+    const row = findSkuPointByIdStmt.get(result.lastInsertRowid);
+    return res.status(201).json(formatSkuPointRow(row));
+  } catch (err) {
+    console.error('Erro ao cadastrar pontos de SKU:', err);
+    return res.status(500).json({ error: 'Nao foi possivel cadastrar o SKU.' });
+  }
+});
+
+app.put('/sku-points/:id', authenticate, authorizeMaster, (req, res) => {
+  const skuId = Number(req.params.id);
+  if (!Number.isInteger(skuId) || skuId <= 0) {
+    return res.status(400).json({ error: 'ID invalido.' });
+  }
+
+  const existing = findSkuPointByIdStmt.get(skuId);
+  if (!existing) {
+    return res.status(404).json({ error: 'Cadastro de pontos nao encontrado.' });
+  }
+
+  const { data, error } = normalizeSkuPointsPayload(req.body || {});
+  if (error) {
+    return res.status(400).json(error);
+  }
+
+  const duplicate = findSkuPointBySkuStmt.get(data.sku);
+  if (duplicate && duplicate.id !== skuId) {
+    return res.status(409).json({ error: 'SKU ja cadastrado.' });
+  }
+
+  try {
+    updateSkuPointStmt.run({
+      id: skuId,
+      sku: data.sku,
+      description: data.description,
+      points_per_unit: data.points_per_unit,
+      active: data.active ? 1 : 0
+    });
+    const row = findSkuPointByIdStmt.get(skuId);
+    return res.status(200).json(formatSkuPointRow(row));
+  } catch (err) {
+    console.error('Erro ao atualizar pontos de SKU:', err);
+    return res.status(500).json({ error: 'Nao foi possivel atualizar o SKU.' });
+  }
+});
+
+app.delete('/sku-points/:id', authenticate, authorizeMaster, (req, res) => {
+  const skuId = Number(req.params.id);
+  if (!Number.isInteger(skuId) || skuId <= 0) {
+    return res.status(400).json({ error: 'ID invalido.' });
+  }
+
+  const existing = findSkuPointByIdStmt.get(skuId);
+  if (!existing) {
+    return res.status(404).json({ error: 'Cadastro de pontos nao encontrado.' });
+  }
+
+  try {
+    deleteSkuPointStmt.run(skuId);
+    return res.status(200).json({ message: 'Cadastro de pontos removido com sucesso.' });
+  } catch (err) {
+    console.error('Erro ao remover pontos de SKU:', err);
+    return res.status(500).json({ error: 'Nao foi possivel remover o SKU.' });
+  }
+});
+
 app.post('/sales', authenticate, authorizeMaster, (req, res) => {
   const { data, error } = normalizeSaleBody(req.body || {});
   if (error) {
@@ -3477,18 +3973,18 @@ app.post('/sales', authenticate, authorizeMaster, (req, res) => {
     return res.status(409).json({ error: 'Ja existe uma venda com esse numero de pedido.' });
   }
 
-  const { netValue, commissionValue } = computeSaleTotals(data.grossValue, data.discount, influencer.commission_rate || 0);
-
   try {
     const result = insertSaleStmt.run({
       influencer_id: influencer.id,
       order_number: data.orderNumber,
       date: data.date,
-      gross_value: data.grossValue,
-      discount: data.discount,
-      net_value: netValue,
-      commission: commissionValue
+      gross_value: 0,
+      discount: 0,
+      net_value: 0,
+      commission: pointsToBrl(data.points),
+      points: data.points
     });
+    persistSaleSkuDetails(result.lastInsertRowid, data.items || []);
     const created = findSaleByIdStmt.get(result.lastInsertRowid);
     return res.status(201).json(formatSaleRow(created));
   } catch (err) {
@@ -3526,20 +4022,20 @@ app.put('/sales/:id', authenticate, authorizeMaster, (req, res) => {
     return res.status(409).json({ error: 'Ja existe uma venda com esse numero de pedido.' });
   }
 
-  const { netValue, commissionValue } = computeSaleTotals(data.grossValue, data.discount, influencer.commission_rate || 0);
-
   try {
     updateSaleStmt.run({
       id: saleId,
       influencer_id: influencer.id,
       order_number: data.orderNumber,
       date: data.date,
-      gross_value: data.grossValue,
-      discount: data.discount,
-      net_value: netValue,
-      commission: commissionValue
+      gross_value: 0,
+      discount: 0,
+      net_value: 0,
+      commission: pointsToBrl(data.points),
+      points: data.points
     });
 
+    persistSaleSkuDetails(saleId, data.items || []);
     const updated = findSaleByIdStmt.get(saleId);
     return res.status(200).json(formatSaleRow(updated));
   } catch (err) {
@@ -3578,13 +4074,15 @@ app.get('/sales/summary/:influencerId', authenticate, verificarAceite, (req, res
   }
 
   try {
-    const summary = salesSummaryStmt.get(influencer.id);
+    const summary = salesSummaryStmt.get(influencer.id) || { total_points: 0 };
+    const totalPoints = Number(summary.total_points || 0);
     return res.status(200).json({
       influencer_id: influencer.id,
       cupom: influencer.cupom,
       commission_rate: influencer.commission_rate != null ? Number(influencer.commission_rate) : 0,
-      total_net: Number(summary.total_net),
-      total_commission: Number(summary.total_commission)
+      total_points: totalPoints,
+      total_points_value: pointsToBrl(totalPoints),
+      point_value_brl: POINT_VALUE_BRL
     });
   } catch (err) {
     console.error('Erro ao obter resumo de vendas:', err);
@@ -3617,7 +4115,8 @@ app.get('/influenciadoras/consulta', authenticate, authorizeMaster, (req, res) =
       cupom: row.cupom,
       commission_rate: row.commission_rate != null ? Number(row.commission_rate) : 0,
       vendas_count: Number(row.vendas_count || 0),
-      vendas_total: roundCurrency(row.vendas_total || 0)
+      vendas_total_points: Number(row.vendas_total || 0),
+      vendas_total: pointsToBrl(row.vendas_total || 0)
     }));
     return res.status(200).json(formatted);
   } catch (error) {
