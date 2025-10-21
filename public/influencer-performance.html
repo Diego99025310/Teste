@@ -2,7 +2,10 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0"
+    />
     <title>Desempenho da Influenciadora | HidraPink</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -10,33 +13,47 @@
       href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="/style.css" />
-    <script defer src="/main.js"></script>
+    <link rel="stylesheet" href="/styles/plan.css" />
+    <link rel="stylesheet" href="/styles/influencer-performance.css" />
   </head>
   <body data-page="influencer-performance">
-    <div class="performance-shell">
-      <header class="page-topbar">
-        <div class="page-topbar__group">
+    <div class="container">
+      <header class="header">
+        <div class="header__left">
           <a class="back-link" href="influencer.html">Voltar</a>
-          <div class="page-topbar__titles">
+          <div class="header__titles">
             <h1>Desempenho</h1>
-            <p class="page-topbar__subtitle">Acompanhe seus resultados e comissões.</p>
+            <p class="subtitle">Acompanhe seus resultados e comissões.</p>
           </div>
         </div>
-        <button type="button" class="logout-btn" data-action="logout" aria-label="Sair">
+        <button
+          type="button"
+          class="logout-btn"
+          data-action="logout"
+          aria-label="Sair"
+        >
           <span aria-hidden="true">Sair</span>
         </button>
       </header>
 
-      <main class="performance-main" aria-labelledby="performance-title">
+      <main class="performance-content" aria-labelledby="performance-title">
         <section class="performance-card" aria-labelledby="performance-title">
           <div class="card-headline">
             <h2 id="performance-title">📊 Desempenho</h2>
             <p>Visualize os resultados das suas campanhas e comissões.</p>
           </div>
 
-          <div class="performance-summary" id="influencerSalesSummary" aria-live="polite"></div>
-          <p id="influencerSalesMessage" class="message" hidden data-auto-hide="true"></p>
+          <div
+            class="performance-summary"
+            id="influencerSalesSummary"
+            aria-live="polite"
+          ></div>
+          <p
+            id="influencerSalesMessage"
+            class="message"
+            hidden
+            data-auto-hide="true"
+          ></p>
 
           <div class="table-wrapper">
             <table id="influencerSalesTable">
@@ -53,12 +70,15 @@
           </div>
         </section>
       </main>
-
-      <div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="true"></div>
-
-      <footer class="site-footer">
-        © 2024 HidraPink. Feito com carinho para a comunidade Pinklover.
-      </footer>
     </div>
+
+    <div
+      id="toast-container"
+      class="toast-container"
+      aria-live="polite"
+      aria-atomic="true"
+    ></div>
+
+    <script src="/main.js"></script>
   </body>
 </html>

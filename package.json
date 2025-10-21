@@ -4,8 +4,7 @@
     "main": "index.js",
     "scripts": {
         "test": "node --test",
-        "start": "node src/server.js",
-        "dev": "vite"
+        "start": "node src/server.js"
     },
     "keywords": [],
     "author": "",
@@ -18,7 +17,6 @@
         "jsonwebtoken": "^9.0.2"
     },
     "devDependencies": {
-        "supertest": "^7.1.4",
-        "vite": "^5.1.0"
+        "supertest": "^7.1.4"
     }
 }
