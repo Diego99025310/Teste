@@ -114,6 +114,16 @@ body[data-page='influencer-performance'] table {
   min-width: 30rem;
 }
 
+body[data-page='influencer-performance'] #influencerSalesTable {
+  table-layout: fixed;
+}
+
+body[data-page='influencer-performance'] #influencerSalesTable th,
+body[data-page='influencer-performance'] #influencerSalesTable td {
+  width: calc(100% / 3);
+  word-break: break-word;
+}
+
 body[data-page='influencer-performance'] th,
 body[data-page='influencer-performance'] td {
   text-align: left;

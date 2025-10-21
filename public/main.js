@@ -4094,28 +4094,6 @@
       return parsed != null && parsed >= 0 ? parsed : 0;
     };
 
-    const resolveSalePointsValue = (sale) => {
-      const rawValue = findFirstValue([
-        sale.points_value,
-        sale.pointsValue,
-        sale.total_points_value,
-        sale.valor_pontos,
-        sale.valorPontos,
-        sale.commission,
-        sale.commission_value,
-        sale.valor_comissao,
-        sale.comissao,
-        sale.commissionValue,
-        sale.commissionAmount
-      ]);
-      let parsed = parseToNumberOrNull(rawValue);
-      if (parsed == null || parsed < 0) {
-        const points = resolveSalePoints(sale);
-        parsed = points * POINT_VALUE_BRL;
-      }
-      return parsed >= 0 ? parsed : 0;
-    };
-
     const renderSalesSummary = (rows) => {
       if (!salesSummaryEl) return;
       salesSummaryEl.innerHTML = '';
@@ -4125,7 +4103,6 @@
 
       const totalOrders = rows.length;
       const totalPoints = rows.reduce((sum, sale) => sum + resolveSalePoints(sale), 0);
-      const totalValue = rows.reduce((sum, sale) => sum + resolveSalePointsValue(sale), 0);
 
       const ordersHelper = totalOrders === 1 ? 'pedido registrado' : 'pedidos registrados';
 
@@ -4139,11 +4116,6 @@
           label: 'Pontos acumulados',
           value: formatInteger(totalPoints),
           helper: 'Total sem aplicar o multiplicador'
-        },
-        {
-          label: 'Valor estimado',
-          value: formatCurrency(totalValue),
-          helper: `Cada ponto vale ${formatCurrency(POINT_VALUE_BRL)}`
         }
       ];
 
