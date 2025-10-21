@@ -2,6 +2,7 @@
   'use strict';
 
   const API_BASE = '';
+  const POINT_VALUE_BRL = 0.1;
   const storageKeys = {
     token: 'token',
     role: 'role',
@@ -551,6 +552,19 @@
     return Number.isFinite(parsed) ? parsed : 0;
   };
 
+  const parseToNumberOrNull = (value) => {
+    if (value == null || value === '') {
+      return null;
+    }
+    if (typeof value === 'string') {
+      const normalized = value.replace(/\./g, '').replace(',', '.');
+      const parsed = Number(normalized);
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+
   const formatCurrency = (value) => currencyFormatter.format(parseToNumber(value));
 
   const integerFormatter = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 });
@@ -713,17 +727,19 @@
     ];
 
     if (summary) {
+      const totalPoints = Number(summary.total_points || 0);
+      const totalValue = Number(summary.total_points_value || 0);
       metrics.push(
         {
-          label: 'Total em vendas',
-          value: formatCurrency(summary.total_net),
-          helper: 'Valor líquido acumulado',
+          label: 'Pontos acumulados',
+          value: formatInteger(totalPoints),
+          helper: 'Antes do multiplicador',
           icon: 'revenue'
         },
         {
-          label: 'Sua comissão',
-          value: formatCurrency(summary.total_commission),
-          helper: 'Estimativa atual',
+          label: 'Valor estimado',
+          value: formatCurrency(totalValue),
+          helper: `Cada ponto vale ${formatCurrency(POINT_VALUE_BRL)}`,
           icon: 'commission'
         }
       );
@@ -2291,10 +2307,10 @@
     const saleOrderInput = form?.elements.orderNumber || form?.elements.order_number || null;
     const saleCouponSelect = document.getElementById('saleCouponSelect');
     const saleDateInput = form?.elements.saleDate || null;
-    const saleGrossInput = form?.elements.grossValue || null;
-    const saleDiscountInput = form?.elements.discountValue || null;
-    const saleNetInput = form?.elements.netValue || null;
-    const saleCommissionInput = form?.elements.commissionValue || null;
+    const salePointsInput =
+      form?.elements.points || form?.elements.pontos || form?.elements.salePoints || null;
+    const salePointsValueInput =
+      form?.elements.pointsValue || form?.elements.points_value || form?.elements.valor || null;
     const cancelSaleEditButton = document.getElementById('cancelSaleEditButton');
     const reloadSalesButton = document.getElementById('reloadSalesButton');
     const salesTableBody = document.querySelector('#salesTable tbody');
@@ -2324,15 +2340,10 @@
     };
 
     const updateSaleComputedFields = () => {
-      if (!saleGrossInput || !saleDiscountInput || !saleNetInput || !saleCommissionInput) return;
-      const gross = Number(saleGrossInput.value || 0);
-      const discount = Number(saleDiscountInput.value || 0);
-      const influencer = getInfluencerByCoupon(saleCouponSelect?.value || '');
-      const commissionRate = influencer?.commission_rate != null ? Number(influencer.commission_rate) : 0;
-      const net = Math.max(0, gross - Math.max(0, discount));
-      const commission = net * (commissionRate / 100);
-      saleNetInput.value = net ? net.toFixed(2) : '';
-      saleCommissionInput.value = commission ? commission.toFixed(2) : '';
+      if (!salePointsInput || !salePointsValueInput) return;
+      const points = Number(salePointsInput.value || 0);
+      const value = Number.isFinite(points) && points >= 0 ? points * POINT_VALUE_BRL : 0;
+      salePointsValueInput.value = value ? value.toFixed(2) : '';
     };
 
     const renderSalesTable = () => {
@@ -2341,7 +2352,7 @@
       if (!Array.isArray(sales) || sales.length === 0) {
         const emptyRow = document.createElement('tr');
         const emptyCell = document.createElement('td');
-        emptyCell.colSpan = 8;
+        emptyCell.colSpan = 6;
         emptyCell.className = 'empty';
         emptyCell.textContent = 'Nenhuma venda cadastrada.';
         emptyRow.appendChild(emptyCell);
@@ -2356,10 +2367,8 @@
           sale.order_number || sale.orderNumber || '-',
           sale.cupom || '-',
           sale.date || '-',
-          formatCurrency(sale.gross_value),
-          formatCurrency(sale.discount),
-          formatCurrency(sale.net_value),
-          formatCurrency(sale.commission)
+          formatInteger(sale.points),
+          formatCurrency(sale.points_value ?? sale.pointsValue ?? 0)
         ];
         cells.forEach((value) => {
           const td = document.createElement('td');
@@ -2402,7 +2411,7 @@
       if (!Array.isArray(rows) || !rows.length) {
         const emptyRow = document.createElement('tr');
         const emptyCell = document.createElement('td');
-        emptyCell.colSpan = 9;
+        emptyCell.colSpan = 7;
         emptyCell.className = 'empty';
         emptyCell.textContent = 'Nenhuma linha analisada.';
         emptyRow.appendChild(emptyCell);
@@ -2421,23 +2430,19 @@
         tr.appendChild(statusTd);
 
         const dateToDisplay = isValid ? formatDateToBR(row.date) : row.rawDate || '-';
-        const grossToDisplay = isValid
-          ? formatCurrency(row.grossValue)
-          : row.rawGross || (row.rawGross === '' ? '0' : '-');
-        const discountToDisplay = isValid
-          ? formatCurrency(row.discount)
-          : row.rawDiscount || (row.rawDiscount === '' ? '0' : '-');
-        const netToDisplay = isValid ? formatCurrency(row.netValue) : '-';
-        const commissionToDisplay = isValid ? formatCurrency(row.commission) : '-';
+        const pointsToDisplay = isValid
+          ? formatInteger(row.points)
+          : row.rawPoints || (row.rawPoints === '' ? '0' : '-');
+        const valueToDisplay = isValid
+          ? formatCurrency(row.points_value ?? row.pointsValue ?? (Number(row.points || 0) * POINT_VALUE_BRL))
+          : '-';
 
         const cells = [
           row.orderNumber || '-',
           row.cupom || '-',
           dateToDisplay,
-          grossToDisplay,
-          discountToDisplay,
-          netToDisplay,
-          commissionToDisplay
+          pointsToDisplay,
+          valueToDisplay
         ];
 
         cells.forEach((value) => {
@@ -2471,10 +2476,10 @@
         summaryItems.push(`Com erros (serao ignorados): ${analysis.errorCount}`);
       }
       if (analysis.validCount) {
-        summaryItems.push(`Valor bruto: ${formatCurrency(analysis.summary?.totalGross)}`);
-        summaryItems.push(`Descontos: ${formatCurrency(analysis.summary?.totalDiscount)}`);
-        summaryItems.push(`Liquido: ${formatCurrency(analysis.summary?.totalNet)}`);
-        summaryItems.push(`Comissao: ${formatCurrency(analysis.summary?.totalCommission)}`);
+        summaryItems.push(`Pontos acumulados: ${formatInteger(analysis.summary?.total_points || 0)}`);
+        summaryItems.push(
+          `Valor estimado: ${formatCurrency(analysis.summary?.total_points_value || 0)}`
+        );
       }
 
       summaryItems.forEach((text) => {
@@ -2514,9 +2519,15 @@
             'warning'
           );
         } else {
+          const summaryPoints = parseToNumber(analysis.summary?.total_points ?? 0);
+          const summaryValue = parseToNumber(
+            analysis.summary?.total_points_value ?? summaryPoints * POINT_VALUE_BRL
+          );
           setMessage(
             salesImportMessage,
-            `Todos os ${analysis.validCount} pedidos estao prontos para importacao.`,
+            `Todos os ${analysis.validCount} pedidos estao prontos para importacao. Pontos acumulados: ${formatInteger(
+              summaryPoints
+            )} (≈ ${formatCurrency(summaryValue)}).`,
             'success'
           );
         }
@@ -2557,6 +2568,7 @@
       const currentCoupon = saleCouponSelect?.value || '';
       form.reset();
       if (keepCoupon && saleCouponSelect) saleCouponSelect.value = currentCoupon;
+      if (salePointsValueInput) salePointsValueInput.value = '';
       form.dataset.mode = 'create';
       const submitBtn = form.querySelector('button[type="submit"]');
       if (submitBtn) submitBtn.textContent = 'Registrar venda';
@@ -2664,8 +2676,7 @@
     };
 
     saleCouponSelect?.addEventListener('change', handleCouponChange);
-    saleGrossInput?.addEventListener('input', updateSaleComputedFields);
-    saleDiscountInput?.addEventListener('input', updateSaleComputedFields);
+    salePointsInput?.addEventListener('input', updateSaleComputedFields);
 
     form?.addEventListener('submit', async (event) => {
       event.preventDefault();
@@ -2674,28 +2685,26 @@
       const orderNumber = (saleOrderInput?.value || '').trim();
       const coupon = (saleCouponSelect?.value || '').trim();
       const date = saleDateInput?.value || '';
-      const gross = Number(saleGrossInput?.value || 0);
-      const discount = Number(saleDiscountInput?.value || 0);
+      const points = Number(salePointsInput?.value || 0);
 
       flagInvalidField(saleOrderInput, Boolean(orderNumber));
       flagInvalidField(saleCouponSelect, Boolean(coupon));
       flagInvalidField(saleDateInput, Boolean(date));
-      flagInvalidField(saleGrossInput, Number.isFinite(gross) && gross >= 0);
-      flagInvalidField(saleDiscountInput, Number.isFinite(discount) && discount >= 0 && discount <= gross);
+      flagInvalidField(salePointsInput, Number.isFinite(points) && points >= 0);
 
-      const hasInvalidNumbers = !Number.isFinite(gross) || gross < 0 || !Number.isFinite(discount) || discount < 0 || discount > gross;
+      const hasInvalidNumbers = !Number.isFinite(points) || points < 0;
 
       if (!orderNumber || !coupon || !date || hasInvalidNumbers) {
         setMessage(
           messageEl,
-          'Verifique os campos da venda. Pedido é obrigatório e o desconto nao pode ser maior que o valor bruto.',
+          'Verifique os campos da venda. Pedido, cupom, data e pontos são obrigatórios.',
           'error'
         );
         focusFirstInvalidField(form);
         return;
       }
 
-      const payload = { orderNumber, cupom: coupon, date, grossValue: gross, discount };
+      const payload = { orderNumber, cupom: coupon, date, points };
       const endpoint = saleEditingId ? `/sales/${saleEditingId}` : '/sales';
       const method = saleEditingId ? 'PUT' : 'POST';
 
@@ -2738,8 +2747,7 @@
         }
         if (saleCouponSelect) saleCouponSelect.value = sale.cupom || '';
         if (saleDateInput) saleDateInput.value = sale.date || '';
-        if (saleGrossInput) saleGrossInput.value = sale.gross_value != null ? String(sale.gross_value) : '';
-        if (saleDiscountInput) saleDiscountInput.value = sale.discount != null ? String(sale.discount) : '';
+        if (salePointsInput) salePointsInput.value = sale.points != null ? String(sale.points) : '';
         updateSaleComputedFields();
         setMessage(messageEl, 'Editando venda selecionada.', 'info');
       } else if (action === 'delete') {
@@ -3691,6 +3699,46 @@
       }
     });
 
+    const findFirstValue = (candidates = []) =>
+      candidates.find((candidate) => candidate != null && candidate !== '');
+
+    const resolveSalePoints = (sale) => {
+      const pointsValue = findFirstValue([
+        sale.points,
+        sale.points_total,
+        sale.total_points,
+        sale.base_points,
+        sale.pontos,
+        sale.pontos_totais,
+        sale.pointsEarned,
+        sale.pointsAwarded
+      ]);
+      const parsed = parseToNumberOrNull(pointsValue);
+      return parsed != null && parsed >= 0 ? parsed : 0;
+    };
+
+    const resolveSalePointsValue = (sale) => {
+      const rawValue = findFirstValue([
+        sale.points_value,
+        sale.pointsValue,
+        sale.total_points_value,
+        sale.valor_pontos,
+        sale.valorPontos,
+        sale.commission,
+        sale.commission_value,
+        sale.valor_comissao,
+        sale.comissao,
+        sale.commissionValue,
+        sale.commissionAmount
+      ]);
+      let parsed = parseToNumberOrNull(rawValue);
+      if (parsed == null || parsed < 0) {
+        const points = resolveSalePoints(sale);
+        parsed = points * POINT_VALUE_BRL;
+      }
+      return parsed >= 0 ? parsed : 0;
+    };
+
     const renderSalesSummary = (rows) => {
       if (!salesSummaryEl) return;
       salesSummaryEl.innerHTML = '';
@@ -3699,40 +3747,51 @@
       }
 
       const totalOrders = rows.length;
-      const totalCommission = rows.reduce((sum, sale) => {
-        const candidates = [
-          sale.commission,
-          sale.commission_value,
-          sale.valor_comissao,
-          sale.comissao,
-          sale.commissionValue,
-          sale.commissionAmount
-        ];
-        const commissionValue = candidates.find((candidate) => candidate != null && candidate !== '');
-        return sum + parseToNumber(commissionValue);
-      }, 0);
+      const totalPoints = rows.reduce((sum, sale) => sum + resolveSalePoints(sale), 0);
+      const totalValue = rows.reduce((sum, sale) => sum + resolveSalePointsValue(sale), 0);
+
+      const ordersHelper = totalOrders === 1 ? 'pedido registrado' : 'pedidos registrados';
+
+      const metrics = [
+        {
+          label: 'Quantidade de pedidos',
+          value: formatInteger(totalOrders),
+          helper: ordersHelper
+        },
+        {
+          label: 'Pontos acumulados',
+          value: formatInteger(totalPoints),
+          helper: 'Total sem aplicar o multiplicador'
+        },
+        {
+          label: 'Valor estimado',
+          value: formatCurrency(totalValue),
+          helper: `Cada ponto vale ${formatCurrency(POINT_VALUE_BRL)}`
+        }
+      ];
 
       const fragment = document.createDocumentFragment();
+      metrics.forEach((metric) => {
+        const card = document.createElement('div');
+        card.className = 'metric-card';
 
-      const ordersMetric = document.createElement('div');
-      ordersMetric.className = 'metric-card';
-      const ordersLabel = document.createElement('h4');
-      ordersLabel.textContent = 'Quantidade de vendas';
-      const ordersValue = document.createElement('p');
-      ordersValue.textContent = formatInteger(totalOrders);
-      ordersMetric.appendChild(ordersLabel);
-      ordersMetric.appendChild(ordersValue);
-      fragment.appendChild(ordersMetric);
+        const labelEl = document.createElement('h4');
+        labelEl.textContent = metric.label;
+        card.appendChild(labelEl);
 
-      const commissionMetric = document.createElement('div');
-      commissionMetric.className = 'metric-card';
-      const commissionLabel = document.createElement('h4');
-      commissionLabel.textContent = 'Total de comissão';
-      const commissionValueEl = document.createElement('p');
-      commissionValueEl.textContent = formatCurrency(totalCommission);
-      commissionMetric.appendChild(commissionLabel);
-      commissionMetric.appendChild(commissionValueEl);
-      fragment.appendChild(commissionMetric);
+        const valueEl = document.createElement('p');
+        valueEl.textContent = metric.value;
+        card.appendChild(valueEl);
+
+        if (metric.helper) {
+          const helperEl = document.createElement('span');
+          helperEl.className = 'metric-helper';
+          helperEl.textContent = metric.helper;
+          card.appendChild(helperEl);
+        }
+
+        fragment.appendChild(card);
+      });
 
       salesSummaryEl.appendChild(fragment);
     };
@@ -3777,38 +3836,17 @@
         const rawDate = dateCandidates.find((candidate) => candidate != null && candidate !== '');
         const dateDisplay = rawDate ? formatDateToBR(rawDate) : '-';
 
-        const netCandidates = [
-          sale.net_value,
-          sale.netValue,
-          sale.valor_liquido,
-          sale.valorLiquidado,
-          sale.net,
-          sale.total_liquido,
-          sale.valor,
-          sale.value,
-          sale.amount,
-          sale.total,
-          sale.gross_value
-        ];
-        const netRaw = netCandidates.find((candidate) => candidate != null && candidate !== '');
-        const netDisplay = netRaw != null && netRaw !== '' ? formatCurrency(netRaw) : '-';
+        const pointsValue = resolveSalePoints(sale);
+        const pointsDisplay = formatInteger(pointsValue);
 
-        const commissionCandidates = [
-          sale.commission,
-          sale.commission_value,
-          sale.valor_comissao,
-          sale.comissao,
-          sale.commissionValue,
-          sale.commissionAmount
-        ];
-        const commissionRaw = commissionCandidates.find((candidate) => candidate != null && candidate !== '');
-        const commissionDisplay = commissionRaw != null && commissionRaw !== '' ? formatCurrency(commissionRaw) : '-';
+        const valueAmount = resolveSalePointsValue(sale);
+        const valueDisplay = formatCurrency(valueAmount);
 
         const cells = [
           { label: 'Número do pedido', value: orderDisplay },
           { label: 'Data', value: dateDisplay },
-          { label: 'Valor líquido', value: netDisplay },
-          { label: 'Comissão', value: commissionDisplay }
+          { label: 'Pontos', value: pointsDisplay },
+          { label: 'Valor estimado (R$)', value: valueDisplay }
         ];
         cells.forEach(({ label, value }) => {
           const td = document.createElement('td');
