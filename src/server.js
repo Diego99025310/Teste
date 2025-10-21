@@ -411,6 +411,23 @@ const listSalesByInfluencerStmt = db.prepare(`
 const salesSummaryStmt = db.prepare(
   'SELECT COALESCE(SUM(points), 0) AS total_points FROM sales WHERE influencer_id = ?'
 );
+const listSaleSkuPointsStmt = db.prepare(`
+  SELECT id,
+         sale_id,
+         sku,
+         quantity,
+         points_per_unit,
+         points,
+         created_at
+    FROM sale_sku_points
+   WHERE sale_id = ?
+   ORDER BY id
+`);
+const insertSaleSkuPointStmt = db.prepare(`
+  INSERT INTO sale_sku_points (sale_id, sku, quantity, points_per_unit, points)
+  VALUES (@sale_id, @sku, @quantity, @points_per_unit, @points)
+`);
+const deleteSaleSkuPointsBySaleStmt = db.prepare('DELETE FROM sale_sku_points WHERE sale_id = ?');
 const listInfluencerSummaryStmt = db.prepare(`
   SELECT i.id,
          i.nome,
@@ -1962,6 +1979,7 @@ const insertImportedSales = db.transaction((rows) => {
         commission: pointsToBrl(row.points),
         points: row.points
       });
+      persistSaleSkuDetails(result.lastInsertRowid, row.skuDetails || []);
       const sale = findSaleByIdStmt.get(result.lastInsertRowid);
       created.push(formatSaleRow(sale));
     });
@@ -2002,6 +2020,29 @@ const insertImportedInfluencers = db.transaction((rows) => {
   return created;
 });
 
+const formatSaleSkuDetailRow = (row) => {
+  if (!row) {
+    return null;
+  }
+
+  const quantity = Number(row.quantity ?? 0);
+  const pointsPerUnit = Number(row.points_per_unit ?? 0);
+  const points = Number(row.points ?? 0);
+  const pointsValue = pointsToBrl(points);
+
+  return {
+    id: row.id,
+    sale_id: row.sale_id,
+    sku: row.sku,
+    quantity,
+    points_per_unit: pointsPerUnit,
+    points,
+    points_value: pointsValue,
+    pointsValue,
+    created_at: row.created_at
+  };
+};
+
 const formatSaleRow = (row) => {
   const orderNumber = normalizeOrderNumber(
     row?.order_number ?? row?.orderNumber ?? row?.pedido ?? null
@@ -2009,6 +2050,10 @@ const formatSaleRow = (row) => {
 
   const points = row?.points != null ? Number(row.points) : 0;
   const pointsValue = pointsToBrl(points);
+  const skuDetails = listSaleSkuPointsStmt
+    .all(row?.id)
+    .map((detail) => formatSaleSkuDetailRow(detail))
+    .filter(Boolean);
 
   return {
     id: row.id,
@@ -2025,9 +2070,64 @@ const formatSaleRow = (row) => {
     points,
     points_value: pointsValue,
     pointsValue,
+    sku_details: skuDetails,
+    skuDetails,
     commission_rate: row.commission_rate != null ? Number(row.commission_rate) : 0,
     created_at: row.created_at
   };
+};
+
+const persistSaleSkuDetails = (saleId, items = []) => {
+  if (!Number.isInteger(Number(saleId)) || Number(saleId) <= 0) {
+    return;
+  }
+
+  deleteSaleSkuPointsBySaleStmt.run(saleId);
+
+  if (!Array.isArray(items) || !items.length) {
+    return;
+  }
+
+  items.forEach((item) => {
+    if (!item) {
+      return;
+    }
+
+    const sku = trimString(item.sku ?? item.SKU ?? item.code);
+    if (!sku) {
+      return;
+    }
+
+    const quantityRaw =
+      item.quantity ?? item.qty ?? item.quantidade ?? item.quantityRaw ?? item.amount ?? 0;
+    const quantityNumber = Number(quantityRaw);
+    if (!Number.isFinite(quantityNumber) || quantityNumber < 0) {
+      return;
+    }
+    const quantity = Math.round(quantityNumber);
+    if (Math.abs(quantity - quantityNumber) > 0.0001) {
+      return;
+    }
+
+    const pointsPerUnitRaw = item.points_per_unit ?? item.pointsPerUnit ?? item.unitPoints ?? 0;
+    const pointsPerUnitNumber = Number(pointsPerUnitRaw);
+    const pointsPerUnit =
+      Number.isFinite(pointsPerUnitNumber) && pointsPerUnitNumber >= 0
+        ? roundPoints(pointsPerUnitNumber)
+        : 0;
+
+    const pointsRaw = item.points ?? item.totalPoints ?? item.pontos ?? 0;
+    const pointsNumber = Number(pointsRaw);
+    const points = Number.isFinite(pointsNumber) && pointsNumber >= 0 ? roundPoints(pointsNumber) : 0;
+
+    insertSaleSkuPointStmt.run({
+      sale_id: saleId,
+      sku,
+      quantity,
+      points_per_unit: pointsPerUnit,
+      points
+    });
+  });
 };
 
 const formatSkuPointRow = (row) => {
@@ -2386,6 +2486,71 @@ const buildExtendedPlanResponse = (cycle, influencer, options = {}) => {
   };
 };
 
+const normalizeSaleSkuItems = (body) => {
+  const candidateArrays = [
+    Array.isArray(body?.skuDetails) ? body.skuDetails : null,
+    Array.isArray(body?.sku_items) ? body.sku_items : null,
+    Array.isArray(body?.items) ? body.items : null,
+    Array.isArray(body?.skus) ? body.skus : null,
+    Array.isArray(body?.itens) ? body.itens : null
+  ];
+
+  const source = candidateArrays.find((entry) => Array.isArray(entry)) || [];
+
+  if (!source.length) {
+    return { items: [], totalPoints: 0, errors: [] };
+  }
+
+  const items = [];
+  const errors = [];
+
+  source.forEach((rawItem, index) => {
+    if (!rawItem) {
+      return;
+    }
+
+    const positionLabel = `Item ${index + 1}`;
+    const sku = trimString(rawItem.sku ?? rawItem.SKU ?? rawItem.code ?? rawItem.codigo);
+    if (!sku) {
+      errors.push(`${positionLabel}: informe o SKU.`);
+      return;
+    }
+
+    const skuRecord = findSkuPointBySkuStmt.get(sku);
+    if (!skuRecord || !skuRecord.active) {
+      errors.push(`SKU ${sku} nao possui pontuacao cadastrada.`);
+      return;
+    }
+
+    const quantityRaw =
+      rawItem.quantity ?? rawItem.qty ?? rawItem.quantidade ?? rawItem.amount ?? rawItem.quantityRaw;
+    const quantityNumber = Number(quantityRaw);
+    if (!Number.isFinite(quantityNumber) || quantityNumber <= 0) {
+      errors.push(`${positionLabel}: quantidade invalida.`);
+      return;
+    }
+    const quantity = Math.round(quantityNumber);
+    if (Math.abs(quantity - quantityNumber) > 0.0001) {
+      errors.push(`${positionLabel}: quantidade deve ser um numero inteiro.`);
+      return;
+    }
+
+    const pointsPerUnit = roundPoints(Number(skuRecord.points_per_unit ?? 0));
+    const points = roundPoints(quantity * pointsPerUnit);
+
+    items.push({
+      sku: skuRecord.sku || sku,
+      quantity,
+      pointsPerUnit,
+      points
+    });
+  });
+
+  const totalPoints = items.reduce((sum, item) => sum + (item.points || 0), 0);
+
+  return { items, totalPoints, errors };
+};
+
 const normalizeSaleBody = (body) => {
   const orderNumberRaw = body?.orderNumber ?? body?.order_number ?? body?.pedido ?? body?.order;
   const orderNumber = orderNumberRaw == null ? '' : String(trimString(orderNumberRaw)).trim();
@@ -2412,9 +2577,39 @@ const normalizeSaleBody = (body) => {
     return { error: { error: 'Informe uma data valida (YYYY-MM-DD).' } };
   }
 
-  const pointsParsed = parsePointsValue(pointsRaw, 'Pontos');
-  if (pointsParsed.error) {
-    return { error: { error: pointsParsed.error } };
+  const { items, totalPoints, errors } = normalizeSaleSkuItems(body);
+  if (errors.length) {
+    return { error: { error: errors[0], details: errors } };
+  }
+
+  let pointsValue = null;
+  if (pointsRaw != null && pointsRaw !== '') {
+    const pointsParsed = parsePointsValue(pointsRaw, 'Pontos');
+    if (pointsParsed.error) {
+      return { error: { error: pointsParsed.error } };
+    }
+    pointsValue = pointsParsed.value;
+  }
+
+  if (items.length) {
+    if (pointsValue != null && pointsValue !== totalPoints) {
+      return {
+        error: {
+          error: 'A pontuacao informada nao corresponde ao total calculado pelos SKUs.',
+          details: ['Ajuste os pontos ou os itens cadastrados para prosseguir.']
+        }
+      };
+    }
+    pointsValue = totalPoints;
+  }
+
+  if (pointsValue == null) {
+    return {
+      error: {
+        error: 'Informe a pontuacao da venda ou cadastre pelo menos um SKU valido.',
+        details: ['Adicione itens com SKU cadastrado para calcular os pontos automaticamente.']
+      }
+    };
   }
 
   return {
@@ -2422,7 +2617,8 @@ const normalizeSaleBody = (body) => {
       orderNumber,
       cupom,
       date,
-      points: pointsParsed.value
+      points: pointsValue,
+      items
     }
   };
 };
@@ -3788,6 +3984,7 @@ app.post('/sales', authenticate, authorizeMaster, (req, res) => {
       commission: pointsToBrl(data.points),
       points: data.points
     });
+    persistSaleSkuDetails(result.lastInsertRowid, data.items || []);
     const created = findSaleByIdStmt.get(result.lastInsertRowid);
     return res.status(201).json(formatSaleRow(created));
   } catch (err) {
@@ -3838,6 +4035,7 @@ app.put('/sales/:id', authenticate, authorizeMaster, (req, res) => {
       points: data.points
     });
 
+    persistSaleSkuDetails(saleId, data.items || []);
     const updated = findSaleByIdStmt.get(saleId);
     return res.status(200).json(formatSaleRow(updated));
   } catch (err) {

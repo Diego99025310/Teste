@@ -28,8 +28,10 @@ const resetDb = () => {
   db.exec('DELETE FROM influencer_plans;');
   db.exec('DELETE FROM monthly_commissions;');
   db.exec('DELETE FROM monthly_cycles;');
+  db.exec('DELETE FROM sale_sku_points;');
   db.exec('DELETE FROM sales;');
   db.exec('DELETE FROM aceite_termos;');
+  db.exec('DELETE FROM sku_points;');
   db.exec('DELETE FROM influenciadoras;');
   db.prepare('DELETE FROM users WHERE email != ?').run(MASTER_EMAIL);
 };
@@ -687,6 +689,14 @@ test('fluxo completo de ciclo mensal com agendamento, validacao e fechamento', a
   assert.strictEqual(dashboard.body.progress.multiplier, 1.25);
   assert.strictEqual(dashboard.body.progress.pendingValidations, 0);
 
+  const skuCadastro = await cadastrarSkuPoints(masterToken, {
+    sku: 'SKU-PINK-BASE',
+    description: 'SKU para testes de ciclo',
+    points_per_unit: 100,
+    active: 1
+  });
+  assert.strictEqual(skuCadastro.status, 201);
+
   const saleResponse = await request(app)
     .post('/sales')
     .set('Authorization', `Bearer ${masterToken}`)
@@ -694,7 +704,7 @@ test('fluxo completo de ciclo mensal com agendamento, validacao e fechamento', a
       orderNumber: 'PINK-001',
       cupom: 'CICLOPINK',
       date: dates[0],
-      points: 100
+      items: [{ sku: 'SKU-PINK-BASE', quantity: 1 }]
     });
 
   assert.strictEqual(saleResponse.status, 201);
@@ -953,6 +963,22 @@ test('gestao de vendas vinculada a influenciadora', async () => {
   assert.strictEqual(createInfluencer.status, 201);
   const influencerId = createInfluencer.body.id;
 
+  const skuBase = await cadastrarSkuPoints(masterToken, {
+    sku: 'SKU-BASE',
+    description: 'Produto base',
+    points_per_unit: 100,
+    active: 1
+  });
+  assert.strictEqual(skuBase.status, 201);
+
+  const skuBonus = await cadastrarSkuPoints(masterToken, {
+    sku: 'SKU-BONUS',
+    description: 'Produto bonus',
+    points_per_unit: 50,
+    active: 1
+  });
+  assert.strictEqual(skuBonus.status, 201);
+
   const saleResponse = await request(app)
     .post('/sales')
     .set('Authorization', `Bearer ${masterToken}`)
@@ -960,13 +986,17 @@ test('gestao de vendas vinculada a influenciadora', async () => {
       orderNumber: 'PED-001',
       cupom: influencerPayload.cupom,
       date: '2025-10-01',
-      points: 100
+      items: [{ sku: 'SKU-BASE', quantity: 1 }]
     });
 
   assert.strictEqual(saleResponse.status, 201);
   assert.strictEqual(saleResponse.body.order_number, 'PED-001');
   assert.strictEqual(Number(saleResponse.body.points), 100);
   assert.strictEqual(Number(saleResponse.body.points_value), pointsToBrl(100));
+  assert.ok(Array.isArray(saleResponse.body.sku_details));
+  assert.strictEqual(saleResponse.body.sku_details.length, 1);
+  assert.strictEqual(saleResponse.body.sku_details[0].sku, 'SKU-BASE');
+  assert.strictEqual(Number(saleResponse.body.sku_details[0].quantity), 1);
   const saleId = saleResponse.body.id;
 
   const createdSaleRecord = selectSaleOrderNumberStmt.get(saleId);
@@ -979,6 +1009,8 @@ test('gestao de vendas vinculada a influenciadora', async () => {
   assert.strictEqual(listSales.status, 200);
   assert.strictEqual(listSales.body.length, 1);
   assert.strictEqual(Number(listSales.body[0].points), 100);
+  assert.ok(Array.isArray(listSales.body[0].sku_details));
+  assert.strictEqual(listSales.body[0].sku_details[0].sku, 'SKU-BASE');
 
   const summaryInitial = await request(app)
     .get(`/sales/summary/${influencerId}`)
@@ -1003,7 +1035,7 @@ test('gestao de vendas vinculada a influenciadora', async () => {
       orderNumber: 'PED-001',
       cupom: influencerPayload.cupom,
       date: '2025-10-04',
-      points: 80
+      items: [{ sku: 'SKU-BASE', quantity: 1 }]
     });
   assert.strictEqual(duplicateSale.status, 409);
   assert.match(duplicateSale.body.error, /numero de pedido/i);
@@ -1015,7 +1047,7 @@ test('gestao de vendas vinculada a influenciadora', async () => {
       orderNumber: 'PED-002',
       cupom: influencerPayload.cupom,
       date: '2025-10-05',
-      points: 50
+      items: [{ sku: 'SKU-BONUS', quantity: 1 }]
     });
   assert.strictEqual(secondSaleResponse.status, 201);
   const secondSaleId = secondSaleResponse.body.id;
@@ -1030,7 +1062,7 @@ test('gestao de vendas vinculada a influenciadora', async () => {
       orderNumber: 'PED-002',
       cupom: influencerPayload.cupom,
       date: '2025-10-06',
-      points: 120
+      items: [{ sku: 'SKU-BASE', quantity: 2 }]
     });
   assert.strictEqual(conflictingUpdate.status, 409);
   assert.match(conflictingUpdate.body.error, /numero de pedido/i);
@@ -1042,12 +1074,15 @@ test('gestao de vendas vinculada a influenciadora', async () => {
       orderNumber: 'PED-001-ALT',
       cupom: influencerPayload.cupom,
       date: '2025-10-02',
-      points: 200
+      items: [{ sku: 'SKU-BASE', quantity: 2 }]
     });
   assert.strictEqual(updateSale.status, 200);
   assert.strictEqual(updateSale.body.order_number, 'PED-001-ALT');
   assert.strictEqual(Number(updateSale.body.points), 200);
   assert.strictEqual(Number(updateSale.body.points_value), pointsToBrl(200));
+  assert.ok(Array.isArray(updateSale.body.sku_details));
+  assert.strictEqual(updateSale.body.sku_details.length, 1);
+  assert.strictEqual(Number(updateSale.body.sku_details[0].quantity), 2);
 
   const updatedSaleRecord = selectSaleOrderNumberStmt.get(saleId);
   assert.ok(updatedSaleRecord, 'Venda atualizada deve existir no banco de dados.');
@@ -1078,7 +1113,11 @@ test('gestao de vendas vinculada a influenciadora', async () => {
   const unauthorizedSale = await request(app)
     .post('/sales')
     .set('Authorization', `Bearer ${influencerToken}`)
-    .send({ cupom: influencerPayload.cupom, date: '2025-10-03', points: 40 });
+    .send({
+      cupom: influencerPayload.cupom,
+      date: '2025-10-03',
+      items: [{ sku: 'SKU-BASE', quantity: 1 }]
+    });
   assert.strictEqual(unauthorizedSale.status, 403);
 
   const influencerSalesView = await request(app)
@@ -1357,6 +1396,8 @@ test('importacao de vendas a partir de csv do shopify', async () => {
   assert.strictEqual(deboraSales.status, 200);
   assert.strictEqual(deboraSales.body.length, 1);
   assert.strictEqual(Number(deboraSales.body[0].points), 100);
+  assert.ok(Array.isArray(deboraSales.body[0].sku_details));
+  assert.strictEqual(deboraSales.body[0].sku_details[0].sku, 'SKU-30ML');
 
   const ingridSales = await request(app)
     .get(`/sales/${ingridResponse.body.id}`)
@@ -1364,6 +1405,8 @@ test('importacao de vendas a partir de csv do shopify', async () => {
   assert.strictEqual(ingridSales.status, 200);
   assert.strictEqual(ingridSales.body.length, 1);
   assert.strictEqual(Number(ingridSales.body[0].points), 400);
+  assert.ok(Array.isArray(ingridSales.body[0].sku_details));
+  assert.strictEqual(ingridSales.body[0].sku_details[0].sku, 'SKU-KIT');
 });
 
 test('importacao de csv real da shopify com pontos por SKU', async () => {
@@ -1504,6 +1547,12 @@ test('importacao de csv real da shopify com pontos por SKU', async () => {
   assert.strictEqual(
     salesResponse.body.length,
     analysis.perCoupon[couponWithValidOrders].count
+  );
+  assert.ok(
+    salesResponse.body.every(
+      (sale) => Array.isArray(sale.sku_details) && sale.sku_details.length > 0
+    ),
+    'Cada venda importada deve incluir o detalhamento de SKUs.'
   );
   const totalPointsForCoupon = salesResponse.body.reduce(
     (sum, sale) => sum + Number(sale.points || 0),

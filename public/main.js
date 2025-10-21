@@ -2315,6 +2315,8 @@
     const reloadSalesButton = document.getElementById('reloadSalesButton');
     const salesTableBody = document.querySelector('#salesTable tbody');
     const salesSummaryEl = document.getElementById('salesSummary');
+    const saleItemsTableBody = document.querySelector('#saleItemsTable tbody');
+    const addSaleItemButton = document.getElementById('addSaleItemButton');
     const salesImportFileInput = document.getElementById('salesImportFile');
     const salesImportTextarea = document.getElementById('salesImportInput');
     const analyzeSalesImportButton = document.getElementById('analyzeSalesImportButton');
@@ -2330,6 +2332,9 @@
     let sales = [];
     let currentSalesInfluencerId = null;
     let saleEditingId = null;
+    let skuCatalog = [];
+    let saleItems = [];
+    let nextSaleItemId = 1;
     let lastImportText = '';
     let lastImportAnalysis = null;
 
@@ -2341,9 +2346,287 @@
 
     const updateSaleComputedFields = () => {
       if (!salePointsInput || !salePointsValueInput) return;
-      const points = Number(salePointsInput.value || 0);
-      const value = Number.isFinite(points) && points >= 0 ? points * POINT_VALUE_BRL : 0;
-      salePointsValueInput.value = value ? value.toFixed(2) : '';
+      const totalPoints = saleItems.reduce(
+        (sum, item) => sum + (Number.isFinite(Number(item.points)) ? Number(item.points) : 0),
+        0
+      );
+      if (totalPoints > 0) {
+        salePointsInput.value = String(totalPoints);
+        salePointsValueInput.value = (totalPoints * POINT_VALUE_BRL).toFixed(2);
+      } else {
+        salePointsInput.value = '';
+        salePointsValueInput.value = '';
+      }
+    };
+
+    const findSkuByCode = (code) => {
+      if (!code) return null;
+      const normalized = String(code).trim().toLowerCase();
+      return (
+        skuCatalog.find((entry) => String(entry?.sku || '').trim().toLowerCase() === normalized) || null
+      );
+    };
+
+    const updateAddItemButtonState = () => {
+      if (!addSaleItemButton) return;
+      const hasActiveSku = skuCatalog.some((entry) => entry && entry.active);
+      addSaleItemButton.disabled = !hasActiveSku;
+    };
+
+    const recalcSaleItem = (item) => {
+      if (!item) return;
+      const quantityNumber = Number(item.quantity);
+      item.quantity = Number.isFinite(quantityNumber) && quantityNumber > 0 ? Math.round(quantityNumber) : 0;
+      const pointsPerUnitNumber = Number(item.pointsPerUnit);
+      item.pointsPerUnit =
+        Number.isFinite(pointsPerUnitNumber) && pointsPerUnitNumber >= 0
+          ? Math.round(pointsPerUnitNumber)
+          : 0;
+      item.points = item.quantity > 0 && item.pointsPerUnit > 0 ? item.quantity * item.pointsPerUnit : 0;
+    };
+
+    const applySkuToItem = (item, skuCode) => {
+      if (!item) return;
+      const trimmedSku = typeof skuCode === 'string' ? skuCode.trim() : '';
+      item.sku = trimmedSku;
+      const skuInfo = findSkuByCode(trimmedSku);
+      if (skuInfo) {
+        item.description = skuInfo.description || '';
+        item.pointsPerUnit = Number(skuInfo.points_per_unit ?? skuInfo.pointsPerUnit ?? 0);
+      } else {
+        item.description = '';
+      }
+      if (!item.quantity || item.quantity <= 0) {
+        item.quantity = 1;
+      }
+      recalcSaleItem(item);
+    };
+
+    const createSaleItem = (overrides = {}) => {
+      const item = {
+        id: nextSaleItemId,
+        sku: '',
+        description: '',
+        quantity: 1,
+        pointsPerUnit: 0,
+        points: 0,
+        ...overrides
+      };
+      nextSaleItemId += 1;
+
+      if (item.sku) {
+        const skuInfo = findSkuByCode(item.sku);
+        if (skuInfo) {
+          if (!overrides.description) {
+            item.description = skuInfo.description || '';
+          }
+          if (overrides.pointsPerUnit == null) {
+            item.pointsPerUnit = Number(skuInfo.points_per_unit ?? skuInfo.pointsPerUnit ?? 0);
+          }
+        }
+      }
+
+      if (overrides.pointsPerUnit != null) {
+        item.pointsPerUnit = Number(overrides.pointsPerUnit);
+      }
+
+      recalcSaleItem(item);
+
+      if (overrides.points != null && Number.isFinite(Number(overrides.points))) {
+        item.points = Number(overrides.points);
+      }
+
+      return item;
+    };
+
+    const renderSaleItemsTable = () => {
+      if (!saleItemsTableBody) return;
+      saleItemsTableBody.innerHTML = '';
+
+      if (!saleItems.length) {
+        const emptyRow = document.createElement('tr');
+        const emptyCell = document.createElement('td');
+        emptyCell.colSpan = 6;
+        emptyCell.className = 'empty';
+        emptyCell.textContent = skuCatalog.some((entry) => entry && entry.active)
+          ? 'Nenhum item adicionado.'
+          : 'Cadastre os SKUs para adicionar itens.';
+        emptyRow.appendChild(emptyCell);
+        saleItemsTableBody.appendChild(emptyRow);
+        updateSaleComputedFields();
+        return;
+      }
+
+      const activeSkus = skuCatalog.filter((entry) => entry && entry.active);
+      const fragment = document.createDocumentFragment();
+
+      saleItems.forEach((item) => {
+        const tr = document.createElement('tr');
+        tr.dataset.id = String(item.id);
+
+        const skuTd = document.createElement('td');
+        const skuSelect = document.createElement('select');
+        skuSelect.innerHTML = '<option value="">Selecione</option>';
+        activeSkus
+          .slice()
+          .sort((a, b) => String(a.sku || '').localeCompare(String(b.sku || '')))
+          .forEach((entry) => {
+            const option = document.createElement('option');
+            option.value = entry.sku;
+            option.textContent = entry.sku;
+            skuSelect.appendChild(option);
+          });
+        if (item.sku && !activeSkus.some((entry) => entry.sku === item.sku)) {
+          const inactiveOption = document.createElement('option');
+          inactiveOption.value = item.sku;
+          inactiveOption.textContent = `${item.sku} (inativo)`;
+          inactiveOption.disabled = true;
+          skuSelect.appendChild(inactiveOption);
+        }
+        skuSelect.value = item.sku || '';
+        skuTd.appendChild(skuSelect);
+
+        const descriptionTd = document.createElement('td');
+        const quantityTd = document.createElement('td');
+        const pointsPerUnitTd = document.createElement('td');
+        const pointsTd = document.createElement('td');
+
+        const qtyInput = document.createElement('input');
+        qtyInput.type = 'number';
+        qtyInput.min = '1';
+        qtyInput.step = '1';
+        qtyInput.value = item.quantity > 0 ? String(item.quantity) : '';
+        quantityTd.appendChild(qtyInput);
+
+        const actionsTd = document.createElement('td');
+        actionsTd.className = 'actions';
+        const removeButton = document.createElement('button');
+        removeButton.type = 'button';
+        removeButton.textContent = 'Remover';
+        actionsTd.appendChild(removeButton);
+
+        const updateRowDisplay = () => {
+          const skuInfo = findSkuByCode(item.sku);
+          const description = item.description || skuInfo?.description || '';
+          descriptionTd.textContent = description || '-';
+          pointsPerUnitTd.textContent = item.pointsPerUnit ? formatInteger(item.pointsPerUnit) : '-';
+          pointsTd.textContent = item.points ? formatInteger(item.points) : '0';
+        };
+
+        skuSelect.addEventListener('change', () => {
+          applySkuToItem(item, skuSelect.value);
+          if (item.quantity <= 0) {
+            item.quantity = 1;
+            qtyInput.value = '1';
+          }
+          updateRowDisplay();
+          updateSaleComputedFields();
+        });
+
+        qtyInput.addEventListener('input', () => {
+          const value = Number(qtyInput.value);
+          if (Number.isFinite(value) && value > 0) {
+            item.quantity = Math.round(value);
+          } else {
+            item.quantity = 0;
+          }
+          recalcSaleItem(item);
+          updateRowDisplay();
+          updateSaleComputedFields();
+        });
+
+        removeButton.addEventListener('click', () => {
+          saleItems = saleItems.filter((entry) => entry.id !== item.id);
+          renderSaleItemsTable();
+          updateSaleComputedFields();
+        });
+
+        tr.appendChild(skuTd);
+        tr.appendChild(descriptionTd);
+        tr.appendChild(quantityTd);
+        tr.appendChild(pointsPerUnitTd);
+        tr.appendChild(pointsTd);
+        tr.appendChild(actionsTd);
+
+        updateRowDisplay();
+
+        fragment.appendChild(tr);
+      });
+
+      saleItemsTableBody.appendChild(fragment);
+      updateSaleComputedFields();
+    };
+
+    const resetSaleItems = () => {
+      saleItems = [];
+      nextSaleItemId = 1;
+      renderSaleItemsTable();
+      updateSaleComputedFields();
+    };
+
+    const setSaleItemsFromDetails = (details) => {
+      nextSaleItemId = 1;
+      saleItems = [];
+      if (Array.isArray(details) && details.length) {
+        details.forEach((detail) => {
+          const item = createSaleItem({
+            sku: detail.sku,
+            quantity: Number(detail.quantity ?? detail.qty ?? detail.quantidade) || 1,
+            pointsPerUnit: Number(detail.points_per_unit ?? detail.pointsPerUnit ?? detail.unitPoints ?? 0),
+            points: Number(detail.points ?? detail.totalPoints ?? detail.pontos ?? 0)
+          });
+          saleItems.push(item);
+        });
+      }
+      renderSaleItemsTable();
+      updateSaleComputedFields();
+    };
+
+    const getSaleItemsPayload = () =>
+      saleItems
+        .filter((item) => item && item.sku && item.quantity > 0)
+        .map((item) => ({ sku: item.sku, quantity: item.quantity }));
+
+    const validateSaleItems = () => {
+      if (!saleItems.length) {
+        return { valid: false, message: 'Adicione ao menos um item com SKU cadastrado.' };
+      }
+      for (const item of saleItems) {
+        if (!item.sku) {
+          return { valid: false, message: 'Informe o SKU de todos os itens da venda.' };
+        }
+        if (!item.quantity || item.quantity <= 0) {
+          return { valid: false, message: 'Informe uma quantidade válida para cada item.' };
+        }
+        if (!findSkuByCode(item.sku)) {
+          return {
+            valid: false,
+            message: `O SKU ${item.sku} não está cadastrado ou está inativo. Ajuste os itens antes de salvar.`
+          };
+        }
+      }
+      return { valid: true };
+    };
+
+    const loadSkuCatalog = async () => {
+      try {
+        const rows = await apiFetch('/sku-points');
+        skuCatalog = Array.isArray(rows)
+          ? rows.map((row) => ({
+              ...row,
+              points_per_unit: Number(row.points_per_unit ?? row.pointsPerUnit ?? 0)
+            }))
+          : [];
+      } catch (error) {
+        skuCatalog = [];
+        setMessage(
+          messageEl,
+          error?.message || 'Nao foi possivel carregar os SKUs cadastrados. Verifique e tente novamente.',
+          'error'
+        );
+      }
+      updateAddItemButtonState();
+      renderSaleItemsTable();
     };
 
     const renderSalesTable = () => {
@@ -2375,6 +2658,15 @@
           td.textContent = value;
           tr.appendChild(td);
         });
+        if (Array.isArray(sale.sku_details) && sale.sku_details.length) {
+          const summary = sale.sku_details
+            .map((detail) => {
+              const quantity = Number(detail.quantity ?? detail.qty ?? detail.quantidade ?? 0);
+              return `${detail.sku || '-'} × ${formatInteger(quantity)}`;
+            })
+            .join('; ');
+          tr.title = `SKUs: ${summary}`;
+        }
         const actionTd = document.createElement('td');
         actionTd.className = 'actions';
         actionTd.innerHTML = `
@@ -2452,7 +2744,43 @@
         });
 
         const observationsTd = document.createElement('td');
-        observationsTd.textContent = row.errors?.length ? row.errors.join(' ') : '-';
+        const messages = [];
+        if (row.errors?.length) {
+          messages.push(row.errors.join(' '));
+        }
+        const skuDetailsSummary = Array.isArray(row.skuDetails) && row.skuDetails.length
+          ? row.skuDetails
+              .map((detail) => {
+                const quantity =
+                  detail.quantity != null
+                    ? formatInteger(detail.quantity)
+                    : detail.quantityRaw != null
+                      ? String(detail.quantityRaw)
+                      : '?';
+                const pointsValue =
+                  detail.points != null
+                    ? `${formatInteger(detail.points)} pts`
+                    : detail.pointsPerUnit != null && detail.quantity != null
+                      ? `${formatInteger(detail.quantity * detail.pointsPerUnit)} pts`
+                      : '?';
+                return `${detail.sku || '(sem SKU)'} × ${quantity} (${pointsValue})`;
+              })
+              .join('; ')
+          : null;
+        if (skuDetailsSummary) {
+          messages.push(`SKUs: ${skuDetailsSummary}`);
+        }
+        if (!messages.length) {
+          observationsTd.textContent = '-';
+        } else {
+          observationsTd.innerHTML = '';
+          messages.forEach((text, index) => {
+            const block = document.createElement('div');
+            block.textContent = text;
+            if (index > 0) block.className = 'note';
+            observationsTd.appendChild(block);
+          });
+        }
         tr.appendChild(observationsTd);
 
         fragment.appendChild(tr);
@@ -2569,11 +2897,12 @@
       form.reset();
       if (keepCoupon && saleCouponSelect) saleCouponSelect.value = currentCoupon;
       if (salePointsValueInput) salePointsValueInput.value = '';
+      if (salePointsInput) salePointsInput.value = '';
+      resetSaleItems();
       form.dataset.mode = 'create';
       const submitBtn = form.querySelector('button[type="submit"]');
       if (submitBtn) submitBtn.textContent = 'Registrar venda';
       form.querySelectorAll('[aria-invalid="true"]').forEach((el) => el.removeAttribute('aria-invalid'));
-      updateSaleComputedFields();
       if (clearMessage) setMessage(messageEl, '');
     };
 
@@ -2646,14 +2975,14 @@
       if (!influencer) {
         currentSalesInfluencerId = null;
         sales = [];
+        resetSaleForm({ clearMessage: false, keepCoupon: false });
         renderSalesTable();
         renderSalesSummary(null, { totalSales: 0 });
-        updateSaleComputedFields();
         setMessage(messageEl, 'Selecione um cupom para visualizar e registrar as vendas.', 'info');
         return;
       }
       currentSalesInfluencerId = influencer.id;
-      updateSaleComputedFields();
+      resetSaleForm({ clearMessage: false, keepCoupon: true });
       loadSalesForInfluencer(influencer.id, { showStatus: true });
     };
 
@@ -2676,7 +3005,18 @@
     };
 
     saleCouponSelect?.addEventListener('change', handleCouponChange);
-    salePointsInput?.addEventListener('input', updateSaleComputedFields);
+    addSaleItemButton?.addEventListener('click', () => {
+      if (!skuCatalog.some((entry) => entry && entry.active)) {
+        setMessage(
+          messageEl,
+          'Cadastre ao menos um SKU ativo para adicionar itens à venda.',
+          'warning'
+        );
+        return;
+      }
+      saleItems.push(createSaleItem());
+      renderSaleItemsTable();
+    });
 
     form?.addEventListener('submit', async (event) => {
       event.preventDefault();
@@ -2685,26 +3025,43 @@
       const orderNumber = (saleOrderInput?.value || '').trim();
       const coupon = (saleCouponSelect?.value || '').trim();
       const date = saleDateInput?.value || '';
-      const points = Number(salePointsInput?.value || 0);
 
       flagInvalidField(saleOrderInput, Boolean(orderNumber));
       flagInvalidField(saleCouponSelect, Boolean(coupon));
       flagInvalidField(saleDateInput, Boolean(date));
-      flagInvalidField(salePointsInput, Number.isFinite(points) && points >= 0);
 
-      const hasInvalidNumbers = !Number.isFinite(points) || points < 0;
+      const { valid: itemsValid, message: itemsError } = validateSaleItems();
 
-      if (!orderNumber || !coupon || !date || hasInvalidNumbers) {
-        setMessage(
-          messageEl,
-          'Verifique os campos da venda. Pedido, cupom, data e pontos são obrigatórios.',
-          'error'
-        );
+      if (!orderNumber || !coupon || !date || !itemsValid) {
+        if (!itemsValid && itemsError) {
+          setMessage(messageEl, itemsError, 'error');
+        } else {
+          setMessage(
+            messageEl,
+            'Verifique os campos da venda. Pedido, cupom, data e itens com SKU são obrigatórios.',
+            'error'
+          );
+        }
         focusFirstInvalidField(form);
         return;
       }
 
-      const payload = { orderNumber, cupom: coupon, date, points };
+      const itemsPayload = getSaleItemsPayload();
+      if (!itemsPayload.length) {
+        setMessage(
+          messageEl,
+          'Adicione ao menos um item com quantidade válida antes de salvar a venda.',
+          'error'
+        );
+        return;
+      }
+
+      const totalPoints = saleItems.reduce(
+        (sum, item) => sum + (Number.isFinite(Number(item.points)) ? Number(item.points) : 0),
+        0
+      );
+
+      const payload = { orderNumber, cupom: coupon, date, items: itemsPayload, points: totalPoints };
       const endpoint = saleEditingId ? `/sales/${saleEditingId}` : '/sales';
       const method = saleEditingId ? 'PUT' : 'POST';
 
@@ -2747,9 +3104,22 @@
         }
         if (saleCouponSelect) saleCouponSelect.value = sale.cupom || '';
         if (saleDateInput) saleDateInput.value = sale.date || '';
-        if (salePointsInput) salePointsInput.value = sale.points != null ? String(sale.points) : '';
-        updateSaleComputedFields();
-        setMessage(messageEl, 'Editando venda selecionada.', 'info');
+        if (salePointsInput) salePointsInput.value = '';
+        const details = Array.isArray(sale.sku_details)
+          ? sale.sku_details
+          : Array.isArray(sale.skuDetails)
+            ? sale.skuDetails
+            : [];
+        setSaleItemsFromDetails(details);
+        if (!details.length) {
+          setMessage(
+            messageEl,
+            'Venda sem detalhamento de SKUs. Adicione os itens antes de salvar.',
+            'warning'
+          );
+        } else {
+          setMessage(messageEl, 'Editando venda selecionada.', 'info');
+        }
       } else if (action === 'delete') {
         if (!window.confirm('Deseja realmente excluir esta venda?')) return;
         (async () => {
@@ -2777,6 +3147,13 @@
     reloadSalesButton?.addEventListener('click', () => {
       loadSalesForInfluencer(currentSalesInfluencerId, { showStatus: true });
     });
+
+    const initialize = async () => {
+      await loadSkuCatalog();
+      await loadInfluencersForSales();
+    };
+
+    initialize();
 
     analyzeSalesImportButton?.addEventListener('click', () => {
       if (!salesImportTextarea) return;
@@ -3955,6 +4332,207 @@
   };
 
 
+  const initMasterSkuPointsPage = () => {
+    if (!ensureAuth('master')) return;
+    attachLogoutButtons();
+
+    const form = document.getElementById('skuPointsForm');
+    const messageEl = document.getElementById('skuPointsMessage');
+    const skuInput = form?.elements.sku || null;
+    const descriptionInput = form?.elements.description || null;
+    const pointsInput = form?.elements.points || null;
+    const activeInput = form?.elements.active || null;
+    const cancelEditButton = document.getElementById('cancelSkuEditButton');
+    const reloadButton = document.getElementById('reloadSkuPointsButton');
+    const tableBody = document.querySelector('#skuPointsTable tbody');
+
+    addRealtimeValidation(form);
+
+    let skuPoints = [];
+    let editingId = null;
+
+    const resetForm = ({ clearMessage = false } = {}) => {
+      editingId = null;
+      if (form) {
+        form.reset();
+        form.dataset.mode = 'create';
+        const submitBtn = form.querySelector('button[type="submit"]');
+        if (submitBtn) submitBtn.textContent = 'Cadastrar SKU';
+        form.querySelectorAll('[aria-invalid="true"]').forEach((el) => el.removeAttribute('aria-invalid'));
+      }
+      if (activeInput) activeInput.checked = true;
+      if (clearMessage) setMessage(messageEl, '');
+    };
+
+    const renderTable = () => {
+      if (!tableBody) return;
+      tableBody.innerHTML = '';
+      if (!skuPoints.length) {
+        const emptyRow = document.createElement('tr');
+        const emptyCell = document.createElement('td');
+        emptyCell.colSpan = 5;
+        emptyCell.className = 'empty';
+        emptyCell.textContent = 'Nenhum SKU cadastrado ainda.';
+        emptyRow.appendChild(emptyCell);
+        tableBody.appendChild(emptyRow);
+        return;
+      }
+
+      const fragment = document.createDocumentFragment();
+      skuPoints.forEach((row) => {
+        const tr = document.createElement('tr');
+        tr.dataset.id = String(row.id);
+
+        const skuTd = document.createElement('td');
+        skuTd.textContent = row.sku || '-';
+        tr.appendChild(skuTd);
+
+        const descriptionTd = document.createElement('td');
+        descriptionTd.textContent = row.description || '-';
+        tr.appendChild(descriptionTd);
+
+        const pointsTd = document.createElement('td');
+        pointsTd.textContent = formatInteger(Number(row.points_per_unit ?? row.pointsPerUnit ?? 0));
+        tr.appendChild(pointsTd);
+
+        const statusTd = document.createElement('td');
+        statusTd.textContent = row.active ? 'Ativo' : 'Inativo';
+        statusTd.dataset.status = row.active ? 'active' : 'inactive';
+        tr.appendChild(statusTd);
+
+        const actionsTd = document.createElement('td');
+        actionsTd.className = 'actions';
+        actionsTd.innerHTML = `
+          <button type="button" data-action="edit">Editar</button>
+          <button type="button" data-action="delete">Excluir</button>
+        `;
+        tr.appendChild(actionsTd);
+
+        fragment.appendChild(tr);
+      });
+
+      tableBody.appendChild(fragment);
+    };
+
+    const loadSkuPoints = async ({ showStatus = true } = {}) => {
+      if (showStatus) setMessage(messageEl, 'Carregando SKUs...', 'info');
+      try {
+        const response = await apiFetch('/sku-points');
+        skuPoints = Array.isArray(response)
+          ? response.map((row) => ({
+              ...row,
+              points_per_unit: Number(row.points_per_unit ?? row.pointsPerUnit ?? 0),
+              active: row.active ? 1 : 0
+            }))
+          : [];
+        renderTable();
+        if (showStatus) setMessage(messageEl, 'SKUs carregados com sucesso.', 'success');
+      } catch (error) {
+        skuPoints = [];
+        renderTable();
+        setMessage(messageEl, error.message || 'Nao foi possivel carregar os SKUs cadastrados.', 'error');
+      }
+    };
+
+    form?.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      if (!form) return;
+
+      const skuValue = (skuInput?.value || '').trim();
+      const descriptionValue = (descriptionInput?.value || '').trim();
+      const pointsValue = Number(pointsInput?.value ?? pointsInput?.valueAsNumber ?? 0);
+      const activeValue = Boolean(activeInput?.checked);
+
+      flagInvalidField(skuInput, Boolean(skuValue));
+      flagInvalidField(pointsInput, Number.isFinite(pointsValue) && pointsValue >= 0);
+
+      if (!skuValue || !Number.isFinite(pointsValue) || pointsValue < 0) {
+        setMessage(messageEl, 'Informe o SKU e a pontuação por unidade.', 'error');
+        focusFirstInvalidField(form);
+        return;
+      }
+
+      const payload = {
+        sku: skuValue,
+        description: descriptionValue || undefined,
+        points_per_unit: Math.round(pointsValue),
+        active: activeValue ? 1 : 0
+      };
+
+      try {
+        if (editingId) {
+          await apiFetch(`/sku-points/${editingId}`, { method: 'PUT', body: payload });
+          setMessage(messageEl, 'SKU atualizado com sucesso.', 'success');
+        } else {
+          await apiFetch('/sku-points', { method: 'POST', body: payload });
+          setMessage(messageEl, 'SKU cadastrado com sucesso.', 'success');
+        }
+        resetForm({ clearMessage: false });
+        await loadSkuPoints({ showStatus: false });
+      } catch (error) {
+        if (error.status === 401) {
+          logout();
+          return;
+        }
+        setMessage(
+          messageEl,
+          error.message || 'Nao foi possivel salvar o cadastro de pontos para o SKU informado.',
+          'error'
+        );
+      }
+    });
+
+    tableBody?.addEventListener('click', (event) => {
+      const button = event.target.closest('button[data-action]');
+      if (!button) return;
+      const row = button.closest('tr[data-id]');
+      const id = Number(row?.dataset.id);
+      if (!Number.isInteger(id) || id <= 0) return;
+      const action = button.dataset.action;
+
+      if (action === 'edit') {
+        const target = skuPoints.find((entry) => entry.id === id);
+        if (!target) return;
+        editingId = id;
+        if (form) form.dataset.mode = 'edit';
+        const submitBtn = form?.querySelector('button[type="submit"]');
+        if (submitBtn) submitBtn.textContent = 'Salvar SKU';
+        if (skuInput) skuInput.value = target.sku || '';
+        if (descriptionInput) descriptionInput.value = target.description || '';
+        if (pointsInput) pointsInput.value = target.points_per_unit != null ? String(target.points_per_unit) : '';
+        if (activeInput) activeInput.checked = Boolean(target.active);
+        setMessage(messageEl, 'Editando pontuação do SKU selecionado.', 'info');
+      } else if (action === 'delete') {
+        if (!window.confirm('Deseja realmente remover este SKU?')) return;
+        (async () => {
+          try {
+            await apiFetch(`/sku-points/${id}`, { method: 'DELETE' });
+            if (editingId === id) resetForm({ clearMessage: false });
+            await loadSkuPoints({ showStatus: false });
+            setMessage(messageEl, 'SKU removido com sucesso.', 'success');
+          } catch (error) {
+            if (error.status === 401) {
+              logout();
+              return;
+            }
+            setMessage(messageEl, error.message || 'Nao foi possivel remover o SKU selecionado.', 'error');
+          }
+        })();
+      }
+    });
+
+    cancelEditButton?.addEventListener('click', () => {
+      resetForm({ clearMessage: true });
+      setMessage(messageEl, 'Edição cancelada.', 'info');
+    });
+
+    reloadButton?.addEventListener('click', () => {
+      loadSkuPoints({ showStatus: true });
+    });
+
+    loadSkuPoints({ showStatus: true });
+  };
+
   const initTermAcceptancePage = () => {
     if (!ensureAuth()) return;
     if (session.role !== 'influencer') {
@@ -4115,6 +4693,7 @@
       'master-consult': initMasterConsultPage,
       'master-list': initMasterListPage,
       'master-sales': initMasterSalesPage,
+      'master-sku-points': initMasterSkuPointsPage,
       'master-scripts': initMasterScriptsPage,
       influencer: initInfluencerPage,
       'influencer-performance': initInfluencerPage,

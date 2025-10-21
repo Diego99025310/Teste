@@ -20,6 +20,7 @@
           <a class="link-card" href="master-create.html">Cadastrar</a>
           <a class="link-card" href="master-consult.html">Consulta</a>
           <a class="link-card" href="master-list.html">Lista cadastrada</a>
+          <a class="link-card" href="master-sku-points.html">Pontos por SKU</a>
         </div>
         <form id="createSaleForm">
           <div class="form-grid compact">
@@ -31,10 +32,32 @@
               </select>
             </label>
             <label>Data*<input name="saleDate" type="date" required /></label>
-            <label>Pontos*<input name="points" type="number" min="0" step="1" required /></label>
+            <label>Pontos calculados<input name="points" type="number" min="0" step="1" readonly /></label>
             <label>Valor estimado (R$)<input name="pointsValue" type="number" min="0" step="0.01" readonly /></label>
           </div>
-          <div class="button-row">
+          <div class="card" style="margin-top:16px;">
+            <h2>Itens da venda</h2>
+            <p class="note">Selecione o SKU e informe a quantidade vendida para calcular os pontos.</p>
+            <div class="table-wrapper" style="margin-top:12px;">
+              <table id="saleItemsTable">
+                <thead>
+                  <tr>
+                    <th>SKU</th>
+                    <th>Descrição</th>
+                    <th>Qtd.</th>
+                    <th>Pontos/un.</th>
+                    <th>Pontos</th>
+                    <th>Ações</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+            <div class="button-row" style="margin-top:12px;">
+              <button type="button" id="addSaleItemButton">Adicionar item</button>
+            </div>
+          </div>
+          <div class="button-row" style="margin-top:16px;">
             <button type="submit">Registrar venda</button>
             <button type="button" class="secondary-button" id="cancelSaleEditButton">Cancelar edicao</button>
           </div>

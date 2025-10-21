@@ -431,6 +431,27 @@ const ensureSalesTable = () => {
   db.exec('CREATE UNIQUE INDEX IF NOT EXISTS uniq_sales_order_number ON sales(order_number);');
 };
 
+const createSaleSkuPointsTable = (tableName = 'sale_sku_points') => `
+  CREATE TABLE ${tableName} (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    sale_id INTEGER NOT NULL REFERENCES sales(id) ON DELETE CASCADE,
+    sku TEXT NOT NULL,
+    quantity INTEGER NOT NULL DEFAULT 0 CHECK (quantity >= 0),
+    points_per_unit INTEGER NOT NULL DEFAULT 0 CHECK (points_per_unit >= 0),
+    points INTEGER NOT NULL DEFAULT 0 CHECK (points >= 0),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+`;
+
+const ensureSaleSkuPointsTable = () => {
+  const tableInfo = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='sale_sku_points'").get();
+  if (!tableInfo) {
+    db.exec(createSaleSkuPointsTable());
+  }
+
+  db.exec('CREATE INDEX IF NOT EXISTS idx_sale_sku_points_sale_id ON sale_sku_points(sale_id);');
+};
+
 const createSkuPointsTable = (tableName = 'sku_points') => `
   CREATE TABLE ${tableName} (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -725,6 +746,7 @@ const ensureMonthlyCommissionsTable = () => {
 ensureUsersTable();
 ensureInfluenciadorasTable();
 ensureSalesTable();
+ensureSaleSkuPointsTable();
 ensureSkuPointsTable();
 ensureAceiteTermosTable();
 ensureContentScriptsTable();
