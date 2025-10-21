@@ -71,6 +71,248 @@ const cadastrarSkuPoints = async (token, payload) =>
     .set('Authorization', `Bearer ${token}`)
     .send(payload);
 
+const stripBomCsv = (value = '') => (value ? value.replace(/^[\uFEFF\u200B]+/, '') : '');
+
+const normalizeCsvHeader = (header) =>
+  stripBomCsv(String(header || ''))
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[^a-z0-9]/g, '');
+
+const detectCsvDelimiter = (line) => {
+  if (line.includes('\t')) return '\t';
+  if (line.includes(';')) return ';';
+  if (line.includes(',')) return ',';
+  return ',';
+};
+
+const parseDelimitedRowsFromCsv = (text, delimiter) => {
+  const rows = [];
+  let current = '';
+  let row = [];
+  let insideQuotes = false;
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index];
+    if (char === '"') {
+      if (insideQuotes && text[index + 1] === '"') {
+        current += '"';
+        index += 1;
+      } else {
+        insideQuotes = !insideQuotes;
+      }
+    } else if (!insideQuotes && char === delimiter) {
+      row.push(current);
+      current = '';
+    } else if (!insideQuotes && (char === '\n' || char === '\r')) {
+      if (char === '\r' && text[index + 1] === '\n') {
+        index += 1;
+      }
+      row.push(current);
+      rows.push(row);
+      row = [];
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  if (row.length || current) {
+    row.push(current);
+    rows.push(row);
+  }
+  return rows.map((cells) => cells.map((value) => stripBomCsv(value).trim())) || [];
+};
+
+const parseCsvRows = (text) => {
+  const normalizedText = stripBomCsv(String(text || ''));
+  const firstLineBreak = normalizedText.indexOf('\n');
+  const headerLine = firstLineBreak >= 0 ? normalizedText.slice(0, firstLineBreak) : normalizedText;
+  const delimiter = detectCsvDelimiter(headerLine);
+  return parseDelimitedRowsFromCsv(normalizedText, delimiter);
+};
+
+const analyzeShopifyCsvFixture = (csvText, pointsPerSku) => {
+  const rows = parseCsvRows(csvText);
+  if (!rows.length) {
+    return {
+      totalOrders: 0,
+      validOrdersCount: 0,
+      totalPoints: 0,
+      coupons: [],
+      missingCouponOrders: [],
+      missingDateOrders: [],
+      ordersByNumber: {},
+      perCoupon: {},
+      validOrders: []
+    };
+  }
+
+  const header = rows[0];
+  const normalizedHeader = header.map((cell) => normalizeCsvHeader(cell));
+  const resolveIndex = (aliases) => {
+    for (const alias of aliases) {
+      const index = normalizedHeader.indexOf(alias);
+      if (index >= 0) {
+        return index;
+      }
+    }
+    return -1;
+  };
+
+  const nameIndex = resolveIndex(['name']);
+  const paidAtIndex = resolveIndex(['paidat']);
+  const couponIndex = resolveIndex(['discountcode', 'discountcodes']);
+  const quantityIndex = resolveIndex(['lineitemquantity']);
+  const skuIndex = resolveIndex(['lineitemsku']);
+
+  assert.ok(nameIndex >= 0, 'Coluna Name deve estar presente no CSV.');
+  assert.ok(paidAtIndex >= 0, 'Coluna Paid at deve estar presente no CSV.');
+  assert.ok(couponIndex >= 0, 'Coluna Discount Code deve estar presente no CSV.');
+  assert.ok(quantityIndex >= 0, 'Coluna Lineitem quantity deve estar presente no CSV.');
+  assert.ok(skuIndex >= 0, 'Coluna Lineitem sku deve estar presente no CSV.');
+
+  const normalizedPoints = new Map(
+    Object.entries(pointsPerSku || {}).map(([sku, points]) => [String(sku || '').trim().toLowerCase(), Number(points) || 0])
+  );
+
+  const entryMap = new Map();
+
+  for (let rowIndex = 1; rowIndex < rows.length; rowIndex += 1) {
+    const cells = rows[rowIndex];
+    if (!cells || !cells.length) {
+      continue;
+    }
+
+    const orderNumber = stripBomCsv(cells[nameIndex] || '').trim();
+    if (!orderNumber) {
+      continue;
+    }
+
+    const paidAt = stripBomCsv(cells[paidAtIndex] || '').trim();
+    const coupon = stripBomCsv(cells[couponIndex] || '').trim();
+    const quantityRaw = stripBomCsv(cells[quantityIndex] || '').trim();
+    const skuRaw = stripBomCsv(cells[skuIndex] || '').trim();
+
+    if (!entryMap.has(orderNumber)) {
+      entryMap.set(orderNumber, {
+        orderNumber,
+        paidAt,
+        coupon,
+        details: []
+      });
+    }
+
+    const entry = entryMap.get(orderNumber);
+    if (paidAt && !entry.paidAt) {
+      entry.paidAt = paidAt;
+    }
+    if (coupon && !entry.coupon) {
+      entry.coupon = coupon;
+    }
+
+    if (!skuRaw && !quantityRaw) {
+      continue;
+    }
+
+    let quantity = Number(quantityRaw);
+    if (!Number.isFinite(quantity)) {
+      const normalizedQuantity = quantityRaw.replace(',', '.');
+      quantity = Number(normalizedQuantity);
+    }
+    entry.details.push({
+      sku: skuRaw,
+      quantity: Number.isFinite(quantity) ? quantity : null
+    });
+  }
+
+  const orders = [];
+  entryMap.forEach((entry) => {
+    const coupon = (entry.coupon || '').trim();
+    const paidAt = (entry.paidAt || '').trim();
+    let totalPoints = null;
+    let hasPoints = entry.details.length > 0;
+    let computed = 0;
+
+    entry.details.forEach((detail) => {
+      const skuKey = (detail.sku || '').trim().toLowerCase();
+      const perUnit = normalizedPoints.get(skuKey);
+      if (perUnit == null || !Number.isFinite(detail.quantity) || detail.quantity <= 0) {
+        hasPoints = false;
+        return;
+      }
+      computed += Math.round(detail.quantity * perUnit);
+    });
+
+    if (hasPoints) {
+      totalPoints = computed;
+    }
+
+    orders.push({
+      orderNumber: entry.orderNumber,
+      coupon,
+      paidAt,
+      totalPoints,
+      hasCoupon: Boolean(coupon),
+      hasPaidAt: Boolean(paidAt)
+    });
+  });
+
+  const coupons = Array.from(new Set(orders.map((order) => order.coupon).filter((coupon) => coupon)));
+  const missingCouponOrders = orders.filter((order) => !order.hasCoupon);
+  const missingDateOrders = orders.filter((order) => order.hasCoupon && !order.hasPaidAt);
+  const validOrders = orders.filter(
+    (order) => order.hasCoupon && order.hasPaidAt && order.totalPoints != null && order.totalPoints > 0
+  );
+
+  const perCoupon = {};
+  validOrders.forEach((order) => {
+    if (!perCoupon[order.coupon]) {
+      perCoupon[order.coupon] = { count: 0, points: 0 };
+    }
+    perCoupon[order.coupon].count += 1;
+    perCoupon[order.coupon].points += order.totalPoints || 0;
+  });
+
+  const ordersByNumber = {};
+  orders.forEach((order) => {
+    ordersByNumber[order.orderNumber] = order;
+  });
+
+  const totalPoints = validOrders.reduce((sum, order) => sum + (order.totalPoints || 0), 0);
+
+  return {
+    totalOrders: orders.length,
+    validOrdersCount: validOrders.length,
+    totalPoints,
+    coupons,
+    missingCouponOrders,
+    missingDateOrders,
+    ordersByNumber,
+    perCoupon,
+    validOrders
+  };
+};
+
+const generateValidCpf = (index) => {
+  const seed = (index * 97 + 123456789) % 1_000_000_000;
+  const base = String(seed).padStart(9, '0');
+  if (/^(\d)\1*$/.test(base)) {
+    return generateValidCpf(index + 37);
+  }
+  const baseDigits = base.split('').map(Number);
+  const calcDigit = (digits) => {
+    let sum = 0;
+    for (let i = 0; i < digits.length; i += 1) {
+      sum += digits[i] * (digits.length + 1 - i);
+    }
+    const result = (sum * 10) % 11;
+    return result === 10 ? 0 : result;
+  };
+  const firstDigit = calcDigit(baseDigits);
+  const digitsWithFirst = [...baseDigits, firstDigit];
+  const secondDigit = calcDigit(digitsWithFirst);
+  return [...digitsWithFirst, secondDigit].join('');
+};
+
 test('master pode registrar novo usuario e realizar login', async () => {
   resetDb();
 
@@ -1122,6 +1364,152 @@ test('importacao de vendas a partir de csv do shopify', async () => {
   assert.strictEqual(ingridSales.status, 200);
   assert.strictEqual(ingridSales.body.length, 1);
   assert.strictEqual(Number(ingridSales.body[0].points), 400);
+});
+
+test('importacao de csv real da shopify com pontos por SKU', async () => {
+  resetDb();
+
+  const masterToken = await authenticateMaster();
+
+  const csvPath = path.join(__dirname, '..', 'orders_export.csv');
+  const csvContent = fs.readFileSync(csvPath, 'utf8');
+
+  const pointsPerSku = {
+    'HPNK-30ML-V1': 100,
+    'HPNK-30ML-V2': 150,
+    'HPNK-30ML-V3': 200
+  };
+
+  const analysis = analyzeShopifyCsvFixture(csvContent, pointsPerSku);
+
+  assert.ok(analysis.totalOrders > 0, 'CSV deve conter pedidos.');
+  assert.ok(analysis.validOrdersCount > 0, 'CSV deve conter pedidos validos.');
+  assert.ok(analysis.missingCouponOrders.length > 0, 'CSV deve incluir pedidos sem cupom.');
+  assert.ok(analysis.missingDateOrders.length > 0, 'CSV deve incluir pedidos sem data.');
+
+  for (const [sku, points] of Object.entries(pointsPerSku)) {
+    const response = await cadastrarSkuPoints(masterToken, {
+      sku,
+      description: `SKU ${sku}`,
+      points_per_unit: points,
+      active: 1
+    });
+    assert.strictEqual(response.status, 201, `Cadastro do SKU ${sku} deve retornar 201.`);
+  }
+
+  const influencerMap = new Map();
+  assert.ok(analysis.coupons.length > 0, 'Lista de cupons nao pode estar vazia.');
+
+  for (let index = 0; index < analysis.coupons.length; index += 1) {
+    const coupon = analysis.coupons[index];
+    const cpf = generateValidCpf(index);
+    const contactDigits = `11${String(900000000 + index).padStart(9, '0')}`;
+    const payload = {
+      ...influencerPayload,
+      nome: `Shopify Influencer ${index + 1}`,
+      instagram: `@shopify${index + 1}`,
+      email: `shopify${index + 1}@example.com`,
+      contato: contactDigits,
+      cupom: coupon,
+      cpf,
+      loginEmail: `shopify${index + 1}.login@example.com`,
+      loginPassword: `Senha${index + 1}abc`
+    };
+
+    const response = await request(app)
+      .post('/influenciadora')
+      .set('Authorization', `Bearer ${masterToken}`)
+      .send(payload);
+
+    assert.strictEqual(response.status, 201, `Cadastro da influenciadora ${coupon} deve retornar 201.`);
+    influencerMap.set(coupon, response.body.id);
+  }
+
+  const preview = await request(app)
+    .post('/sales/import/preview')
+    .set('Authorization', `Bearer ${masterToken}`)
+    .send({ text: csvContent });
+
+  assert.strictEqual(preview.status, 200);
+  assert.ok(Array.isArray(preview.body.rows), 'Resposta deve conter linhas analisadas.');
+  assert.strictEqual(preview.body.rows.length, analysis.totalOrders);
+  assert.strictEqual(preview.body.totalCount, analysis.totalOrders);
+  assert.strictEqual(preview.body.validCount, analysis.validOrdersCount);
+  assert.strictEqual(Number(preview.body.summary.total_points), analysis.totalPoints);
+  assert.strictEqual(
+    Number(preview.body.summary.total_points_value),
+    Number(pointsToBrl(analysis.totalPoints))
+  );
+  assert.strictEqual(Number(preview.body.summary.point_value_brl), POINT_VALUE_BRL);
+
+  const sampleValidOrder = analysis.validOrders[0];
+  assert.ok(sampleValidOrder, 'Deve existir ao menos um pedido valido.');
+  const validRow = preview.body.rows.find((row) => row.orderNumber === sampleValidOrder.orderNumber);
+  assert.ok(validRow, `Pedido ${sampleValidOrder.orderNumber} deve constar no preview.`);
+  assert.strictEqual(validRow.cupom.toLowerCase(), sampleValidOrder.coupon.toLowerCase());
+  assert.strictEqual(Number(validRow.points), sampleValidOrder.totalPoints);
+
+  const missingCouponOrder = analysis.missingCouponOrders[0];
+  assert.ok(missingCouponOrder, 'Deve existir ao menos um pedido sem cupom.');
+  const missingCouponRow = preview.body.rows.find(
+    (row) => row.orderNumber === missingCouponOrder.orderNumber
+  );
+  assert.ok(missingCouponRow, 'Pedido sem cupom deve aparecer na analise.');
+  assert.ok(
+    missingCouponRow.errors.some((message) => /cupom nao cadastrado/i.test(message)),
+    'Pedido sem cupom deve exibir erro apropriado.'
+  );
+  const expectedMissingCouponPoints =
+    analysis.ordersByNumber[missingCouponOrder.orderNumber]?.totalPoints ?? null;
+  if (expectedMissingCouponPoints != null) {
+    assert.strictEqual(Number(missingCouponRow.points), expectedMissingCouponPoints);
+  }
+
+  const missingDateOrder = analysis.missingDateOrders[0];
+  assert.ok(missingDateOrder, 'Deve existir ao menos um pedido sem data.');
+  const missingDateRow = preview.body.rows.find(
+    (row) => row.orderNumber === missingDateOrder.orderNumber
+  );
+  assert.ok(missingDateRow, 'Pedido sem data deve aparecer na analise.');
+  assert.ok(
+    missingDateRow.errors.some((message) => /informe a data da venda/i.test(message)),
+    'Pedido sem data deve exibir mensagem de erro.'
+  );
+
+  const confirm = await request(app)
+    .post('/sales/import/confirm')
+    .set('Authorization', `Bearer ${masterToken}`)
+    .send({ text: csvContent });
+
+  assert.strictEqual(confirm.status, 201);
+  assert.strictEqual(confirm.body.inserted, analysis.validOrdersCount);
+  assert.strictEqual(confirm.body.ignored, analysis.totalOrders - analysis.validOrdersCount);
+  assert.strictEqual(Number(confirm.body.summary.total_points), analysis.totalPoints);
+  assert.strictEqual(
+    Number(confirm.body.summary.total_points_value),
+    Number(pointsToBrl(analysis.totalPoints))
+  );
+
+  const couponsWithSales = Object.keys(analysis.perCoupon);
+  assert.ok(couponsWithSales.length > 0, 'Ao menos um cupom deve ter vendas validas.');
+  const couponWithValidOrders = couponsWithSales[0];
+  const influencerId = influencerMap.get(couponWithValidOrders);
+  assert.ok(influencerId, 'Influenciadora deve ter sido cadastrada para o cupom analisado.');
+
+  const salesResponse = await request(app)
+    .get(`/sales/${influencerId}`)
+    .set('Authorization', `Bearer ${masterToken}`);
+
+  assert.strictEqual(salesResponse.status, 200);
+  assert.strictEqual(
+    salesResponse.body.length,
+    analysis.perCoupon[couponWithValidOrders].count
+  );
+  const totalPointsForCoupon = salesResponse.body.reduce(
+    (sum, sale) => sum + Number(sale.points || 0),
+    0
+  );
+  assert.strictEqual(totalPointsForCoupon, analysis.perCoupon[couponWithValidOrders].points);
 });
 
 after(() => {
