@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Roteiro completo - HidraPink</title>
+    <link rel="stylesheet" href="/styles/script-view.css" />
+  </head>
+  <body data-page="script-view">
+    <div class="container">
+      <header class="page-header">
+        <div class="page-header__left">
+          <a class="back-link" href="influencer-plan.html">Voltar</a>
+          <div class="page-header__titles">
+            <p class="page-header__subtitle">Visualização de roteiro</p>
+            <h1 id="script-title">Carregando roteiro...</h1>
+            <p id="script-meta" class="script-meta" hidden aria-live="polite"></p>
+          </div>
+        </div>
+        <button type="button" class="logout-btn" id="logout-btn" aria-label="Sair">
+          <span aria-hidden="true">Sair</span>
+        </button>
+      </header>
+
+      <main class="script-main" aria-live="polite">
+        <div id="status-message" class="status-message" hidden></div>
+        <article id="script-article" class="script-article" hidden>
+          <div id="script-description" class="script-description"></div>
+        </article>
+      </main>
+    </div>
+
+    <script type="module" src="/scripts/script-view.js"></script>
+  </body>
+</html>
