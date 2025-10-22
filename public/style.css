@@ -884,6 +884,12 @@ label.stacked textarea {
   box-shadow: var(--shadow-sm);
   display: flex;
   flex-direction: column;
+  gap: 0.5rem;
+  transition: box-shadow var(--transition-base), border-color var(--transition-base),
+    gap var(--transition-base), padding var(--transition-base);
+}
+
+.script-management-item[data-expanded='true'] {
   gap: 0.85rem;
 }
 
@@ -894,15 +900,25 @@ label.stacked textarea {
 
 .script-management-item__header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 1rem;
+}
+
+.script-management-item__summary {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
 }
 
 .script-management-item__header h3 {
   margin: 0;
   font-size: 1.1rem;
   color: var(--neutral-900);
+  flex: 1;
 }
 
 .script-management-item__actions {
@@ -911,9 +927,81 @@ label.stacked textarea {
   gap: 0.5rem;
 }
 
+.script-management-toggle {
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(228, 68, 122, 0.25);
+  background: rgba(228, 68, 122, 0.12);
+  color: var(--brand-600);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 1.15rem;
+  line-height: 1;
+  box-shadow: none;
+  gap: 0;
+  transition: background var(--transition-base), border-color var(--transition-base),
+    color var(--transition-base), box-shadow var(--transition-base),
+    transform var(--transition-base);
+}
+
+.script-management-toggle::after {
+  content: '+';
+  transition: transform var(--transition-base);
+}
+
+.script-management-toggle:hover,
+.script-management-toggle:focus-visible {
+  background: rgba(228, 68, 122, 0.22);
+  border-color: rgba(228, 68, 122, 0.35);
+  color: var(--brand-600);
+  box-shadow: var(--shadow-sm);
+}
+
+.script-management-item[data-expanded='true'] .script-management-toggle {
+  background: rgba(228, 68, 122, 0.18);
+  border-color: rgba(228, 68, 122, 0.35);
+}
+
+.script-management-item[data-expanded='true'] .script-management-toggle:hover,
+.script-management-item[data-expanded='true'] .script-management-toggle:focus-visible {
+  background: rgba(228, 68, 122, 0.26);
+}
+
+.script-management-item[data-expanded='true'] .script-management-toggle::after {
+  content: '−';
+}
+
 .script-management-description {
   color: var(--neutral-700);
   line-height: 1.6;
+}
+
+.script-management-item__body {
+  display: grid;
+  grid-template-rows: 0fr;
+  overflow: hidden;
+  opacity: 0;
+  padding-top: 0;
+  transition: grid-template-rows var(--transition-base), opacity var(--transition-base),
+    padding-top var(--transition-base);
+}
+
+.script-management-item__body-inner {
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.script-management-item[data-expanded='true'] .script-management-item__body {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  padding-top: 0.75rem;
 }
 
 .script-management-item .script-meta {
