@@ -258,20 +258,39 @@ button {
   display: none;
 }
 
-.roteiro-preview {
-  font-size: 0.95rem;
-  color: var(--gray-600);
-  line-height: 1.5;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+.view-script-action {
+  display: flex;
+  justify-content: flex-start;
 }
 
-.roteiro-card.is-expanded .roteiro-preview {
-  display: block;
-  -webkit-line-clamp: initial;
-  overflow: visible;
+.view-script-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border-radius: 12px;
+  background: var(--pink-500);
+  color: #fff;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.view-script-button::before {
+  content: '\1F441';
+}
+
+.view-script-button:hover,
+.view-script-button:focus-visible {
+  background: var(--pink-600);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 16px rgba(255, 105, 180, 0.2);
+  color: #fff;
+}
+
+.view-script-button:focus-visible {
+  outline: 3px solid rgba(255, 105, 180, 0.4);
+  outline-offset: 2px;
 }
 
 .schedule-occurrences {

@@ -3838,6 +3838,25 @@ app.get('/scripts', authenticate, verificarAceite, (req, res) => {
   }
 });
 
+app.get('/scripts/:id', authenticate, verificarAceite, (req, res) => {
+  const rawId = req.params.id;
+  const parsedId = Number(rawId);
+  if (!Number.isInteger(parsedId) || parsedId <= 0) {
+    return res.status(400).json({ error: 'Identificador de roteiro invalido.' });
+  }
+
+  try {
+    const script = findContentScriptByIdStmt.get(parsedId);
+    if (!script) {
+      return res.status(404).json({ error: 'Roteiro nao encontrado.' });
+    }
+    return res.status(200).json(script);
+  } catch (error) {
+    console.error('Erro ao buscar roteiro:', error);
+    return res.status(500).json({ error: 'Nao foi possivel carregar o roteiro solicitado.' });
+  }
+});
+
 app.post('/scripts', authenticate, authorizeMaster, (req, res) => {
   const rawTitle = trimString(req.body?.titulo ?? req.body?.title);
   const rawDescription = trimString(req.body?.descricao ?? req.body?.description);

@@ -41,6 +41,33 @@
     }
   })();
 
+  const getStorageItem = (store, key) => {
+    if (!store || typeof store.getItem !== 'function') return null;
+    try {
+      return store.getItem(key);
+    } catch (error) {
+      return null;
+    }
+  };
+
+  const setStorageItem = (store, key, value) => {
+    if (!store || typeof store.setItem !== 'function') return;
+    try {
+      store.setItem(key, value);
+    } catch (error) {
+      // Ignore persistence failures (modo privado, cota excedida, etc.)
+    }
+  };
+
+  const removeStorageItem = (store, key) => {
+    if (!store || typeof store.removeItem !== 'function') return;
+    try {
+      store.removeItem(key);
+    } catch (error) {
+      // Ignore removal failures
+    }
+  };
+
   const createCredentialsStore = () => {
     const STORAGE_KEY = 'hidrapink:influencerCredentials:v1';
     let cache = null;
@@ -759,10 +786,29 @@
 
   const session = {
     get token() {
-      return storage.getItem(storageKeys.token);
+      const sessionToken = getStorageItem(storage, storageKeys.token);
+      const persistentToken = getStorageItem(persistentStorage, storageKeys.token);
+      const token = sessionToken || persistentToken || null;
+
+      if (token) {
+        if (sessionToken !== token) {
+          setStorageItem(storage, storageKeys.token, token);
+        }
+        if (persistentToken !== token) {
+          setStorageItem(persistentStorage, storageKeys.token, token);
+        }
+      }
+
+      return token;
     },
     set token(value) {
-      value ? storage.setItem(storageKeys.token, value) : storage.removeItem(storageKeys.token);
+      if (value) {
+        setStorageItem(storage, storageKeys.token, value);
+        setStorageItem(persistentStorage, storageKeys.token, value);
+      } else {
+        removeStorageItem(storage, storageKeys.token);
+        removeStorageItem(persistentStorage, storageKeys.token);
+      }
     },
     get role() {
       return storage.getItem(storageKeys.role);
@@ -783,7 +829,10 @@
       value ? storage.setItem(storageKeys.userEmail, value) : storage.removeItem(storageKeys.userEmail);
     },
     clear() {
-      Object.values(storageKeys).forEach((key) => storage.removeItem(key));
+      Object.values(storageKeys).forEach((key) => {
+        removeStorageItem(storage, key);
+        removeStorageItem(persistentStorage, key);
+      });
     }
   };
 
