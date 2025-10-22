@@ -118,7 +118,7 @@
         padding: 0.75rem 1.75rem;
         border-radius: 999px;
         background: rgba(255, 255, 255, 0.16);
-        color: #fff;
+        color: #e78b8b;
         font-weight: 600;
         text-decoration: none;
         transition: transform var(--transition), background var(--transition), box-shadow var(--transition);
@@ -140,7 +140,7 @@
       .hero-nav__link:hover,
       .hero-nav__link:focus-visible {
         transform: translateY(-2px);
-        background: rgba(255, 255, 255, 0.24);
+        background: #e087873d;
         box-shadow: 0 0.75rem 1.75rem rgba(0, 0, 0, 0.12);
         outline: none;
       }
@@ -623,10 +623,7 @@
           <h1 class="hero__heading">Seu painel de influenciadora</h1>
           <p class="hero__greeting" id="influencerGreeting">Bem-vinda, Pinklover 💗</p>
         </div>
-        <nav class="hero-nav" aria-label="Navegação do painel">
-          <a class="hero-nav__link" href="influencer-plan.html">Roteiros</a>
-          <a class="hero-nav__link" href="influencer-performance.html">Desempenho</a>
-        </nav>
+
       </header>
 
       <section class="card" aria-labelledby="influencer-info-title">
@@ -635,12 +632,20 @@
           <p>Informações essenciais da sua conta.</p>
         </div>
         <div id="influencerDetails" class="info-grid" aria-live="polite"></div>
-        <div id="influencerContractInfo" class="info-grid info-grid--contract"></div>
+        
         <p id="influencerContractMessage" class="message" hidden data-auto-hide="true"></p>
         <div class="card-actions">
           <button type="button" id="viewSignedContractButton" disabled>
             Visualizar contrato assinado
           </button>
+
+          <nav class="hero-nav" aria-label="Navegação do painel">
+            <a class="hero-nav__link" href="influencer-plan.html">Roteiros</a>
+            <a class="hero-nav__link" href="influencer-performance.html">Desempenho</a>
+          </nav>
+
+
+
           <button type="button" class="button-logout" data-action="logout">Sair</button>
         </div>
       </section>
@@ -683,19 +688,10 @@
       <section class="card" aria-labelledby="schedule-title">
         <div class="card-headline schedule-headline">
           <div>
-            <h2 id="schedule-title">Agendamentos</h2>
-            <p>Confira seus conteúdos programados para o ciclo.</p>
+            <h2 id="schedule-title">Celendário</h2>
+            <p>Confira seus agendamento.</p>
           </div>
-          <div class="schedule-counts">
-            <span class="schedule-count schedule-count--validated">
-              <strong data-plan-validated>0</strong>
-              <small>Validados</small>
-            </span>
-            <span class="schedule-count schedule-count--pending">
-              <strong data-plan-pending>0</strong>
-              <small>Pendentes</small>
-            </span>
-          </div>
+
         </div>
         <div id="planScheduleBoard" class="schedule-board" aria-live="polite"></div>
         <p id="planMessage" class="message" hidden data-auto-hide="true"></p>
