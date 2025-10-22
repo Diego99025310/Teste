@@ -25,13 +25,74 @@ const session = (() => {
   }
 })();
 
-const getToken = () => session.getItem('token');
+const persistentSession = (() => {
+  try {
+    return window.localStorage;
+  } catch (error) {
+    return {
+      getItem: () => null,
+      setItem: () => {},
+      removeItem: () => {}
+    };
+  }
+})();
+
+const TOKEN_STORAGE_KEY = 'token';
+
+const readStorage = (storage, key) => {
+  if (!storage || typeof storage.getItem !== 'function') return null;
+  try {
+    return storage.getItem(key);
+  } catch (error) {
+    return null;
+  }
+};
+
+const writeStorage = (storage, key, value) => {
+  if (!storage || typeof storage.setItem !== 'function') return;
+  try {
+    storage.setItem(key, value);
+  } catch (error) {
+    // Ignore persistence failures (privacy mode, quota, etc.)
+  }
+};
+
+const removeStorage = (storage, key) => {
+  if (!storage || typeof storage.removeItem !== 'function') return;
+  try {
+    storage.removeItem(key);
+  } catch (error) {
+    // Ignore removal failures
+  }
+};
+
+const getToken = () => {
+  const sessionToken = readStorage(session, TOKEN_STORAGE_KEY);
+  const persistentToken = readStorage(persistentSession, TOKEN_STORAGE_KEY);
+  const token = sessionToken || persistentToken || null;
+
+  if (token) {
+    if (sessionToken !== token) {
+      writeStorage(session, TOKEN_STORAGE_KEY, token);
+    }
+    if (persistentToken !== token) {
+      writeStorage(persistentSession, TOKEN_STORAGE_KEY, token);
+    }
+  }
+
+  return token;
+};
+
+const clearToken = () => {
+  removeStorage(session, TOKEN_STORAGE_KEY);
+  removeStorage(persistentSession, TOKEN_STORAGE_KEY);
+};
 
 const logout = () => {
+  clearToken();
   if (typeof window.logout === 'function') {
     window.logout();
   } else {
-    session.removeItem('token');
     window.location.replace('login.html');
   }
 };
@@ -133,6 +194,9 @@ const fetchScript = async (id) => {
   }
 
   const token = getToken();
+  if (!token) {
+    throw new Error('Sessão expirada. Faça login novamente.');
+  }
   const response = await fetch(`/scripts/${id}`, {
     method: 'GET',
     headers: {
