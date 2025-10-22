@@ -8,7 +8,7 @@
     <script defer src="main.js"></script>
   </head>
   <body data-page="master-create">
-    <main id="conteudo-principal" class="container">
+    <div class="container">
       <header>
         <h1>Cadastrar influenciadora</h1>
         <p>Crie um novo cadastro ou edite um existente.</p>
@@ -16,11 +16,11 @@
       </header>
 
       <section class="card">
-        <nav class="link-grid section-nav" aria-label="Navegação secundária">
+        <div class="link-grid" style="margin-bottom:16px;">
           <a class="link-card" href="master-consult.html">Consulta</a>
           <a class="link-card" href="master-list.html">Lista cadastrada</a>
           <a class="link-card" href="master-sales.html">Registrar venda</a>
-        </nav>
+        </div>
 
         <form id="createInfluencerForm" data-form="create-influencer">
           <span class="section-title">Informacoes basicas</span>
@@ -123,6 +123,6 @@
         </form>
         <div id="masterMessage" class="message" aria-live="polite"></div>
       </section>
-    </main>
+    </div>
   </body>
 </html>

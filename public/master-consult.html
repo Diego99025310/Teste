@@ -8,7 +8,7 @@
     <script defer src="main.js"></script>
   </head>
   <body data-page="master-consult">
-    <main id="conteudo-principal" class="container">
+    <div class="container">
       <header>
         <h1>Consulta de influenciadoras</h1>
         <p>Visualize vendas por influenciadora e clique para editar o cadastro.</p>
@@ -16,12 +16,12 @@
       </header>
 
       <section class="card">
-        <nav class="link-grid section-nav" aria-label="Navegação secundária">
+        <div class="link-grid" style="margin-bottom:16px;">
           <a class="link-card" href="master-create.html">Cadastrar</a>
           <a class="link-card" href="master-list.html">Lista cadastrada</a>
           <a class="link-card" href="master-sales.html">Registrar venda</a>
-        </nav>
-        <div class="page-toolbar">
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;">
           <div>
             <h2>Resumo</h2>
             <p class="note">Clique em uma linha para abrir o cadastro correspondente.</p>
@@ -44,6 +44,6 @@
         </div>
         <div id="consultMessage" class="message" aria-live="polite"></div>
       </section>
-    </main>
+    </div>
   </body>
 </html>

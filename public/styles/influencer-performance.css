@@ -3,7 +3,7 @@
 }
 
 body[data-page='influencer-performance'] {
-  font-family: var(--font-base);
+  font-family: 'Outfit', sans-serif;
   --color-primary: #e4447a;
   --color-secondary: #f07999;
   --color-soft: #fbd3db;

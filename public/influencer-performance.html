@@ -7,37 +7,41 @@
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0"
     />
     <title>Desempenho da Influenciadora | HidraPink</title>
-    <link rel="stylesheet" href="style.css" />
-    <link rel="stylesheet" href="styles/plan.css" />
-    <link rel="stylesheet" href="styles/influencer-performance.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles/plan.css" />
+    <link rel="stylesheet" href="/styles/influencer-performance.css" />
   </head>
   <body data-page="influencer-performance">
-    <main id="conteudo-principal">
-      <div class="container">
-        <header class="header">
-          <div class="header__left">
-            <a class="back-link" href="influencer.html">Voltar</a>
-            <div class="header__titles">
-              <h1>Desempenho</h1>
-              <p class="subtitle">Acompanhe seus resultados.</p>
-            </div>
+    <div class="container">
+      <header class="header">
+        <div class="header__left">
+          <a class="back-link" href="influencer.html">Voltar</a>
+          <div class="header__titles">
+            <h1>Desempenho</h1>
+            <p class="subtitle">Acompanhe seus resultados.</p>
           </div>
-          <button
-            type="button"
-            class="logout-btn"
-            data-action="logout"
-            aria-label="Sair"
-          >
-            <span aria-hidden="true">Sair</span>
-          </button>
-        </header>
+        </div>
+        <button
+          type="button"
+          class="logout-btn"
+          data-action="logout"
+          aria-label="Sair"
+        >
+          <span aria-hidden="true">Sair</span>
+        </button>
+      </header>
 
-        <main class="performance-content" aria-labelledby="performance-title">
-          <section class="performance-card" aria-labelledby="performance-title">
-            <div class="card-headline">
-              <h2 id="performance-title">📊 Desempenho</h2>
-              <p>Visualize os resultados das suas campanhas.</p>
-            </div>
+      <main class="performance-content" aria-labelledby="performance-title">
+        <section class="performance-card" aria-labelledby="performance-title">
+          <div class="card-headline">
+            <h2 id="performance-title">📊 Desempenho</h2>
+            <p>Visualize os resultados das suas campanhas.</p>
+          </div>
 
           <div
             class="performance-summary"
@@ -63,13 +67,17 @@
               <tbody></tbody>
             </table>
           </div>
-          </section>
-        </main>
-      </div>
-    </main>
+        </section>
+      </main>
+    </div>
 
-    <div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="true"></div>
+    <div
+      id="toast-container"
+      class="toast-container"
+      aria-live="polite"
+      aria-atomic="true"
+    ></div>
 
-    <script src="main.js"></script>
+    <script src="/main.js"></script>
   </body>
 </html>

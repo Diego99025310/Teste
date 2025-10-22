@@ -8,7 +8,7 @@
     <script defer src="main.js"></script>
   </head>
   <body data-page="master-sales">
-    <main id="conteudo-principal" class="container">
+    <div class="container">
       <header>
         <h1>Registrar venda</h1>
         <p>Associe as vendas aos cupons das influenciadoras.</p>
@@ -16,12 +16,12 @@
       </header>
 
       <section class="card">
-        <nav class="link-grid section-nav" aria-label="Navegação secundária">
+        <div class="link-grid" style="margin-bottom:16px;">
           <a class="link-card" href="master-create.html">Cadastrar</a>
           <a class="link-card" href="master-consult.html">Consulta</a>
           <a class="link-card" href="master-list.html">Lista cadastrada</a>
           <a class="link-card" href="master-sku-points.html">Pontos por SKU</a>
-        </nav>
+        </div>
         <form id="createSaleForm">
           <div class="form-grid compact">
             <label>Pedido*<input name="orderNumber" type="text" required /></label>
@@ -35,10 +35,10 @@
             <label>Pontos calculados<input name="points" type="number" min="0" step="1" readonly /></label>
             <label>Valor estimado (R$)<input name="pointsValue" type="number" min="0" step="0.01" readonly /></label>
           </div>
-          <div class="card spaced-above-md">
+          <div class="card" style="margin-top:16px;">
             <h2>Itens da venda</h2>
             <p class="note">Selecione o SKU e informe a quantidade vendida para calcular os pontos.</p>
-            <div class="table-wrapper spaced-above-sm">
+            <div class="table-wrapper" style="margin-top:12px;">
               <table id="saleItemsTable">
                 <thead>
                   <tr>
@@ -53,17 +53,17 @@
                 <tbody></tbody>
               </table>
             </div>
-            <div class="button-row spaced-above-sm">
+            <div class="button-row" style="margin-top:12px;">
               <button type="button" id="addSaleItemButton">Adicionar item</button>
             </div>
           </div>
-          <div class="button-row spaced-above-md">
+          <div class="button-row" style="margin-top:16px;">
             <button type="submit">Registrar venda</button>
             <button type="button" class="secondary-button" id="cancelSaleEditButton">Cancelar edicao</button>
           </div>
         </form>
         <div id="salesMessage" class="message" aria-live="polite"></div>
-        <div class="page-toolbar spaced-above-md">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-top:16px;">
           <div>
             <h2>Vendas cadastradas</h2>
             <p class="note">Use os botoes para editar ou excluir.</p>
@@ -134,6 +134,5 @@
         </div>
       </section>
     </div>
-    </main>
   </body>
 </html>

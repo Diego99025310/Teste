@@ -8,7 +8,7 @@
     <script defer src="main.js"></script>
   </head>
   <body data-page="master-sku-points">
-    <main id="conteudo-principal" class="container">
+    <div class="container">
       <header>
         <h1>Gerenciar pontos por SKU</h1>
         <p>Cadastre os produtos com a pontuação atribuída a cada unidade.</p>
@@ -16,12 +16,12 @@
       </header>
 
       <section class="card">
-        <nav class="link-grid section-nav" aria-label="Navegação secundária">
+        <div class="link-grid" style="margin-bottom: 16px;">
           <a class="link-card" href="master-create.html">Cadastrar</a>
           <a class="link-card" href="master-consult.html">Consulta</a>
           <a class="link-card" href="master-list.html">Lista cadastrada</a>
           <a class="link-card" href="master-sales.html">Registrar vendas</a>
-        </nav>
+        </div>
 
         <form id="skuPointsForm">
           <div class="form-grid compact">
@@ -39,7 +39,7 @@
         </form>
         <div id="skuPointsMessage" class="message" aria-live="polite"></div>
 
-        <div class="page-toolbar spaced-above-md">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-top:16px;">
           <div>
             <h2>SKUs cadastrados</h2>
             <p class="note">Edite ou inative os SKUs para ajustar a pontuação das vendas.</p>
@@ -62,6 +62,6 @@
           </table>
         </div>
       </section>
-    </main>
+    </div>
   </body>
 </html>
