@@ -4,43 +4,40 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
   <title>Agendar Roteiros - HidraPink</title>
-  <link rel="stylesheet" href="style.css" />
-  <link rel="stylesheet" href="styles/plan.css" />
+  <link rel="stylesheet" href="/styles/plan.css" />
 </head>
 <body data-page="influencer-plan">
-  <main id="conteudo-principal">
-    <div class="container">
-      <header class="header">
-        <div class="header__left">
-          <a class="back-link" href="influencer.html">Voltar</a>
-          <div class="header__titles">
-            <h1>Agendamento de Roteiros</h1>
-            <p class="subtitle">Ciclo atual: <span id="cycle-name">Carregando...</span></p>
-          </div>
+  <div class="container">
+    <header class="header">
+      <div class="header__left">
+        <a class="back-link" href="influencer.html">Voltar</a>
+        <div class="header__titles">
+          <h1>Agendamento de Roteiros</h1>
+          <p class="subtitle">Ciclo atual: <span id="cycle-name">Carregando...</span></p>
         </div>
-        <button type="button" class="logout-btn" id="logout-btn" aria-label="Sair">
-          <span aria-hidden="true">Sair</span>
-        </button>
-      </header>
+      </div>
+      <button type="button" class="logout-btn" id="logout-btn" aria-label="Sair">
+        <span aria-hidden="true">Sair</span>
+      </button>
+    </header>
 
-      <section class="filters" aria-label="Filtro de roteiros">
-        <button class="filter-btn active" data-filter="all" type="button">Todos</button>
-        <button class="filter-btn" data-filter="scheduled" type="button">Agendados</button>
-        <button class="filter-btn" data-filter="available" type="button">Disponíveis</button>
-      </section>
+    <section class="filters" aria-label="Filtro de roteiros">
+      <button class="filter-btn active" data-filter="all" type="button">Todos</button>
+      <button class="filter-btn" data-filter="scheduled" type="button">Agendados</button>
+      <button class="filter-btn" data-filter="available" type="button">Disponíveis</button>
+    </section>
 
-      <section class="roteiros" aria-live="polite">
-        <div id="roteiros-list" class="roteiros-list" role="list"></div>
-        <div id="empty-state" class="empty-state" hidden>
-          <p>📋 Nenhum roteiro disponível no momento.</p>
-        </div>
-      </section>
-    </div>
-  </main>
+    <section class="roteiros" aria-live="polite">
+      <div id="roteiros-list" class="roteiros-list" role="list"></div>
+      <div id="empty-state" class="empty-state" hidden>
+        <p>📋 Nenhum roteiro disponível no momento.</p>
+      </div>
+    </section>
+  </div>
 
   <div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="true"></div>
 
-  <script src="main.js"></script>
-  <script src="scripts/plan.js" type="module"></script>
+  <script src="/main.js"></script>
+  <script src="/scripts/plan.js" type="module"></script>
 </body>
 </html>
