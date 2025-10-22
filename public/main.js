@@ -3364,6 +3364,31 @@
 
     let cachedScripts = [];
     let editingScriptId = null;
+    const scriptExpansionState = new Map();
+
+    const applyScriptExpansionToItem = (item, script, expanded) => {
+      if (!item || !script) return;
+      item.dataset.expanded = expanded ? 'true' : 'false';
+      const toggleButton = item.querySelector('.script-management-toggle');
+      if (toggleButton instanceof HTMLButtonElement) {
+        toggleButton.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+        toggleButton.setAttribute(
+          'aria-label',
+          `${expanded ? 'Recolher' : 'Expandir'} detalhes do roteiro ${script.title}`
+        );
+      }
+    };
+
+    const updateScriptExpansion = (script, expanded) => {
+      if (!script) return;
+      scriptExpansionState.set(script.id, expanded);
+      const item = listContainer?.querySelector(
+        `.script-management-item[data-id='${String(script.id)}']`
+      );
+      if (item) {
+        applyScriptExpansionToItem(item, script, expanded);
+      }
+    };
 
     const renderScriptManagementList = () => {
       if (!listContainer) return;
@@ -3385,9 +3410,20 @@
         const header = document.createElement('header');
         header.className = 'script-management-item__header';
 
+        const summary = document.createElement('div');
+        summary.className = 'script-management-item__summary';
+
+        const toggleButton = document.createElement('button');
+        toggleButton.type = 'button';
+        toggleButton.className = 'script-management-toggle';
+        const detailsId = `script-details-${script.id}`;
+        toggleButton.setAttribute('aria-controls', detailsId);
+        summary.appendChild(toggleButton);
+
         const titleEl = document.createElement('h3');
         titleEl.textContent = script.title;
-        header.appendChild(titleEl);
+        summary.appendChild(titleEl);
+        header.appendChild(summary);
 
         const actionsEl = document.createElement('div');
         actionsEl.className = 'script-management-item__actions';
@@ -3408,6 +3444,14 @@
         header.appendChild(actionsEl);
         item.appendChild(header);
 
+        const body = document.createElement('div');
+        body.className = 'script-management-item__body';
+        body.id = detailsId;
+
+        const bodyInner = document.createElement('div');
+        bodyInner.className = 'script-management-item__body-inner';
+        body.appendChild(bodyInner);
+
         const descriptionEl = document.createElement('div');
         descriptionEl.className = 'script-management-description rich-text';
         if (script.description) {
@@ -3415,7 +3459,7 @@
         } else {
           descriptionEl.textContent = 'Nenhuma descrição informada.';
         }
-        item.appendChild(descriptionEl);
+        bodyInner.appendChild(descriptionEl);
 
         const createdAt = script.createdAt;
         const updatedAt = script.updatedAt;
@@ -3427,8 +3471,15 @@
           meta.className = 'script-meta';
           const label = hasDifferentDates ? 'Atualizado em' : 'Criado em';
           meta.textContent = `${label} ${formatDateTimeDetailed(referenceDate)}`;
-          item.appendChild(meta);
+          bodyInner.appendChild(meta);
         }
+
+        item.appendChild(body);
+
+        const storedExpanded = scriptExpansionState.get(script.id);
+        const expanded = editingScriptId === script.id || storedExpanded === true;
+        scriptExpansionState.set(script.id, expanded);
+        applyScriptExpansionToItem(item, script, expanded);
 
         fragment.appendChild(item);
       });
@@ -3442,9 +3493,17 @@
       }
       try {
         const scripts = await fetchScripts();
-        cachedScripts = Array.isArray(scripts)
+        const normalized = Array.isArray(scripts)
           ? scripts.map((script) => normalizeScriptRecord(script)).filter(Boolean)
           : [];
+        const previousExpansion = new Map(scriptExpansionState);
+        scriptExpansionState.clear();
+        cachedScripts = normalized;
+        cachedScripts.forEach((script) => {
+          const wasExpanded =
+            editingScriptId === script.id || previousExpansion.get(script.id) === true;
+          scriptExpansionState.set(script.id, wasExpanded);
+        });
         renderScriptManagementList();
         if (!cachedScripts.length) {
           setMessage(listMessageEl, 'Nenhum roteiro cadastrado até o momento.', 'info');
@@ -3488,6 +3547,7 @@
     const enterEditMode = (script) => {
       if (!form || !script) return;
       editingScriptId = script.id;
+      scriptExpansionState.set(script.id, true);
       form.dataset.mode = 'edit';
       form.dataset.editingId = String(script.id);
       if (titleInput) {
@@ -3530,14 +3590,77 @@
     });
 
     listContainer?.addEventListener('click', (event) => {
-      const trigger =
-        event.target instanceof Element ? event.target.closest('button[data-action]') : null;
-      if (!trigger) return;
+      if (!(event.target instanceof Element)) return;
 
-      const action = trigger.dataset.action;
-      if (!action) return;
+      const actionTrigger = event.target.closest('button[data-action]');
+      if (actionTrigger) {
+        const action = actionTrigger.dataset.action;
+        if (!action) return;
 
-      const item = trigger.closest('.script-management-item');
+        const item = actionTrigger.closest('.script-management-item');
+        if (!item) return;
+
+        const scriptId = Number(item.dataset.id);
+        if (!Number.isInteger(scriptId) || scriptId <= 0) return;
+
+        const script = cachedScripts.find((entry) => entry.id === scriptId);
+        if (!script) return;
+
+        if (action === 'edit') {
+          event.preventDefault();
+          enterEditMode(script);
+          return;
+        }
+
+        if (action === 'delete') {
+          event.preventDefault();
+          const confirmed = window.confirm(
+            `Tem certeza que deseja excluir o roteiro "${script.title}"? Essa acao nao pode ser desfeita.`
+          );
+          if (!confirmed) {
+            return;
+          }
+
+          if (actionTrigger instanceof HTMLButtonElement) {
+            actionTrigger.disabled = true;
+          }
+
+          setMessage(listMessageEl, 'Excluindo roteiro...', 'info');
+
+          const wasEditing = editingScriptId === script.id;
+
+          (async () => {
+            try {
+              await deleteScript(script.id);
+              if (wasEditing) {
+                resetForm();
+                setMessage(formMessageEl, 'O roteiro selecionado foi excluido.', 'info');
+              }
+              await loadScriptsList({ showStatus: false });
+              setMessage(listMessageEl, 'Roteiro excluido com sucesso!', 'success');
+            } catch (error) {
+              setMessage(
+                listMessageEl,
+                error.message || 'Nao foi possivel excluir o roteiro.',
+                'error'
+              );
+            } finally {
+              if (actionTrigger instanceof HTMLButtonElement) {
+                actionTrigger.disabled = false;
+              }
+            }
+          })();
+        }
+
+        return;
+      }
+
+      const toggleTrigger = event.target.closest(
+        '.script-management-toggle, .script-management-item__summary'
+      );
+      if (!toggleTrigger) return;
+
+      const item = toggleTrigger.closest('.script-management-item');
       if (!item) return;
 
       const scriptId = Number(item.dataset.id);
@@ -3546,51 +3669,13 @@
       const script = cachedScripts.find((entry) => entry.id === scriptId);
       if (!script) return;
 
-      if (action === 'edit') {
-        event.preventDefault();
-        enterEditMode(script);
+      if (editingScriptId === script.id) {
+        updateScriptExpansion(script, true);
         return;
       }
 
-      if (action === 'delete') {
-        event.preventDefault();
-        const confirmed = window.confirm(
-          `Tem certeza que deseja excluir o roteiro "${script.title}"? Essa acao nao pode ser desfeita.`
-        );
-        if (!confirmed) {
-          return;
-        }
-
-        if (trigger instanceof HTMLButtonElement) {
-          trigger.disabled = true;
-        }
-
-        setMessage(listMessageEl, 'Excluindo roteiro...', 'info');
-
-        const wasEditing = editingScriptId === script.id;
-
-        (async () => {
-          try {
-            await deleteScript(script.id);
-            if (wasEditing) {
-              resetForm();
-              setMessage(formMessageEl, 'O roteiro selecionado foi excluido.', 'info');
-            }
-            await loadScriptsList({ showStatus: false });
-            setMessage(listMessageEl, 'Roteiro excluido com sucesso!', 'success');
-          } catch (error) {
-            setMessage(
-              listMessageEl,
-              error.message || 'Nao foi possivel excluir o roteiro.',
-              'error'
-            );
-          } finally {
-            if (trigger instanceof HTMLButtonElement) {
-              trigger.disabled = false;
-            }
-          }
-        })();
-      }
+      const nextExpanded = scriptExpansionState.get(script.id) !== true;
+      updateScriptExpansion(script, nextExpanded);
     });
 
     form?.addEventListener('submit', async (event) => {
