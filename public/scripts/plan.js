@@ -173,6 +173,33 @@ const normalizeScript = (script) => {
   };
 };
 
+const buildScriptViewerUrl = (scriptId) => {
+  if (!scriptId) return 'script-view.html';
+  const numericId = Number(scriptId);
+  if (!Number.isInteger(numericId) || numericId <= 0) {
+    return 'script-view.html';
+  }
+  return `script-view.html?id=${encodeURIComponent(numericId)}`;
+};
+
+const createViewScriptAction = (script) => {
+  const container = document.createElement('div');
+  container.className = 'view-script-action';
+
+  const link = document.createElement('a');
+  link.className = 'view-script-button';
+  link.href = buildScriptViewerUrl(script?.id);
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
+  link.textContent = 'Ver roteiro completo';
+  if (script?.title) {
+    link.setAttribute('aria-label', `Abrir roteiro completo de ${script.title} em uma nova aba`);
+  }
+
+  container.appendChild(link);
+  return container;
+};
+
 const normalizePlan = (plan) => {
   if (!plan) return null;
   const scriptId = plan.scriptId ?? plan.content_script_id ?? null;
@@ -532,17 +559,13 @@ const renderRoteiros = () => {
     toggleBtn.addEventListener('click', () => toggleScriptExpansion(script.id));
     header.appendChild(toggleBtn);
 
-    const preview = document.createElement('p');
-    preview.className = 'roteiro-preview';
-    preview.textContent = script.preview || 'Sem preview disponível.';
-
     const details = document.createElement('div');
     details.className = 'roteiro-details';
     if (!expanded) {
       details.setAttribute('data-collapsed', '');
     }
 
-    details.appendChild(preview);
+    details.appendChild(createViewScriptAction(script));
 
     if (occurrences.length) {
       const list = document.createElement('div');
