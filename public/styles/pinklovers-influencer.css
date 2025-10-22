@@ -1,4 +1,4 @@
-:root {
+body[data-page='pinklovers-influencer'] {
   --pink-50: #fff2f8;
   --pink-100: #ffd6e6;
   --pink-500: #e4447a;
@@ -12,17 +12,8 @@
   --shadow-soft: 0 25px 50px -20px rgba(228, 68, 122, 0.45), 0 18px 25px -15px rgba(49, 16, 48, 0.35);
   --shadow-card: 0 18px 36px rgba(228, 68, 122, 0.16);
   --radius-lg: 28px;
-}
-
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
-
-body {
   margin: 0;
-  font-family: 'Outfit', 'Montserrat', 'Segoe UI', sans-serif;
+  font-family: var(--font-base);
   color: var(--gray-900);
   background: linear-gradient(180deg, rgba(255, 242, 248, 0.92) 0%, #ffffff 55%),
     radial-gradient(circle at top right, rgba(255, 214, 230, 0.9), transparent 45%);
@@ -31,20 +22,21 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-a {
+body[data-page='pinklovers-influencer'] *,
+body[data-page='pinklovers-influencer'] *::before,
+body[data-page='pinklovers-influencer'] *::after {
+  box-sizing: border-box;
+}
+
+body[data-page='pinklovers-influencer'] a {
   color: inherit;
 }
 
-a:hover {
+body[data-page='pinklovers-influencer'] a:hover {
   color: inherit;
 }
 
-.pinklover-dashboard {
-  position: relative;
-  overflow-x: hidden;
-}
-
-.page-hero {
+body[data-page='pinklovers-influencer'] .page-hero {
   position: relative;
   background: linear-gradient(135deg, #f66db0 0%, #ff85c4 48%, #ff9ed5 100%);
   color: #fff;
@@ -52,7 +44,7 @@ a:hover {
   overflow: hidden;
 }
 
-.page-hero::after {
+body[data-page='pinklovers-influencer'] .page-hero::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -63,7 +55,7 @@ a:hover {
   mix-blend-mode: screen;
 }
 
-.page-hero__container {
+body[data-page='pinklovers-influencer'] .page-hero__container {
   position: relative;
   z-index: 1;
   max-width: min(1100px, 92vw);
@@ -72,7 +64,7 @@ a:hover {
   gap: 1.5rem;
 }
 
-.page-hero__eyebrow {
+body[data-page='pinklovers-influencer'] .page-hero__eyebrow {
   font-size: 0.85rem;
   text-transform: uppercase;
   letter-spacing: 0.22em;
@@ -80,28 +72,28 @@ a:hover {
   color: rgba(255, 255, 255, 0.8);
 }
 
-.page-hero h1 {
+body[data-page='pinklovers-influencer'] .page-hero h1 {
   margin: 0;
   font-size: clamp(2.3rem, 5vw, 3.1rem);
   font-weight: 700;
   letter-spacing: -0.02em;
 }
 
-.page-hero p {
+body[data-page='pinklovers-influencer'] .page-hero p {
   margin: 0;
   font-size: clamp(1rem, 2.4vw, 1.2rem);
   max-width: 50ch;
   color: rgba(255, 255, 255, 0.92);
 }
 
-.page-hero__actions {
+body[data-page='pinklovers-influencer'] .page-hero__actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.85rem;
 }
 
-.primary-button,
-.ghost-button {
+body[data-page='pinklovers-influencer'] .primary-button,
+body[data-page='pinklovers-influencer'] .ghost-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -114,37 +106,37 @@ a:hover {
   text-decoration: none;
 }
 
-.primary-button {
+body[data-page='pinklovers-influencer'] .primary-button {
   background: #fff;
   color: var(--pink-600);
   box-shadow: 0 18px 30px rgba(255, 255, 255, 0.25);
 }
 
-.primary-button:hover {
+body[data-page='pinklovers-influencer'] .primary-button:hover {
   transform: translateY(-2px);
   box-shadow: 0 22px 40px rgba(255, 255, 255, 0.35);
 }
 
-.ghost-button {
+body[data-page='pinklovers-influencer'] .ghost-button {
   background: rgba(255, 255, 255, 0.18);
   color: #fff;
   border: 1px solid rgba(255, 255, 255, 0.4);
   backdrop-filter: blur(6px);
 }
 
-.ghost-button:hover {
+body[data-page='pinklovers-influencer'] .ghost-button:hover {
   transform: translateY(-2px);
   background: rgba(255, 255, 255, 0.28);
 }
 
-.page-content {
+body[data-page='pinklovers-influencer'] .page-content {
   max-width: min(1100px, 92vw);
   margin: -3.5rem auto 0;
   display: grid;
   gap: 2rem;
 }
 
-.card {
+body[data-page='pinklovers-influencer'] .card {
   background: #fff;
   border-radius: var(--radius-lg);
   padding: clamp(1.75rem, 4vw, 2.5rem);
@@ -152,13 +144,13 @@ a:hover {
   position: relative;
 }
 
-.section-heading {
+body[data-page='pinklovers-influencer'] .section-heading {
   display: grid;
   gap: 0.75rem;
   margin-bottom: 1.75rem;
 }
 
-.section-heading__eyebrow {
+body[data-page='pinklovers-influencer'] .section-heading__eyebrow {
   text-transform: uppercase;
   letter-spacing: 0.24em;
   font-size: 0.72rem;
@@ -166,21 +158,21 @@ a:hover {
   color: var(--pink-600);
 }
 
-.section-heading__copy h2 {
+body[data-page='pinklovers-influencer'] .section-heading__copy h2 {
   margin: 0;
   font-size: clamp(1.45rem, 3vw, 1.9rem);
   letter-spacing: -0.015em;
 }
 
-.section-heading__copy p {
+body[data-page='pinklovers-influencer'] .section-heading__copy p {
   margin: 0.25rem 0 0;
 }
 
-.muted {
+body[data-page='pinklovers-influencer'] .muted {
   color: var(--gray-500);
 }
 
-.summary-card::before {
+body[data-page='pinklovers-influencer'] .summary-card::before {
   content: '';
   position: absolute;
   inset: 0;
@@ -191,7 +183,7 @@ a:hover {
   mix-blend-mode: lighten;
 }
 
-.stats-grid {
+body[data-page='pinklovers-influencer'] .stats-grid {
   position: relative;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
@@ -199,314 +191,100 @@ a:hover {
   z-index: 1;
 }
 
-.stat-card {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 242, 248, 0.78) 100%);
-  border-radius: 22px;
-  padding: clamp(1.2rem, 3vw, 1.6rem);
-  border: 1px solid rgba(228, 68, 122, 0.12);
-  box-shadow: 0 16px 32px rgba(228, 68, 122, 0.12);
-  display: flex;
-  flex-direction: column;
-  gap: 0.85rem;
-  min-height: 170px;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.stat-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 22px 36px rgba(228, 68, 122, 0.16);
-}
-
-.stat-card__label {
-  text-transform: uppercase;
-  letter-spacing: 0.16em;
-  font-size: 0.72rem;
-  color: var(--pink-600);
-  font-weight: 700;
-}
-
-.stat-card__value {
-  display: block;
-  font-size: clamp(1.35rem, 3vw, 1.75rem);
-  color: var(--gray-900);
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  line-height: 1.2;
-}
-
-.stat-card__value--stacked {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.35rem;
-}
-
-.stat-card__number {
-  font-size: clamp(1.6rem, 3.4vw, 2rem);
-  line-height: 1.1;
-}
-
-.stat-card__meta {
-  font-size: 0.95rem;
-  color: var(--gray-500);
-  font-weight: 500;
-  letter-spacing: 0;
-  line-height: 1.35;
-}
-
-@media (max-width: 720px) {
-  .stat-card {
-    min-height: 0;
-  }
-}
-
-.alerts-grid {
-  margin-top: 1.75rem;
+body[data-page='pinklovers-influencer'] .stat-card {
+  background: #fff;
+  border-radius: 20px;
+  padding: 1.4rem 1.6rem;
+  box-shadow: 0 18px 32px rgba(228, 68, 122, 0.12);
   display: grid;
-  gap: 0.85rem;
+  gap: 0.4rem;
 }
 
-.alert {
-  background: linear-gradient(135deg, rgba(255, 186, 131, 0.18), rgba(255, 255, 255, 0.6));
-  border: 1px solid rgba(249, 115, 22, 0.4);
-  color: #9a3412;
-  border-radius: 18px;
-  padding: 0.85rem 1.1rem;
-  font-size: 0.95rem;
-  box-shadow: 0 18px 30px rgba(249, 115, 22, 0.15);
+body[data-page='pinklovers-influencer'] .stat-card__label {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--gray-500);
 }
 
-.alert strong {
+body[data-page='pinklovers-influencer'] .stat-card__value {
+  font-size: clamp(1.45rem, 3vw, 1.9rem);
   font-weight: 700;
+  color: var(--pink-600);
+}
+
+body[data-page='pinklovers-influencer'] .alerts-grid {
+  margin-top: 1.5rem;
+  display: grid;
+  gap: 1rem;
+}
+
+body[data-page='pinklovers-influencer'] .planner-card {
+  display: grid;
+  gap: clamp(1.5rem, 3vw, 2rem);
+}
+
+body[data-page='pinklovers-influencer'] .planner-card__actions,
+body[data-page='pinklovers-influencer'] .planner-card__cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+}
+
+body[data-page='pinklovers-influencer'] .planner-card__schedule {
+  display: grid;
+  gap: 1.5rem;
+}
+
+body[data-page='pinklovers-influencer'] .plan-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+body[data-page='pinklovers-influencer'] .planner-card__helper {
+  max-width: 42ch;
+}
+
+body[data-page='pinklovers-influencer'] .plan-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+  color: var(--gray-500);
+}
+
+body[data-page='pinklovers-influencer'] .dot {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+  display: inline-block;
   margin-right: 0.35rem;
 }
 
-.planner-card {
-  display: grid;
-  gap: 2rem;
+body[data-page='pinklovers-influencer'] .dot--validated {
+  background: rgba(52, 211, 153, 0.7);
 }
 
-.planner-card__intro {
-  display: grid;
-  gap: 0.65rem;
+body[data-page='pinklovers-influencer'] .dot--pending {
+  background: rgba(250, 204, 21, 0.7);
 }
 
-.planner-card__cta {
-  display: grid;
-  gap: 0.85rem;
-  max-width: 22rem;
+body[data-page='pinklovers-influencer'] .dot--review {
+  background: rgba(59, 130, 246, 0.7);
 }
 
-.planner-card__helper {
-  font-size: 0.95rem;
-}
-
-.planner-card__schedule {
-  display: grid;
-  gap: 1.25rem;
-}
-
-.planner-card__header h3 {
-  margin: 0;
-  font-size: 1.35rem;
-  color: var(--pink-700);
-}
-
-.plan-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
-  gap: 1.25rem;
-}
-
-.plan-card {
-  position: relative;
-  border-radius: 24px;
-  border: 1px solid rgba(228, 68, 122, 0.2);
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(255, 236, 246, 0.9));
-  padding: 1.5rem;
-  display: grid;
-  gap: 0.9rem;
-  box-shadow: var(--shadow-soft);
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
-  overflow: hidden;
-}
-
-.plan-card::after {
-  content: '';
-  position: absolute;
-  inset: auto -25% -40% auto;
-  width: 12rem;
-  height: 12rem;
-  background: radial-gradient(circle, rgba(228, 68, 122, 0.28), transparent 70%);
-  pointer-events: none;
-}
-
-.plan-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 28px 60px rgba(228, 68, 122, 0.22);
-}
-
-.plan-card header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.75rem;
-}
-
-.plan-date {
-  display: grid;
-  gap: 0.15rem;
-  position: relative;
-  padding-left: 0.35rem;
-}
-
-.plan-date strong {
-  font-size: 2rem;
-  line-height: 1;
-  color: var(--pink-600);
-}
-
-.plan-date small {
-  text-transform: uppercase;
-  letter-spacing: 0.18em;
-  font-size: 0.7rem;
-  color: rgba(28, 31, 42, 0.55);
-  font-weight: 700;
-}
-
-.status-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.45rem 0.95rem;
-  border-radius: 999px;
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  border: 1px solid transparent;
-  box-shadow: 0 14px 24px rgba(0, 0, 0, 0.08);
-}
-
-.status-badge::before {
-  content: '';
-  width: 0.42rem;
-  height: 0.42rem;
-  border-radius: 50%;
-  background: currentColor;
-}
-
-.status-validado {
-  background: rgba(34, 197, 94, 0.18);
-  border-color: rgba(34, 197, 94, 0.4);
-  color: #166534;
-}
-
-.status-pendente {
-  background: rgba(250, 204, 21, 0.2);
-  border-color: rgba(250, 204, 21, 0.45);
-  color: #854d0e;
-}
-
-.status-andamento {
-  background: rgba(59, 130, 246, 0.2);
-  border-color: rgba(59, 130, 246, 0.45);
-  color: #1d4ed8;
-}
-
-.status-atrasado {
-  background: rgba(248, 113, 113, 0.22);
-  border-color: rgba(248, 113, 113, 0.45);
-  color: #b91c1c;
-}
-
-.plan-card h3 {
-  margin: 0;
-  font-size: 1.1rem;
-  color: var(--pink-700);
-}
-
-.plan-card p {
-  margin: 0;
-  font-size: 0.97rem;
-  color: rgba(28, 31, 42, 0.7);
-}
-
-.plan-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem 1.5rem;
-  font-size: 0.85rem;
-  color: var(--gray-500);
-}
-
-.plan-legend span {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.dot {
-  width: 0.65rem;
-  height: 0.65rem;
-  border-radius: 50%;
-}
-
-.dot--validated {
-  background: #34d399;
-}
-
-.dot--pending {
-  background: #fbbf24;
-}
-
-.dot--review {
-  background: #60a5fa;
-}
-
-.dot--missed {
-  background: #f87171;
-}
-
-.empty-state {
-  background: rgba(255, 255, 255, 0.9);
-  border-radius: 18px;
-  padding: 1.35rem;
-  border: 1px dashed rgba(228, 68, 122, 0.3);
-  text-align: center;
-  font-weight: 600;
+body[data-page='pinklovers-influencer'] .dot--missed {
+  background: rgba(248, 113, 113, 0.7);
 }
 
 @media (max-width: 768px) {
-  .page-hero__actions {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .page-content {
+  body[data-page='pinklovers-influencer'] .page-content {
     margin-top: -2.5rem;
-    gap: 1.75rem;
   }
 
-  .card {
-    padding: 1.5rem;
-  }
-
-  .plan-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 520px) {
-  .page-hero {
-    padding-bottom: 5rem;
-  }
-
-  .page-content {
-    margin-top: -2rem;
-  }
-
-  .stat-card {
-    padding: 1rem 1.1rem;
+  body[data-page='pinklovers-influencer'] .page-hero {
+    padding-bottom: clamp(4rem, 12vw, 5rem);
   }
 }

@@ -8,7 +8,7 @@
     <script defer src="main.js"></script>
   </head>
   <body data-page="master-list">
-    <div class="container">
+    <main id="conteudo-principal" class="container">
       <header>
         <h1>Influenciadoras cadastradas</h1>
         <p>Gerencie os registros já cadastrados.</p>
@@ -16,12 +16,12 @@
       </header>
 
       <section class="card">
-        <div class="link-grid" style="margin-bottom:16px;">
+        <nav class="link-grid section-nav" aria-label="Navegação secundária">
           <a class="link-card" href="master-create.html">Cadastrar</a>
           <a class="link-card" href="master-consult.html">Consulta</a>
           <a class="link-card" href="master-sales.html">Registrar venda</a>
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;">
+        </nav>
+        <div class="page-toolbar">
           <div>
             <h2>Lista atual</h2>
             <p class="note">Edite, exclua ou envie as credenciais pelo WhatsApp usando os botoes de acao.</p>
@@ -31,6 +31,6 @@
         <div id="influencersList" class="influencers-list"></div>
         <div id="listMessage" class="message" aria-live="polite"></div>
       </section>
-    </div>
+    </main>
   </body>
 </html>
