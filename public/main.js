@@ -570,6 +570,15 @@
   const integerFormatter = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 });
   const formatInteger = (value) => integerFormatter.format(parseToNumber(value));
 
+  const formatMultiplierDisplay = (value) => {
+    const numeric = parseToNumberOrNull(value);
+    if (numeric == null) return '–';
+    if (Number.isInteger(numeric)) {
+      return `${numeric}x`;
+    }
+    return `${numeric.toFixed(2).replace('.', ',')}x`;
+  };
+
   const formatDateToBR = (value) => {
     if (!value) return '-';
     const iso = String(value).split('T')[0];
@@ -3544,29 +3553,46 @@
     const viewContractBtn = document.getElementById('viewSignedContractButton');
     const downloadContractBtn = document.getElementById('downloadSignedContractButton');
 
-    const mainDashboardSection = document.getElementById('mainDashboard');
-    const sectionNodes = Array.from(document.querySelectorAll('.influencer-section'));
-    const dashboardOptions = document.querySelectorAll('.dashboard-option');
-    const backButtons = document.querySelectorAll('.btn-back');
-    const scriptsListEl = document.getElementById('influencerScriptsList');
-    const scriptsMessageEl = document.getElementById('influencerScriptsMessage');
-    const planCyclePeriodEl = document.getElementById('planCyclePeriod');
-    const planScheduledCountEl = document.getElementById('planScheduledCount');
-    const planValidatedCountEl = document.getElementById('planValidatedCount');
     const planMessageEl = document.getElementById('planMessage');
-    const planEntriesListEl = document.getElementById('planEntriesList');
+    const planScheduleBoardEl = document.getElementById('planScheduleBoard');
+    const planCyclePeriodEls = document.querySelectorAll('[data-plan-cycle]');
+    const planCycleHelperEls = document.querySelectorAll('[data-plan-cycle-helper]');
+    const planMultiplierEls = document.querySelectorAll('[data-plan-multiplier]');
+    const planMultiplierLabelEls = document.querySelectorAll('[data-plan-multiplier-label]');
+    const planPlannedCountEls = document.querySelectorAll('[data-plan-planned]');
+    const planValidatedCountEls = document.querySelectorAll('[data-plan-validated]');
+    const planPendingCountEls = document.querySelectorAll('[data-plan-pending]');
 
-    const sectionsMap = isStandalonePerformancePage
-      ? {}
-      : sectionNodes.reduce((acc, section) => {
-          if (section?.id) {
-            acc[section.id] = section;
-          }
-          return acc;
-        }, {});
 
-    let scriptsLoaded = false;
-    let scriptsLoading = false;
+    const fullMonthLabels = [
+      'Janeiro',
+      'Fevereiro',
+      'Março',
+      'Abril',
+      'Maio',
+      'Junho',
+      'Julho',
+      'Agosto',
+      'Setembro',
+      'Outubro',
+      'Novembro',
+      'Dezembro'
+    ];
+
+    const shortMonthLabels = [
+      'JAN',
+      'FEV',
+      'MAR',
+      'ABR',
+      'MAI',
+      'JUN',
+      'JUL',
+      'AGO',
+      'SET',
+      'OUT',
+      'NOV',
+      'DEZ'
+    ];
 
     const planStatusLabels = {
       scheduled: 'Pendente',
@@ -3575,10 +3601,39 @@
       missed: 'Não entregue'
     };
 
+    const planStatusClasses = {
+      validated: 'validated',
+      scheduled: 'pending',
+      posted: 'review',
+      missed: 'missed'
+    };
+
+    const updateTextNodes = (nodes, value) => {
+      const text = value == null ? '' : String(value);
+      nodes.forEach((node) => {
+        if (!node) return;
+        node.textContent = text;
+      });
+    };
+
+    const parsePlanDateParts = (value) => {
+      const fallback = { day: '--', monthLabel: '' };
+      if (!value) return fallback;
+      const iso = String(value).split('T')[0];
+      const [year, month, day] = iso.split('-').map((part) => Number(part));
+      if (!year || !month || !day) return fallback;
+      const monthIndex = Math.min(Math.max(month - 1, 0), shortMonthLabels.length - 1);
+      return {
+        day: String(day).padStart(2, '0'),
+        monthLabel: shortMonthLabels[monthIndex] || String(month).padStart(2, '0')
+      };
+    };
+
     const planState = {
       cycle: null,
       plans: [],
       scripts: [],
+      progress: null,
       loading: false
     };
 
@@ -3598,195 +3653,104 @@
     };
 
     const renderPlanOverview = () => {
-      if (planCyclePeriodEl) {
-        if (planState.cycle) {
-          const month = String(planState.cycle.cycle_month).padStart(2, '0');
-          planCyclePeriodEl.textContent = `${month}/${planState.cycle.cycle_year}`;
-        } else {
-          planCyclePeriodEl.textContent = '–';
-        }
+      const cycle = planState.cycle;
+      if (cycle?.cycle_month && cycle?.cycle_year) {
+        const monthIndex = Number(cycle.cycle_month) - 1;
+        const monthLabel = fullMonthLabels[monthIndex] || `Mês ${cycle.cycle_month}`;
+        updateTextNodes(planCyclePeriodEls, `${monthLabel} ${cycle.cycle_year}`);
+        const helper = `Ciclo ${String(cycle.cycle_month).padStart(2, '0')}/${cycle.cycle_year}`;
+        updateTextNodes(planCycleHelperEls, helper);
+      } else {
+        updateTextNodes(planCyclePeriodEls, '–');
+        updateTextNodes(planCycleHelperEls, 'Estamos preparando seus dados.');
       }
 
       const plans = Array.isArray(planState.plans) ? planState.plans : [];
-      const scheduledCount = plans.filter((plan) => plan.status === 'scheduled').length;
-      const validatedCount = plans.filter((plan) => plan.status === 'validated').length;
+      const progress = planState.progress || {};
+      const plannedCount = progress.plannedDays ?? plans.length;
+      const validatedCount =
+        progress.validatedDays ?? plans.filter((plan) => plan.status === 'validated').length;
+      const pendingCount =
+        progress.pendingValidations ?? plans.filter((plan) => plan.status === 'scheduled').length;
 
-      if (planScheduledCountEl) {
-        planScheduledCountEl.textContent = String(scheduledCount);
-      }
-      if (planValidatedCountEl) {
-        planValidatedCountEl.textContent = String(validatedCount);
-      }
+      updateTextNodes(planPlannedCountEls, formatInteger(plannedCount));
+      updateTextNodes(planValidatedCountEls, formatInteger(validatedCount));
+      updateTextNodes(planPendingCountEls, formatInteger(pendingCount));
+
+      const multiplierLabel = toTrimmedString(progress.multiplierLabel ?? '') || 'Multiplicador do ciclo';
+      updateTextNodes(planMultiplierLabelEls, multiplierLabel);
+      updateTextNodes(planMultiplierEls, formatMultiplierDisplay(progress.multiplier));
     };
 
-    const renderPlanEntries = () => {
-      if (!planEntriesListEl) return;
-      planEntriesListEl.innerHTML = '';
+    const renderPlanSchedule = () => {
+      if (!planScheduleBoardEl) return;
+      planScheduleBoardEl.innerHTML = '';
 
-      const plans = Array.isArray(planState.plans) ? planState.plans : [];
+      const plans = Array.isArray(planState.plans) ? [...planState.plans] : [];
       if (!plans.length) {
-        const empty = document.createElement('li');
-        empty.className = 'plan-entry empty';
-        empty.textContent = 'Nenhum agendamento cadastrado.';
-        planEntriesListEl.appendChild(empty);
+        const empty = document.createElement('div');
+        empty.className = 'schedule-empty';
+        empty.textContent = 'Nenhum agendamento cadastrado para este ciclo.';
+        planScheduleBoardEl.appendChild(empty);
         return;
       }
 
-      plans.forEach((plan) => {
-        const item = document.createElement('li');
-        item.className = 'plan-entry';
-
-        const header = document.createElement('div');
-        header.className = 'plan-entry-header';
-
-        const dateEl = document.createElement('span');
-        dateEl.className = 'plan-entry-date';
-        dateEl.textContent = formatDateToBR(plan.scheduled_date);
-        header.appendChild(dateEl);
-
-        const statusEl = document.createElement('span');
-        statusEl.className = 'plan-entry-status';
-        statusEl.textContent = formatPlanStatus(plan.status);
-        header.appendChild(statusEl);
-
-        item.appendChild(header);
-
-        const scriptInfo = document.createElement('div');
-        scriptInfo.className = 'plan-entry-script';
-        scriptInfo.textContent = plan.content_script_id
-          ? `Roteiro: ${resolveScriptTitle(plan)}`
-          : 'Roteiro: a definir';
-        item.appendChild(scriptInfo);
-
-        if (plan.notes) {
-          const note = document.createElement('div');
-          note.className = 'plan-entry-note';
-          note.textContent = plan.notes;
-          item.appendChild(note);
+      plans.sort((a, b) => {
+        const aDate = a?.scheduled_date || '';
+        const bDate = b?.scheduled_date || '';
+        if (aDate === bDate) {
+          return (Number(a?.id) || 0) - (Number(b?.id) || 0);
         }
-
-        planEntriesListEl.appendChild(item);
+        return aDate < bDate ? -1 : 1;
       });
-    };
-
-    const renderScriptsList = (rows = planState.scripts) => {
-      if (!scriptsListEl) return;
-      scriptsListEl.innerHTML = '';
-
-      const scripts = Array.isArray(rows) ? rows : [];
-      if (!scripts.length) {
-        return;
-      }
 
       const fragment = document.createDocumentFragment();
 
-      scripts.forEach((script, index) => {
-        if (!script) return;
-        const item = document.createElement('article');
-        item.className = 'script-item';
+      plans.forEach((plan) => {
+        if (!plan) return;
+        const status = plan.status || 'scheduled';
+        const card = document.createElement('article');
+        card.className = `schedule-card schedule-card--${planStatusClasses[status] || 'pending'}`;
 
-        const headerButton = document.createElement('button');
-        headerButton.type = 'button';
-        headerButton.className = 'script-header';
-        headerButton.setAttribute('aria-expanded', 'false');
+        const dateSection = document.createElement('div');
+        dateSection.className = 'schedule-card__date';
+        const dateParts = parsePlanDateParts(plan.scheduled_date);
+        const dayEl = document.createElement('span');
+        dayEl.className = 'schedule-card__day';
+        dayEl.textContent = dateParts.day;
+        dateSection.appendChild(dayEl);
 
-        const titleSpan = document.createElement('span');
-        titleSpan.className = 'script-title';
-        const rawTitle = toTrimmedString(script?.titulo ?? script?.title ?? '');
-        titleSpan.textContent = rawTitle || `Roteiro ${index + 1}`;
-        headerButton.appendChild(titleSpan);
+        const monthEl = document.createElement('span');
+        monthEl.className = 'schedule-card__month';
+        monthEl.textContent = dateParts.monthLabel;
+        dateSection.appendChild(monthEl);
+        card.appendChild(dateSection);
 
-        const iconSpan = document.createElement('span');
-        iconSpan.className = 'script-icon';
-        iconSpan.setAttribute('aria-hidden', 'true');
-        iconSpan.textContent = '+';
-        headerButton.appendChild(iconSpan);
+        const info = document.createElement('div');
+        info.className = 'schedule-card__info';
 
-        const content = document.createElement('div');
-        content.className = 'script-content';
-        content.hidden = true;
+        const statusEl = document.createElement('span');
+        statusEl.className = 'schedule-card__status';
+        statusEl.textContent = formatPlanStatus(status);
+        info.appendChild(statusEl);
 
-        const descriptionWrapper = document.createElement('div');
-        descriptionWrapper.className = 'script-body rich-text';
-        setRichTextContent(descriptionWrapper, script?.descricao ?? script?.description ?? '');
-        content.appendChild(descriptionWrapper);
+        const titleEl = document.createElement('h3');
+        titleEl.className = 'schedule-card__title';
+        titleEl.textContent = plan.content_script_id ? resolveScriptTitle(plan) : 'Roteiro a definir';
+        info.appendChild(titleEl);
 
-        const createdAt = script?.created_at ?? script?.createdAt ?? null;
-        const updatedAt = script?.updated_at ?? script?.updatedAt ?? null;
-        const hasDifferentDates = createdAt && updatedAt && createdAt !== updatedAt;
-        const referenceDate = hasDifferentDates ? updatedAt : updatedAt || createdAt;
-        if (referenceDate) {
-          const meta = document.createElement('span');
-          meta.className = 'script-meta';
-          const label = hasDifferentDates ? 'Atualizado em' : 'Criado em';
-          meta.textContent = `${label} ${formatDateTimeDetailed(referenceDate)}`;
-          content.appendChild(meta);
+        if (plan.notes) {
+          const noteEl = document.createElement('p');
+          noteEl.className = 'schedule-card__note';
+          noteEl.textContent = plan.notes;
+          info.appendChild(noteEl);
         }
 
-        const scheduledForScript = Array.isArray(planState.plans)
-          ? planState.plans.filter((plan) => plan.content_script_id === script.id)
-          : [];
-        if (scheduledForScript.length) {
-          const scheduledWrapper = document.createElement('div');
-          scheduledWrapper.className = 'script-scheduled-dates';
-          const label = document.createElement('span');
-          label.textContent = 'Datas agendadas:';
-          label.style.fontWeight = '600';
-          scheduledWrapper.appendChild(label);
-          scheduledForScript.forEach((plan) => {
-            const chip = document.createElement('span');
-            chip.className = 'chip';
-            chip.textContent = formatDateToBR(plan.scheduled_date);
-            scheduledWrapper.appendChild(chip);
-          });
-          content.appendChild(scheduledWrapper);
-        }
-
-        const plannerHint = document.createElement('div');
-        plannerHint.className = 'script-planner-hint';
-        const plannerLink = document.createElement('a');
-        plannerLink.className = 'link-button';
-        plannerLink.href = 'influencer-plan.html';
-        plannerLink.textContent = 'Abrir planejador para agendar';
-        plannerHint.appendChild(plannerLink);
-        content.appendChild(plannerHint);
-
-        const contentId = `script-content-${script?.id ?? index}`;
-        content.id = contentId;
-        headerButton.setAttribute('aria-controls', contentId);
-
-        headerButton.addEventListener('click', () => {
-          const isOpen = item.classList.contains('open');
-          scriptsListEl.querySelectorAll('.script-item.open').forEach((openItem) => {
-            if (openItem === item) return;
-            openItem.classList.remove('open');
-            const openButton = openItem.querySelector('.script-header');
-            const openContent = openItem.querySelector('.script-content');
-            const openIcon = openItem.querySelector('.script-icon');
-            openButton?.setAttribute('aria-expanded', 'false');
-            if (openContent) openContent.hidden = true;
-            if (openIcon) openIcon.textContent = '+';
-          });
-
-          if (isOpen) {
-            item.classList.remove('open');
-            headerButton.setAttribute('aria-expanded', 'false');
-            content.hidden = true;
-            iconSpan.textContent = '+';
-          } else {
-            item.classList.add('open');
-            headerButton.setAttribute('aria-expanded', 'true');
-            content.hidden = false;
-            iconSpan.textContent = '–';
-          }
-        });
-
-        item.appendChild(headerButton);
-        item.appendChild(content);
-        fragment.appendChild(item);
+        card.appendChild(info);
+        fragment.appendChild(card);
       });
 
-      scriptsListEl.appendChild(fragment);
+      planScheduleBoardEl.appendChild(fragment);
     };
 
     const loadPlan = async ({ silent = false } = {}) => {
@@ -3796,25 +3760,21 @@
         setMessage(planMessageEl, 'Carregando sua agenda...', 'info');
       }
       try {
-        const data = await apiFetch('/influencer/plan');
+        const data = await apiFetch('/influencer/dashboard');
         planState.cycle = data?.cycle ?? null;
         planState.plans = Array.isArray(data?.plans) ? data.plans : [];
-        planState.scripts = Array.isArray(data?.scripts) ? data.scripts : [];
+        if (Array.isArray(data?.scripts)) {
+          planState.scripts = data.scripts;
+        } else if (Array.isArray(data?.suggestions)) {
+          planState.scripts = data.suggestions;
+        } else {
+          planState.scripts = [];
+        }
+        planState.progress = data?.progress ?? null;
         renderPlanOverview();
-        renderPlanEntries();
-        renderScriptsList(planState.scripts);
-        scriptsLoaded = true;
+        renderPlanSchedule();
         if (!silent) {
           setMessage(planMessageEl, '', '');
-        }
-        if (!planState.scripts.length) {
-          setMessage(
-            scriptsMessageEl,
-            'Nenhum roteiro disponível por enquanto. Assim que houver novidades você verá tudo aqui. 💗',
-            'info'
-          );
-        } else {
-          setMessage(scriptsMessageEl, '', '');
         }
       } catch (error) {
         if (error.status === 401) {
@@ -3824,90 +3784,8 @@
         if (!silent) {
           setMessage(planMessageEl, error.message || 'Não foi possível carregar sua agenda.', 'error');
         }
-        throw error;
       } finally {
         planState.loading = false;
-      }
-    };
-
-    const loadScripts = async ({ force = false } = {}) => {
-      if (!scriptsListEl || scriptsLoading) return;
-      if (!force && scriptsLoaded && planState.scripts.length) {
-        renderPlanOverview();
-        renderPlanEntries();
-        renderScriptsList(planState.scripts);
-        return;
-      }
-      scriptsLoading = true;
-      if (!force) {
-        setMessage(scriptsMessageEl, 'Carregando roteiros...', 'info');
-      }
-      try {
-        await loadPlan({ silent: true });
-        if (!planState.scripts.length) {
-          setMessage(
-            scriptsMessageEl,
-            'Nenhum roteiro disponível por enquanto. Assim que houver novidades você verá tudo aqui. 💗',
-            'info'
-          );
-        } else {
-          setMessage(scriptsMessageEl, '', '');
-        }
-      } catch (error) {
-        if (error.status === 401) {
-          logout();
-          return;
-        }
-        setMessage(
-          scriptsMessageEl,
-          error.message || 'Nao foi possivel carregar os roteiros. Tente novamente em instantes.',
-          'error'
-        );
-      } finally {
-        scriptsLoading = false;
-      }
-    };
-
-    const showSection = (sectionId = '') => {
-      if (isStandalonePerformancePage) return;
-
-      const targetId = sectionId && sectionsMap[sectionId] ? sectionId : '';
-
-      if (mainDashboardSection) {
-        if (!targetId) {
-          mainDashboardSection.removeAttribute('hidden');
-          mainDashboardSection.classList.add('active');
-        } else {
-          mainDashboardSection.setAttribute('hidden', '');
-          mainDashboardSection.classList.remove('active');
-        }
-      }
-
-      sectionNodes.forEach((section) => {
-        if (!section) return;
-        const isTarget = section.id === targetId;
-        section.hidden = !isTarget;
-        section.classList.toggle('active', isTarget);
-      });
-
-      if (!targetId) {
-        return;
-      }
-
-      if (targetId === 'scriptsSection') {
-        if (!scriptsLoaded && !scriptsLoading) {
-          loadScripts();
-        } else if (!planState.loading) {
-          loadPlan({ silent: true }).catch(() => {});
-        }
-      }
-
-      const targetSection = sectionsMap[targetId];
-      if (targetSection) {
-        targetSection.classList.add('active');
-        window.requestAnimationFrame(() => {
-          targetSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        });
       }
     };
 
@@ -3926,41 +3804,6 @@
         }
       }
     };
-
-    if (!isStandalonePerformancePage) {
-      dashboardOptions.forEach((option) => {
-        option.addEventListener('click', () => {
-          const plannerHref = option.dataset.openPlanner;
-          if (plannerHref) {
-            window.location.href = plannerHref;
-            return;
-          }
-
-          const targetSection = option.dataset.section;
-          if (targetSection) {
-            showSection(targetSection);
-          }
-        });
-      });
-
-      backButtons.forEach((button) => {
-        button.addEventListener('click', () => {
-          const targetSection = button.dataset.target;
-          if (targetSection && targetSection !== 'main') {
-            showSection(targetSection);
-          } else {
-            showSection('');
-          }
-          if (mainDashboardSection) {
-            window.requestAnimationFrame(() => {
-              mainDashboardSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            });
-          }
-        });
-      });
-
-      showSection('');
-    }
 
     const applyContractWaiverState = () => {
       if (!contractWaived) {
@@ -4146,9 +3989,9 @@
     };
 
     const renderSalesTable = (rows) => {
+      renderSalesSummary(rows);
       if (!salesTableBody) return;
       salesTableBody.innerHTML = '';
-      renderSalesSummary(rows);
       if (!Array.isArray(rows) || rows.length === 0) {
         const emptyRow = document.createElement('tr');
         const emptyCell = document.createElement('td');
@@ -4207,15 +4050,19 @@
     const loadInfluencerSales = async (influencerId) => {
       if (!influencerId) {
         renderSalesTable([]);
-        setMessage(salesMessageEl, '', '');
+        setMessage(salesMessageEl, 'Nenhuma venda registrada até o momento.', 'info');
         return;
       }
-      setMessage(salesMessageEl, 'Carregando vendas...', 'info');
+      setMessage(salesMessageEl, 'Carregando desempenho...', 'info');
       try {
         const salesData = await apiFetch(`/sales/${influencerId}`);
         const rows = Array.isArray(salesData) ? salesData : [];
         renderSalesTable(rows);
-        setMessage(salesMessageEl, '', '');
+        if (!rows.length) {
+          setMessage(salesMessageEl, 'Nenhuma venda registrada até o momento.', 'info');
+        } else {
+          setMessage(salesMessageEl, '', '');
+        }
       } catch (error) {
         if (error.status === 401) {
           logout();
@@ -4296,6 +4143,9 @@
     enforceTermAcceptance().then(async (allowed) => {
       if (!allowed) return;
       await loadInfluencer();
+      if (!isStandalonePerformancePage) {
+        await loadPlan();
+      }
     });
   };
 
