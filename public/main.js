@@ -1276,6 +1276,22 @@
   const createScript = async ({ title, description }) =>
     apiFetch('/scripts', { method: 'POST', body: { title, description } });
 
+  const updateScript = async ({ id, title, description }) => {
+    const scriptId = Number(id);
+    if (!Number.isInteger(scriptId) || scriptId <= 0) {
+      throw new Error('Identificador de roteiro invalido.');
+    }
+    return apiFetch(`/scripts/${scriptId}`, { method: 'PUT', body: { title, description } });
+  };
+
+  const deleteScript = async (id) => {
+    const scriptId = Number(id);
+    if (!Number.isInteger(scriptId) || scriptId <= 0) {
+      throw new Error('Identificador de roteiro invalido.');
+    }
+    return apiFetch(`/scripts/${scriptId}`, { method: 'DELETE' });
+  };
+
   const formatAccount = (instagram) => {
     if (!instagram) return '-';
     return instagram.replace(/^@/, '').trim() || '-';
@@ -3306,32 +3322,103 @@
     const formMessageEl = document.getElementById('scriptFormMessage');
     const listMessageEl = document.getElementById('scriptListMessage');
     const listContainer = document.getElementById('scriptList');
+    const cancelEditButton = document.getElementById('cancelScriptEditButton');
+    const newScriptShortcutButton = document.getElementById('newScriptShortcutButton');
 
-    const renderScriptManagementList = (scripts) => {
+    const titleInput = form?.elements.title || form?.elements.titulo;
+    const descriptionInput = form?.elements.description || form?.elements.descricao;
+    const submitButton = form?.querySelector('button[type="submit"]');
+
+    const convertScriptHtmlToEditorValue = (value = '') => {
+      const html = prepareScriptHtml(value);
+      if (!html) return '';
+      const temp = document.createElement('div');
+      temp.innerHTML = html;
+      const text =
+        typeof temp.innerText === 'string' ? temp.innerText : temp.textContent || '';
+      return text.replace(/\r\n/g, '\n').replace(/\u00a0/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+    };
+
+    const normalizeScriptRecord = (script) => {
+      const id = Number(script?.id ?? script?.script_id ?? script?.scriptId);
+      if (!Number.isInteger(id) || id <= 0) return null;
+
+      const rawTitle = toTrimmedString(script?.titulo ?? script?.title ?? '');
+      const rawDescription =
+        typeof script?.descricao === 'string'
+          ? script.descricao
+          : typeof script?.description === 'string'
+            ? script.description
+            : '';
+
+      return {
+        id,
+        title: rawTitle || 'Roteiro sem título',
+        rawTitle,
+        description: rawDescription,
+        editorValue: convertScriptHtmlToEditorValue(rawDescription),
+        createdAt: script?.created_at ?? script?.createdAt ?? null,
+        updatedAt: script?.updated_at ?? script?.updatedAt ?? null
+      };
+    };
+
+    let cachedScripts = [];
+    let editingScriptId = null;
+
+    const renderScriptManagementList = () => {
       if (!listContainer) return;
       listContainer.innerHTML = '';
-      if (!Array.isArray(scripts) || scripts.length === 0) {
+      if (!cachedScripts.length) {
         return;
       }
 
       const fragment = document.createDocumentFragment();
 
-      scripts.forEach((script) => {
+      cachedScripts.forEach((script) => {
         const item = document.createElement('article');
         item.className = 'script-management-item';
+        item.dataset.id = String(script.id);
+        if (editingScriptId === script.id) {
+          item.dataset.state = 'editing';
+        }
+
+        const header = document.createElement('header');
+        header.className = 'script-management-item__header';
 
         const titleEl = document.createElement('h3');
-        const rawTitle = toTrimmedString(script?.titulo ?? script?.title ?? '');
-        titleEl.textContent = rawTitle || 'Roteiro sem título';
-        item.appendChild(titleEl);
+        titleEl.textContent = script.title;
+        header.appendChild(titleEl);
+
+        const actionsEl = document.createElement('div');
+        actionsEl.className = 'script-management-item__actions';
+
+        const editButton = document.createElement('button');
+        editButton.type = 'button';
+        editButton.dataset.action = 'edit';
+        editButton.className = 'secondary';
+        editButton.textContent = 'Editar';
+        actionsEl.appendChild(editButton);
+
+        const deleteButton = document.createElement('button');
+        deleteButton.type = 'button';
+        deleteButton.dataset.action = 'delete';
+        deleteButton.textContent = 'Excluir';
+        actionsEl.appendChild(deleteButton);
+
+        header.appendChild(actionsEl);
+        item.appendChild(header);
 
         const descriptionEl = document.createElement('div');
         descriptionEl.className = 'script-management-description rich-text';
-        setRichTextContent(descriptionEl, script?.descricao ?? script?.description ?? '');
+        if (script.description) {
+          setRichTextContent(descriptionEl, script.description);
+        } else {
+          descriptionEl.textContent = 'Nenhuma descrição informada.';
+        }
         item.appendChild(descriptionEl);
 
-        const createdAt = script?.created_at ?? script?.createdAt ?? null;
-        const updatedAt = script?.updated_at ?? script?.updatedAt ?? null;
+        const createdAt = script.createdAt;
+        const updatedAt = script.updatedAt;
         const hasDifferentDates = createdAt && updatedAt && createdAt !== updatedAt;
         const referenceDate = hasDifferentDates ? updatedAt : updatedAt || createdAt;
 
@@ -3352,58 +3439,232 @@
     const loadScriptsList = async ({ showStatus = true } = {}) => {
       if (showStatus) {
         setMessage(listMessageEl, 'Carregando roteiros...', 'info');
-      } else {
-        setMessage(listMessageEl, '', '');
       }
       try {
         const scripts = await fetchScripts();
-        renderScriptManagementList(scripts);
-        if (!Array.isArray(scripts) || scripts.length === 0) {
+        cachedScripts = Array.isArray(scripts)
+          ? scripts.map((script) => normalizeScriptRecord(script)).filter(Boolean)
+          : [];
+        renderScriptManagementList();
+        if (!cachedScripts.length) {
           setMessage(listMessageEl, 'Nenhum roteiro cadastrado até o momento.', 'info');
-        } else {
+        } else if (showStatus) {
           setMessage(listMessageEl, '', '');
         }
       } catch (error) {
-        renderScriptManagementList([]);
+        cachedScripts = [];
+        renderScriptManagementList();
         setMessage(listMessageEl, error.message || 'Nao foi possivel carregar os roteiros.', 'error');
       }
     };
+
+    const resetForm = ({ keepMessage = false } = {}) => {
+      editingScriptId = null;
+      if (form) {
+        form.reset();
+        form.dataset.mode = 'create';
+        delete form.dataset.editingId;
+      }
+      if (titleInput) {
+        titleInput.removeAttribute('aria-invalid');
+      }
+      if (descriptionInput) {
+        descriptionInput.removeAttribute('aria-invalid');
+      }
+      if (submitButton) {
+        submitButton.textContent = 'Salvar roteiro';
+        submitButton.disabled = false;
+      }
+      if (cancelEditButton) {
+        cancelEditButton.hidden = true;
+        cancelEditButton.disabled = false;
+      }
+      if (!keepMessage) {
+        setMessage(formMessageEl, '', '');
+      }
+      renderScriptManagementList();
+    };
+
+    const enterEditMode = (script) => {
+      if (!form || !script) return;
+      editingScriptId = script.id;
+      form.dataset.mode = 'edit';
+      form.dataset.editingId = String(script.id);
+      if (titleInput) {
+        titleInput.value = script.rawTitle || script.title || '';
+        titleInput.removeAttribute('aria-invalid');
+      }
+      if (descriptionInput) {
+        const editorValue = script.editorValue || script.description || '';
+        descriptionInput.value = editorValue;
+        descriptionInput.removeAttribute('aria-invalid');
+      }
+      if (submitButton) {
+        submitButton.textContent = 'Salvar alterações';
+      }
+      if (cancelEditButton) {
+        cancelEditButton.hidden = false;
+        cancelEditButton.disabled = false;
+      }
+      setMessage(
+        formMessageEl,
+        'Editando roteiro selecionado. Faça as alterações e salve ou cancele a edição.',
+        'info'
+      );
+      renderScriptManagementList();
+      form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      titleInput?.focus();
+    };
+
+    cancelEditButton?.addEventListener('click', () => {
+      resetForm();
+      setMessage(formMessageEl, 'Edição cancelada.', 'info');
+      titleInput?.focus();
+    });
+
+    newScriptShortcutButton?.addEventListener('click', () => {
+      resetForm();
+      setMessage(formMessageEl, 'Preencha os campos para cadastrar um novo roteiro.', 'info');
+      form?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      titleInput?.focus();
+    });
+
+    listContainer?.addEventListener('click', (event) => {
+      const trigger =
+        event.target instanceof Element ? event.target.closest('button[data-action]') : null;
+      if (!trigger) return;
+
+      const action = trigger.dataset.action;
+      if (!action) return;
+
+      const item = trigger.closest('.script-management-item');
+      if (!item) return;
+
+      const scriptId = Number(item.dataset.id);
+      if (!Number.isInteger(scriptId) || scriptId <= 0) return;
+
+      const script = cachedScripts.find((entry) => entry.id === scriptId);
+      if (!script) return;
+
+      if (action === 'edit') {
+        event.preventDefault();
+        enterEditMode(script);
+        return;
+      }
+
+      if (action === 'delete') {
+        event.preventDefault();
+        const confirmed = window.confirm(
+          `Tem certeza que deseja excluir o roteiro "${script.title}"? Essa acao nao pode ser desfeita.`
+        );
+        if (!confirmed) {
+          return;
+        }
+
+        if (trigger instanceof HTMLButtonElement) {
+          trigger.disabled = true;
+        }
+
+        setMessage(listMessageEl, 'Excluindo roteiro...', 'info');
+
+        const wasEditing = editingScriptId === script.id;
+
+        (async () => {
+          try {
+            await deleteScript(script.id);
+            if (wasEditing) {
+              resetForm();
+              setMessage(formMessageEl, 'O roteiro selecionado foi excluido.', 'info');
+            }
+            await loadScriptsList({ showStatus: false });
+            setMessage(listMessageEl, 'Roteiro excluido com sucesso!', 'success');
+          } catch (error) {
+            setMessage(
+              listMessageEl,
+              error.message || 'Nao foi possivel excluir o roteiro.',
+              'error'
+            );
+          } finally {
+            if (trigger instanceof HTMLButtonElement) {
+              trigger.disabled = false;
+            }
+          }
+        })();
+      }
+    });
 
     form?.addEventListener('submit', async (event) => {
       event.preventDefault();
       if (!form) return;
 
-      const titleInput = form.elements.title || form.elements.titulo;
-      const descriptionInput = form.elements.description || form.elements.descricao;
-
       const title = toTrimmedString(titleInput?.value || '');
       const description = toTrimmedString(descriptionInput?.value || '');
 
-      if (!title || title.length < 3) {
+      const isValidTitle = Boolean(title) && title.length >= 3;
+      const isValidDescription = Boolean(description) && description.length >= 10;
+
+      flagInvalidField(titleInput, isValidTitle);
+      flagInvalidField(descriptionInput, isValidDescription);
+
+      if (!isValidTitle) {
         setMessage(formMessageEl, 'Informe um título com pelo menos 3 caracteres.', 'error');
-        titleInput?.focus();
+        focusFirstInvalidField(form);
         return;
       }
 
-      if (!description || description.length < 10) {
+      if (!isValidDescription) {
         setMessage(formMessageEl, 'Informe uma descrição com pelo menos 10 caracteres.', 'error');
-        descriptionInput?.focus();
+        focusFirstInvalidField(form);
         return;
       }
 
-      setMessage(formMessageEl, 'Salvando roteiro...', 'info');
+      const isEditing = Number.isInteger(editingScriptId) && editingScriptId > 0;
+
+      setMessage(
+        formMessageEl,
+        isEditing ? 'Atualizando roteiro...' : 'Salvando roteiro...',
+        'info'
+      );
+
+      if (submitButton) {
+        submitButton.disabled = true;
+      }
+      if (cancelEditButton && !cancelEditButton.hidden) {
+        cancelEditButton.disabled = true;
+      }
 
       try {
-        await createScript({ title, description });
-        setMessage(formMessageEl, 'Roteiro cadastrado com sucesso!', 'success');
-        form.reset();
-        titleInput?.focus();
+        if (isEditing) {
+          await updateScript({ id: editingScriptId, title, description });
+          setMessage(formMessageEl, 'Roteiro atualizado com sucesso!', 'success');
+        } else {
+          await createScript({ title, description });
+          setMessage(formMessageEl, 'Roteiro cadastrado com sucesso!', 'success');
+        }
+
         await loadScriptsList({ showStatus: false });
+        resetForm({ keepMessage: true });
+        titleInput?.focus();
       } catch (error) {
-        setMessage(formMessageEl, error.message || 'Nao foi possivel cadastrar o roteiro.', 'error');
+        setMessage(
+          formMessageEl,
+          error.message ||
+            (isEditing
+              ? 'Nao foi possivel atualizar o roteiro.'
+              : 'Nao foi possivel cadastrar o roteiro.'),
+          'error'
+        );
+      } finally {
+        if (submitButton) {
+          submitButton.disabled = false;
+        }
+        if (cancelEditButton) {
+          cancelEditButton.disabled = false;
+        }
       }
     });
 
+    resetForm({ keepMessage: true });
     loadScriptsList();
   };
 
