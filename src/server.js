@@ -451,6 +451,10 @@ const listContentScriptsStmt = db.prepare(
 const findContentScriptByIdStmt = db.prepare(
   'SELECT id, titulo, descricao, created_at, updated_at FROM content_scripts WHERE id = ?'
 );
+const updateContentScriptStmt = db.prepare(
+  'UPDATE content_scripts SET titulo = ?, descricao = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+);
+const deleteContentScriptStmt = db.prepare('DELETE FROM content_scripts WHERE id = ?');
 const listContentScriptsForMigrationStmt = db.prepare('SELECT id, descricao FROM content_scripts');
 const updateContentScriptDescriptionStmt = db.prepare('UPDATE content_scripts SET descricao = ? WHERE id = ?');
 
@@ -3838,6 +3842,25 @@ app.get('/scripts', authenticate, verificarAceite, (req, res) => {
   }
 });
 
+app.get('/scripts/:id', authenticate, verificarAceite, (req, res) => {
+  const rawId = req.params.id;
+  const parsedId = Number(rawId);
+  if (!Number.isInteger(parsedId) || parsedId <= 0) {
+    return res.status(400).json({ error: 'Identificador de roteiro invalido.' });
+  }
+
+  try {
+    const script = findContentScriptByIdStmt.get(parsedId);
+    if (!script) {
+      return res.status(404).json({ error: 'Roteiro nao encontrado.' });
+    }
+    return res.status(200).json(script);
+  } catch (error) {
+    console.error('Erro ao buscar roteiro:', error);
+    return res.status(500).json({ error: 'Nao foi possivel carregar o roteiro solicitado.' });
+  }
+});
+
 app.post('/scripts', authenticate, authorizeMaster, (req, res) => {
   const rawTitle = trimString(req.body?.titulo ?? req.body?.title);
   const rawDescription = trimString(req.body?.descricao ?? req.body?.description);
@@ -3861,6 +3884,64 @@ app.post('/scripts', authenticate, authorizeMaster, (req, res) => {
   } catch (error) {
     console.error('Erro ao cadastrar roteiro:', error);
     return res.status(500).json({ error: 'Nao foi possivel cadastrar o roteiro.' });
+  }
+});
+
+app.put('/scripts/:id', authenticate, authorizeMaster, (req, res) => {
+  const rawId = req.params.id;
+  const scriptId = Number(rawId);
+  if (!Number.isInteger(scriptId) || scriptId <= 0) {
+    return res.status(400).json({ error: 'Identificador de roteiro invalido.' });
+  }
+
+  const rawTitle = trimString(req.body?.titulo ?? req.body?.title);
+  const rawDescription = trimString(req.body?.descricao ?? req.body?.description);
+
+  if (!rawTitle || rawTitle.length < 3) {
+    return res.status(400).json({ error: 'Informe um titulo com pelo menos 3 caracteres.' });
+  }
+
+  if (!rawDescription || rawDescription.length < 10) {
+    return res.status(400).json({ error: 'Informe uma descricao com pelo menos 10 caracteres.' });
+  }
+
+  const titulo = rawTitle.slice(0, 180);
+  const truncatedDescription = rawDescription.length > 6000 ? rawDescription.slice(0, 6000) : rawDescription;
+  const descricao = normalizeScriptDescription(truncatedDescription);
+
+  try {
+    const existing = findContentScriptByIdStmt.get(scriptId);
+    if (!existing) {
+      return res.status(404).json({ error: 'Roteiro nao encontrado.' });
+    }
+
+    updateContentScriptStmt.run(titulo, descricao, scriptId);
+    const updated = findContentScriptByIdStmt.get(scriptId);
+    return res.status(200).json(updated);
+  } catch (error) {
+    console.error('Erro ao atualizar roteiro:', error);
+    return res.status(500).json({ error: 'Nao foi possivel atualizar o roteiro.' });
+  }
+});
+
+app.delete('/scripts/:id', authenticate, authorizeMaster, (req, res) => {
+  const rawId = req.params.id;
+  const scriptId = Number(rawId);
+  if (!Number.isInteger(scriptId) || scriptId <= 0) {
+    return res.status(400).json({ error: 'Identificador de roteiro invalido.' });
+  }
+
+  try {
+    const existing = findContentScriptByIdStmt.get(scriptId);
+    if (!existing) {
+      return res.status(404).json({ error: 'Roteiro nao encontrado.' });
+    }
+
+    deleteContentScriptStmt.run(scriptId);
+    return res.status(204).send();
+  } catch (error) {
+    console.error('Erro ao excluir roteiro:', error);
+    return res.status(500).json({ error: 'Nao foi possivel excluir o roteiro.' });
   }
 });
 

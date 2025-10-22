@@ -5,8 +5,7 @@ const state = {
   scripts: [],
   plans: [],
   planMap: new Map(),
-  currentFilter: 'all',
-  expandedScripts: new Set()
+  currentFilter: 'all'
 };
 
 const elements = {
@@ -33,13 +32,74 @@ const session = (() => {
   }
 })();
 
-const getToken = () => session.getItem('token');
+const persistentSession = (() => {
+  try {
+    return window.localStorage;
+  } catch (error) {
+    return {
+      getItem: () => null,
+      setItem: () => {},
+      removeItem: () => {}
+    };
+  }
+})();
+
+const TOKEN_STORAGE_KEY = 'token';
+
+const readStorage = (storage, key) => {
+  if (!storage || typeof storage.getItem !== 'function') return null;
+  try {
+    return storage.getItem(key);
+  } catch (error) {
+    return null;
+  }
+};
+
+const writeStorage = (storage, key, value) => {
+  if (!storage || typeof storage.setItem !== 'function') return;
+  try {
+    storage.setItem(key, value);
+  } catch (error) {
+    // Ignore persistence failures (privacy mode, quota, etc.)
+  }
+};
+
+const removeStorage = (storage, key) => {
+  if (!storage || typeof storage.removeItem !== 'function') return;
+  try {
+    storage.removeItem(key);
+  } catch (error) {
+    // Ignore removal failures
+  }
+};
+
+const getToken = () => {
+  const sessionToken = readStorage(session, TOKEN_STORAGE_KEY);
+  const persistentToken = readStorage(persistentSession, TOKEN_STORAGE_KEY);
+  const token = sessionToken || persistentToken || null;
+
+  if (token) {
+    if (sessionToken !== token) {
+      writeStorage(session, TOKEN_STORAGE_KEY, token);
+    }
+    if (persistentToken !== token) {
+      writeStorage(persistentSession, TOKEN_STORAGE_KEY, token);
+    }
+  }
+
+  return token;
+};
+
+const clearToken = () => {
+  removeStorage(session, TOKEN_STORAGE_KEY);
+  removeStorage(persistentSession, TOKEN_STORAGE_KEY);
+};
 
 const logout = () => {
+  clearToken();
   if (typeof window.logout === 'function') {
     window.logout();
   } else {
-    session.removeItem('token');
     window.location.replace('login.html');
   }
 };
@@ -77,6 +137,9 @@ const fetchWithAuth = async (url, { method = 'GET', body, headers = {} } = {}) =
     throw new Error('Sessão expirada. Faça login novamente.');
   }
   const token = getToken();
+  if (!token) {
+    throw new Error('Sessão expirada. Faça login novamente.');
+  }
   const requestHeaders = {
     'Content-Type': 'application/json',
     Authorization: `Bearer ${token}`,
@@ -171,6 +234,33 @@ const normalizeScript = (script) => {
     updatedAt: script.updatedAt ?? script.updated_at ?? null,
     createdAt: script.createdAt ?? script.created_at ?? null
   };
+};
+
+const buildScriptViewerUrl = (scriptId) => {
+  if (!scriptId) return 'script-view.html';
+  const numericId = Number(scriptId);
+  if (!Number.isInteger(numericId) || numericId <= 0) {
+    return 'script-view.html';
+  }
+  return `script-view.html?id=${encodeURIComponent(numericId)}`;
+};
+
+const createViewScriptAction = (script) => {
+  const container = document.createElement('div');
+  container.className = 'view-script-action';
+
+  const link = document.createElement('a');
+  link.className = 'view-script-button';
+  link.href = buildScriptViewerUrl(script?.id);
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
+  link.textContent = 'Ver roteiro completo';
+  if (script?.title) {
+    link.setAttribute('aria-label', `Abrir roteiro completo de ${script.title} em uma nova aba`);
+  }
+
+  container.appendChild(link);
+  return container;
 };
 
 const normalizePlan = (plan) => {
@@ -309,8 +399,6 @@ const normalizeCycle = (cycle) => {
 };
 
 const syncStateFromResponse = (data) => {
-  const previousExpansions = new Set(state.expandedScripts);
-
   state.cycle = normalizeCycle(data?.cycle);
 
   state.influencer = data?.influencer ?? null;
@@ -318,13 +406,6 @@ const syncStateFromResponse = (data) => {
   state.plans = Array.isArray(data?.plans) ? data.plans.map((plan) => normalizePlan(plan)).filter(Boolean) : [];
   rebuildPlanMap();
   state.currentFilter = 'all';
-
-  state.expandedScripts = new Set();
-  state.scripts.forEach((script) => {
-    if (previousExpansions.has(Number(script.id))) {
-      state.expandedScripts.add(Number(script.id));
-    }
-  });
 
   renderCycleInfo();
   renderRoteiros();
@@ -438,40 +519,6 @@ const clearList = () => {
   }
 };
 
-const isScriptExpanded = (scriptId) => state.expandedScripts.has(Number(scriptId));
-
-const setScriptExpansion = (scriptId, expanded) => {
-  const numericId = Number(scriptId);
-  if (Number.isNaN(numericId)) return;
-  const currentlyExpanded = state.expandedScripts.has(numericId);
-  if (expanded === currentlyExpanded) {
-    return;
-  }
-  if (expanded) {
-    state.expandedScripts.add(numericId);
-  } else {
-    state.expandedScripts.delete(numericId);
-  }
-  renderRoteiros();
-};
-
-const toggleScriptExpansion = (scriptId) => {
-  setScriptExpansion(scriptId, !isScriptExpanded(scriptId));
-};
-
-const ensureScriptExpanded = (scriptId) => {
-  const numericId = Number(scriptId);
-  if (Number.isNaN(numericId)) {
-    return false;
-  }
-  if (state.expandedScripts.has(numericId)) {
-    return false;
-  }
-  state.expandedScripts.add(numericId);
-  renderRoteiros();
-  return true;
-};
-
 const renderRoteiros = () => {
   if (!elements.roteirosList) return;
   clearList();
@@ -497,9 +544,6 @@ const renderRoteiros = () => {
       card.classList.add('scheduled');
     }
 
-    const expanded = isScriptExpanded(script.id);
-    card.classList.add(expanded ? 'is-expanded' : 'is-collapsed');
-
     const header = document.createElement('div');
     header.className = 'roteiro-header';
 
@@ -520,29 +564,10 @@ const renderRoteiros = () => {
 
     header.appendChild(headerInfo);
 
-    const toggleBtn = document.createElement('button');
-    toggleBtn.type = 'button';
-    toggleBtn.className = 'collapse-toggle';
-    toggleBtn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
-    toggleBtn.setAttribute(
-      'aria-label',
-      expanded ? `Recolher detalhes de ${script.title}` : `Expandir detalhes de ${script.title}`
-    );
-    toggleBtn.textContent = expanded ? '−' : '+';
-    toggleBtn.addEventListener('click', () => toggleScriptExpansion(script.id));
-    header.appendChild(toggleBtn);
-
-    const preview = document.createElement('p');
-    preview.className = 'roteiro-preview';
-    preview.textContent = script.preview || 'Sem preview disponível.';
-
     const details = document.createElement('div');
     details.className = 'roteiro-details';
-    if (!expanded) {
-      details.setAttribute('data-collapsed', '');
-    }
 
-    details.appendChild(preview);
+    details.appendChild(createViewScriptAction(script));
 
     if (occurrences.length) {
       const list = document.createElement('div');
@@ -618,13 +643,6 @@ const openDatePicker = (script) => {
   if (!script) return;
 
   let card = elements.roteirosList?.querySelector(`.roteiro-card[data-id="${script.id}"]`);
-  if (!card) return;
-
-  if (!isScriptExpanded(script.id)) {
-    ensureScriptExpanded(script.id);
-    card = elements.roteirosList?.querySelector(`.roteiro-card[data-id="${script.id}"]`);
-  }
-
   if (!card) return;
 
   if (activePopover?.scriptId === script.id) {

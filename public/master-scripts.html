@@ -41,13 +41,21 @@
 
           <div class="form-actions">
             <button type="submit">Salvar roteiro</button>
+            <button type="button" id="cancelScriptEditButton" class="secondary" hidden>
+              Cancelar edição
+            </button>
           </div>
         </form>
         <div id="scriptFormMessage" class="message" aria-live="polite" hidden></div>
       </section>
 
       <section class="card">
-        <h2>Roteiros cadastrados</h2>
+        <div class="card-header">
+          <h2>Roteiros cadastrados</h2>
+          <button type="button" id="newScriptShortcutButton" class="secondary">
+            Novo roteiro
+          </button>
+        </div>
         <div id="scriptListMessage" class="message" aria-live="polite" hidden></div>
         <div id="scriptList" class="script-management-list" aria-live="polite"></div>
       </section>
