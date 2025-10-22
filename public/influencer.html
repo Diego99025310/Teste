@@ -15,11 +15,16 @@
         font-family: 'Outfit', sans-serif;
         --color-primary: #e4447a;
         --color-secondary: #f07999;
-        --color-soft: #fbd3db;
-        --color-text: #333;
-        --radius-lg: 1.5rem;
-        --shadow-soft: 0 1rem 2rem rgba(228, 68, 122, 0.15);
-        --shadow-hero: 0 2rem 4rem rgba(228, 68, 122, 0.25);
+        --color-soft: #ffe5ef;
+        --color-soft-strong: #ffc4da;
+        --color-text: #2f2530;
+        --color-muted: rgba(47, 37, 48, 0.7);
+        --color-surface: #fff;
+        --color-border: rgba(228, 68, 122, 0.18);
+        --radius-lg: 1.75rem;
+        --radius-md: 1.25rem;
+        --shadow-soft: 0 1.5rem 3rem rgba(228, 68, 122, 0.18);
+        --shadow-card: 0 1rem 2.5rem rgba(228, 68, 122, 0.12);
         --transition: 0.25s ease;
       }
 
@@ -31,12 +36,12 @@
         margin: 0;
         min-height: 100vh;
         width: 100%;
-        background: linear-gradient(160deg, var(--color-soft) 0%, #fff 100%);
+        background: linear-gradient(180deg, var(--color-soft) 0%, #ffeef7 35%, #fff 100%);
         color: var(--color-text);
         display: flex;
         justify-content: center;
         align-items: stretch;
-        padding: clamp(1.5rem, 5vw, 2.5rem);
+        padding: clamp(1.25rem, 5vw, 3rem);
       }
 
       body[data-page='influencer'] {
@@ -57,82 +62,123 @@
         line-height: 1.6;
       }
 
+      a {
+        color: inherit;
+      }
+
       .container {
-        width: min(100%, 78rem);
+        width: min(100%, 80rem);
         display: grid;
         gap: clamp(1.5rem, 4vw, 2.5rem);
       }
 
-      /* HERO */
       .hero {
         background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
         border-radius: var(--radius-lg);
         color: #fff;
-        text-align: center;
-        padding: clamp(2.5rem, 6vw, 3.5rem) clamp(2rem, 5vw, 3rem);
-        box-shadow: var(--shadow-hero);
+        padding: clamp(2.25rem, 6vw, 3.25rem);
         display: grid;
-        gap: 0.75rem;
+        gap: clamp(1.5rem, 4vw, 2rem);
+        box-shadow: var(--shadow-soft);
       }
 
-      .hero p {
-        font-size: clamp(0.95rem, 2.4vw, 1.1rem);
+      .hero__content {
+        display: grid;
+        gap: 0.5rem;
+      }
+
+      .hero__eyebrow {
+        font-size: clamp(0.85rem, 2.3vw, 1rem);
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
         opacity: 0.85;
       }
 
-      .hero h1 {
-        font-size: clamp(2rem, 5vw, 2.9rem);
+      .hero__heading {
+        font-size: clamp(2.25rem, 5vw, 3.15rem);
+        font-weight: 700;
       }
 
-      /* CARD BASE */
+      .hero__greeting {
+        font-size: clamp(1.1rem, 2.8vw, 1.35rem);
+        opacity: 0.9;
+      }
+
+      .hero-nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+      }
+
+      .hero-nav__link {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.75rem;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.16);
+        color: #fff;
+        font-weight: 600;
+        text-decoration: none;
+        transition: transform var(--transition), background var(--transition), box-shadow var(--transition);
+      }
+
+      .hero-nav__link::before {
+        display: inline-block;
+        font-size: 1.15rem;
+      }
+
+      .hero-nav__link[href*='plan']::before {
+        content: '🎥';
+      }
+
+      .hero-nav__link[href*='performance']::before {
+        content: '📊';
+      }
+
+      .hero-nav__link:hover,
+      .hero-nav__link:focus-visible {
+        transform: translateY(-2px);
+        background: rgba(255, 255, 255, 0.24);
+        box-shadow: 0 0.75rem 1.75rem rgba(0, 0, 0, 0.12);
+        outline: none;
+      }
+
       .card {
-        background: #fff;
+        background: var(--color-surface);
         border-radius: var(--radius-lg);
-        box-shadow: var(--shadow-soft);
-        padding: clamp(1.5rem, 4vw, 2.5rem);
+        box-shadow: var(--shadow-card);
+        padding: clamp(1.75rem, 4vw, 2.5rem);
         display: grid;
         gap: clamp(1.25rem, 3vw, 1.75rem);
       }
 
       .card-headline {
-        text-align: center;
-        display: grid;
+        display: flex;
+        flex-direction: column;
         gap: 0.5rem;
       }
 
       .card-headline h2 {
         color: var(--color-primary);
-        font-size: clamp(1.6rem, 4vw, 2.1rem);
+        font-size: clamp(1.6rem, 3vw, 2rem);
       }
 
       .card-headline p {
-        color: rgba(51, 51, 51, 0.7);
-        font-size: clamp(0.95rem, 2vw, 1rem);
+        color: var(--color-muted);
+        font-size: clamp(0.95rem, 2.1vw, 1.05rem);
       }
 
-      /* SEUS DADOS */
       .info-grid {
         display: grid;
         gap: 1rem;
       }
 
-      @media (min-width: 768px) {
-        .plan-list-header {
-          flex-direction: row;
-          align-items: center;
-          justify-content: space-between;
-        }
-
-        .plan-open-button {
-          align-self: center;
-        }
-      }
-
-      @media (max-width: 640px) {
-        .plan-open-button {
-          width: 100%;
-          justify-content: center;
-        }
+      .info-grid--contract {
+        border-top: 1px solid rgba(228, 68, 122, 0.12);
+        padding-top: 1rem;
+        margin-top: 0.5rem;
       }
 
       @media (min-width: 900px) {
@@ -144,14 +190,14 @@
       .info-item {
         margin: 0;
         display: grid;
-        grid-template-columns: minmax(0, 8rem) 1fr;
+        grid-template-columns: minmax(0, 8.5rem) 1fr;
         gap: 0.5rem 1rem;
         align-items: center;
       }
 
       .info-item dt {
         font-weight: 600;
-        color: rgba(51, 51, 51, 0.7);
+        color: var(--color-muted);
       }
 
       .info-item dd {
@@ -172,11 +218,11 @@
 
       .copy-button {
         border: none;
-        background: var(--color-soft);
+        background: rgba(228, 68, 122, 0.12);
         color: var(--color-primary);
         font-weight: 600;
         border-radius: 999px;
-        padding: 0.4rem 1rem;
+        padding: 0.45rem 1.15rem;
         cursor: pointer;
         transition: background var(--transition), color var(--transition), transform var(--transition);
       }
@@ -190,7 +236,7 @@
       }
 
       .copy-button.copied {
-        background: rgba(52, 211, 153, 0.18);
+        background: rgba(52, 211, 153, 0.2);
         color: #0f5132;
       }
 
@@ -201,10 +247,8 @@
 
       .card-actions {
         display: flex;
-        justify-content: space-between;
         flex-wrap: wrap;
         gap: 1rem;
-        margin-top: 0.5rem;
       }
 
       .card-actions button {
@@ -213,11 +257,11 @@
         padding: 0.85rem 1.75rem;
         border-radius: 999px;
         cursor: pointer;
-        transition: transform var(--transition), box-shadow var(--transition);
+        transition: transform var(--transition), box-shadow var(--transition), background var(--transition);
       }
 
       #viewSignedContractButton {
-        background: linear-gradient(145deg, #fff, #ffeef4);
+        background: linear-gradient(145deg, #fff, #fff7fb);
         color: var(--color-primary);
         box-shadow: 0 1rem 2.5rem rgba(228, 68, 122, 0.15);
       }
@@ -243,99 +287,78 @@
       .message {
         padding: 0.85rem 1.25rem;
         border-radius: 999px;
-        background: rgba(251, 211, 219, 0.7);
-        border: 1px solid rgba(228, 68, 122, 0.25);
+        background: rgba(255, 245, 248, 0.85);
+        border: 1px solid rgba(228, 68, 122, 0.18);
         font-size: 0.95rem;
-        color: rgba(51, 51, 51, 0.75);
+        color: var(--color-muted);
         text-align: center;
       }
 
-      /* DASHBOARD OPÇÕES */
-      .dashboard-options {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
-        gap: clamp(1.5rem, 4vw, 2rem);
-      }
-
-      .dashboard-option {
-        border: none;
-        background: linear-gradient(180deg, #fff, #fff6f8);
-        border-radius: 1.25rem;
-        border: 1px solid rgba(228, 68, 122, 0.15);
-        box-shadow: 0 1rem 2rem rgba(228, 68, 122, 0.15);
+      .info-status {
         text-align: center;
-        padding: clamp(1.75rem, 4vw, 2.25rem);
-        transition: transform var(--transition), box-shadow var(--transition);
-        cursor: pointer;
+        padding: 1rem 1.25rem;
+        border-radius: var(--radius-md);
+        background: rgba(255, 245, 248, 0.7);
+        color: var(--color-muted);
+        font-weight: 500;
+      }
+
+      .message[data-type='error'] {
+        background: rgba(248, 113, 113, 0.15);
+        border-color: rgba(248, 113, 113, 0.35);
+        color: #7f1d1d;
+      }
+
+      .message[data-type='success'] {
+        background: rgba(52, 211, 153, 0.2);
+        border-color: rgba(16, 185, 129, 0.35);
+        color: #0f5132;
+      }
+
+      .highlight-grid {
         display: grid;
-        gap: 0.65rem;
-        font-family: inherit;
-        text-decoration: none;
-        color: inherit;
+        gap: 1.1rem;
+        grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
       }
 
-      .dashboard-option:hover,
-      .dashboard-option:focus-visible {
-        transform: translateY(-6px);
-        box-shadow: 0 1.5rem 2.5rem rgba(228, 68, 122, 0.25);
-        outline: none;
+      .highlight-card {
+        border-radius: var(--radius-md);
+        padding: 1.35rem 1.5rem;
+        background: linear-gradient(160deg, #fff, rgba(255, 218, 235, 0.6));
+        border: 1px solid rgba(228, 68, 122, 0.12);
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.6);
+        display: grid;
+        gap: 0.4rem;
       }
 
-      .dashboard-option h3 {
-        margin: 0;
+      .highlight-label {
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--color-muted);
+      }
+
+      .highlight-value {
+        font-size: clamp(1.65rem, 3vw, 2.1rem);
+        font-weight: 700;
         color: var(--color-primary);
-        font-size: 1.3rem;
       }
 
-      .dashboard-option p {
-        margin: 0;
-        opacity: 0.7;
+      .highlight-helper {
+        font-size: 0.95rem;
+        color: var(--color-muted);
       }
 
-      /* TELAS SECUNDÁRIAS */
-      .section {
-        display: none;
-        animation: fadeIn 0.4s ease;
-      }
-
-      .section.active {
-        display: block;
-      }
-
-      .section-actions {
-        display: flex;
-        justify-content: flex-start;
-      }
-
-      .btn-back {
-        border: none;
-        background: var(--color-primary);
-        color: #fff;
-        padding: 0.75rem 1.5rem;
-        border-radius: 999px;
-        cursor: pointer;
-        font-weight: 600;
-        transition: transform var(--transition), background var(--transition);
-      }
-
-      .btn-back:hover,
-      .btn-back:focus-visible {
-        background: var(--color-secondary);
-        transform: translateY(-2px);
-        outline: none;
-      }
-
-      /* PERFORMANCE */
-      .performance-summary {
+      .metric-grid {
         display: grid;
-        gap: 1.5rem;
+        gap: 1rem;
         grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
       }
 
       .metric-card {
-        background: linear-gradient(145deg, rgba(255, 255, 255, 0.9), #fff5f8);
+        background: linear-gradient(145deg, rgba(255, 255, 255, 0.92), #fff5f9);
         border: 1px solid rgba(228, 68, 122, 0.2);
-        border-radius: 1rem;
+        border-radius: 1.1rem;
         padding: 1.5rem;
         box-shadow: 0 1rem 2rem rgba(228, 68, 122, 0.1);
       }
@@ -349,403 +372,226 @@
       }
 
       .metric-card p {
-        margin: 0.25rem 0 0;
-        font-size: 1.6rem;
+        margin: 0.35rem 0 0;
+        font-size: 1.7rem;
         font-weight: 700;
         color: var(--color-primary);
       }
 
       .metric-card .metric-helper {
         display: block;
-        margin-top: 0.35rem;
-        color: rgba(51, 51, 51, 0.65);
+        margin-top: 0.4rem;
+        color: var(--color-muted);
         font-size: 0.9rem;
         font-weight: 500;
       }
 
-      .table-wrapper {
-        width: 100%;
-        overflow-x: auto;
-        border-radius: 1.25rem;
-        border: 1px solid rgba(228, 68, 122, 0.2);
-      }
-
-      table {
-        width: 100%;
-        border-collapse: collapse;
-        min-width: 30rem;
-      }
-
-      th,
-      td {
-        text-align: left;
-        padding: 0.85rem 1rem;
-        font-size: 1rem;
-      }
-
-      thead {
-        background: rgba(228, 68, 122, 0.12);
-      }
-
-      tbody tr:nth-child(odd) {
-        background: rgba(251, 211, 219, 0.45);
-      }
-
-      tbody tr:hover {
-        background: rgba(240, 121, 153, 0.15);
-      }
-
-      td.empty {
-        text-align: center;
-        color: rgba(51, 51, 51, 0.6);
-      }
-
-      /* ROTEIROS */
-      .scripts-list {
-        display: grid;
-        gap: 1.25rem;
-      }
-
-      .plan-overview {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+      .schedule-headline {
         gap: 1rem;
-        margin-bottom: 1.75rem;
-        padding: 1.25rem 1.5rem;
-        border-radius: 1.25rem;
-        background: rgba(228, 68, 122, 0.08);
-        border: 1px solid rgba(228, 68, 122, 0.18);
       }
 
-      .plan-stat {
+      @media (min-width: 720px) {
+        .schedule-headline {
+          flex-direction: row;
+          justify-content: space-between;
+          align-items: center;
+        }
+      }
+
+      .schedule-counts {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+      }
+
+      .schedule-count {
         display: grid;
         gap: 0.25rem;
-      }
-
-      .plan-label {
-        font-size: 0.75rem;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        color: rgba(51, 51, 51, 0.6);
-      }
-
-      .plan-value {
-        font-size: 1.35rem;
-        font-weight: 600;
-        color: var(--color-primary);
-      }
-
-      .plan-list-wrapper {
-        margin-bottom: 2rem;
-        padding: 1.5rem;
-        border-radius: 1.25rem;
-        border: 1px solid rgba(228, 68, 122, 0.18);
-        background: linear-gradient(145deg, rgba(255, 255, 255, 0.95), #fff5f8);
-        box-shadow: 0 1.25rem 2.5rem rgba(228, 68, 122, 0.12);
-      }
-
-      .plan-list-header {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.75rem;
-        margin-bottom: 1.5rem;
-      }
-
-      .plan-list-header__content {
-        display: grid;
-        gap: 0.5rem;
-      }
-
-      .plan-list-header h3 {
-        margin: 0;
-        font-size: 1.35rem;
-        color: var(--color-primary);
-      }
-
-      .plan-list-header p {
-        margin: 0;
-        font-size: 0.95rem;
-        color: rgba(51, 51, 51, 0.7);
-      }
-
-      .plan-open-button {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.75rem 1.5rem;
+        padding: 0.65rem 1rem;
         border-radius: 999px;
-        background: var(--color-primary);
-        color: #fff;
+        background: rgba(228, 68, 122, 0.12);
+        color: var(--color-primary);
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
         font-weight: 600;
-        text-decoration: none;
-        box-shadow: var(--shadow-soft);
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
       }
 
-      .plan-open-button::before {
-        content: '📱';
-        font-size: 1.15rem;
+      .schedule-count strong {
+        font-size: 1.1rem;
+        font-weight: 700;
+        letter-spacing: normal;
       }
 
-      .plan-open-button:hover,
-      .plan-open-button:focus-visible {
-        transform: translateY(-1px);
-        box-shadow: 0 1.75rem 3rem rgba(228, 68, 122, 0.2);
+      .schedule-count small {
+        font-size: 0.7rem;
+        letter-spacing: 0.12em;
       }
 
-      .plan-open-button:focus-visible {
-        outline: 3px solid rgba(255, 255, 255, 0.6);
-        outline-offset: 2px;
+      .schedule-count--validated {
+        background: rgba(52, 211, 153, 0.18);
+        color: #047857;
       }
 
-      .plan-entries {
-        list-style: none;
-        margin: 0;
-        padding: 0;
+      .schedule-count--pending {
+        background: rgba(250, 204, 21, 0.2);
+        color: #92400e;
+      }
+
+      .schedule-board {
         display: grid;
-        gap: 1.25rem;
+        gap: 1rem;
+        grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
       }
 
-      .plan-entry {
+      .schedule-card {
         display: grid;
-        gap: 0.75rem;
-        padding-bottom: 1.25rem;
-        border-bottom: 1px solid rgba(228, 68, 122, 0.12);
+        grid-template-columns: auto 1fr;
+        gap: 0.75rem 1rem;
+        align-items: center;
+        padding: 1.25rem 1.5rem;
+        border-radius: var(--radius-md);
+        border: 1px solid rgba(228, 68, 122, 0.16);
+        background: #fff;
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.65);
+        position: relative;
+        overflow: hidden;
       }
 
-      .plan-entry:last-child {
-        border-bottom: none;
-        padding-bottom: 0;
+      .schedule-card::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        pointer-events: none;
+        transition: opacity var(--transition);
+        opacity: 0;
       }
 
-      .plan-entry.empty {
-        padding: 0;
-        border: none;
-        color: rgba(51, 51, 51, 0.6);
+      .schedule-card:hover::before,
+      .schedule-card:focus-within::before {
+        opacity: 1;
+      }
+
+      .schedule-card__date {
+        display: grid;
+        gap: 0.15rem;
         text-align: center;
       }
 
-      .plan-entry-header {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.75rem;
-        align-items: center;
-      }
-
-      .plan-entry-date {
-        font-size: 1.15rem;
-        font-weight: 600;
+      .schedule-card__day {
+        font-size: 2rem;
+        font-weight: 700;
         color: var(--color-primary);
       }
 
-      .plan-entry-status {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.35rem;
-        padding: 0.35rem 0.75rem;
-        border-radius: 999px;
-        background: rgba(228, 68, 122, 0.16);
-        color: var(--color-primary);
-        font-size: 0.75rem;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-      }
-
-      .plan-entry-script {
-        font-size: 0.95rem;
-        color: rgba(51, 51, 51, 0.78);
-      }
-
-      .plan-entry-note {
-        font-size: 0.9rem;
-        color: rgba(51, 51, 51, 0.65);
-        background: rgba(228, 68, 122, 0.08);
-        border-radius: 0.85rem;
-        padding: 0.75rem 1rem;
-      }
-
-      .link-button {
-        background: none;
-        border: none;
-        color: var(--color-primary);
-        font-weight: 600;
-        cursor: pointer;
-        padding: 0;
-        text-decoration: underline;
-      }
-
-      .link-button:hover,
-      .link-button:focus-visible {
-        color: var(--color-secondary);
-        outline: none;
-      }
-
-      .script-item {
-        border: 1px solid rgba(228, 68, 122, 0.18);
-        border-radius: 1rem;
-        box-shadow: 0 0.5rem 1.5rem rgba(228, 68, 122, 0.1);
-        overflow: hidden;
-        transition: all 0.3s ease;
-        background: #fff;
-      }
-
-      .script-header {
-        cursor: pointer;
-        padding: 1.25rem 1.5rem;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 1rem;
-      }
-
-      .script-title {
-        font-size: 1rem;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        color: var(--color-primary);
-      }
-
-      .script-icon {
-        font-size: 1.25rem;
-        color: var(--color-primary);
-        transition: transform 0.3s ease;
-      }
-
-      .script-item.open .script-icon {
-        transform: rotate(45deg);
-      }
-
-      .script-content {
-        display: none;
-        padding: 0 1.5rem;
-      }
-
-      .script-item.open .script-content {
-        display: grid;
-        gap: 1rem;
-        padding: 1rem 1.5rem 1.5rem;
-      }
-
-      .script-planner-hint {
-        display: flex;
-        align-items: center;
-        justify-content: flex-start;
-        gap: 0.75rem;
-        padding: 0.75rem 1rem;
-        border-radius: 0.85rem;
-        background: rgba(228, 68, 122, 0.08);
-      }
-
-      .script-planner-hint .link-button {
-        text-decoration: none;
-        font-size: 0.95rem;
-      }
-
-      .script-scheduled-dates {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.5rem;
-        font-size: 0.9rem;
-        color: rgba(51, 51, 51, 0.7);
-      }
-
-      .script-scheduled-dates .chip {
-        display: inline-flex;
-        align-items: center;
-        padding: 0.35rem 0.75rem;
-        border-radius: 999px;
-        background: rgba(255, 255, 255, 0.9);
-        border: 1px solid rgba(228, 68, 122, 0.2);
-      }
-
-      .rich-text {
-        display: grid;
-        gap: 0.75rem;
-        font-size: 1rem;
-        line-height: 1.7;
-        color: rgba(51, 51, 51, 0.82);
-        word-break: break-word;
-      }
-
-      .rich-text p {
-        margin: 0;
-      }
-
-      .rich-text ul,
-      .rich-text ol {
-        margin: 0;
-        padding-left: 1.25rem;
-        display: grid;
-        gap: 0.35rem;
-      }
-
-      .rich-text li {
-        margin: 0;
-        line-height: 1.6;
-      }
-
-      .rich-text strong,
-      .rich-text b {
-        color: var(--color-primary);
-      }
-
-      .rich-text a {
-        color: var(--color-secondary);
-        text-decoration: underline;
-        word-break: break-word;
-      }
-
-      .rich-text a:hover,
-      .rich-text a:focus-visible {
-        color: var(--color-primary);
-      }
-
-      .rich-text code {
-        font-family: 'Fira Code', 'SFMono-Regular', Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
-        background: rgba(228, 68, 122, 0.12);
-        padding: 0 0.35rem;
-        border-radius: 0.5rem;
-        font-size: 0.9rem;
-      }
-
-      .rich-text pre {
-        margin: 0;
-        padding: 0.85rem;
-        border-radius: 1rem;
-        background: rgba(228, 68, 122, 0.12);
-        overflow-x: auto;
-        font-family: 'Fira Code', 'SFMono-Regular', Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
-      }
-
-      .script-meta {
-        color: rgba(51, 51, 51, 0.55);
+      .schedule-card__month {
         font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+        color: var(--color-muted);
       }
 
-      @keyframes fadeIn {
-        from {
-          opacity: 0;
-          transform: translateY(10px);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
+      .schedule-card__info {
+        display: grid;
+        gap: 0.35rem;
       }
 
-      @media (max-width: 640px) {
+      .schedule-card__status {
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .schedule-card__title {
+        margin: 0;
+        font-size: 1.05rem;
+        color: var(--color-text);
+      }
+
+      .schedule-card__note {
+        margin: 0;
+        font-size: 0.9rem;
+        color: var(--color-muted);
+      }
+
+      .schedule-card--validated {
+        border-color: rgba(16, 185, 129, 0.4);
+        background: linear-gradient(145deg, rgba(236, 253, 245, 0.85), #fff);
+      }
+
+      .schedule-card--validated .schedule-card__status {
+        color: #047857;
+      }
+
+      .schedule-card--pending {
+        border-color: rgba(250, 204, 21, 0.4);
+        background: linear-gradient(145deg, rgba(254, 243, 199, 0.85), #fff);
+      }
+
+      .schedule-card--pending .schedule-card__status {
+        color: #92400e;
+      }
+
+      .schedule-card--review {
+        border-color: rgba(249, 115, 22, 0.4);
+        background: linear-gradient(145deg, rgba(254, 215, 170, 0.85), #fff);
+      }
+
+      .schedule-card--review .schedule-card__status {
+        color: #9a3412;
+      }
+
+      .schedule-card--missed {
+        border-color: rgba(248, 113, 113, 0.4);
+        background: linear-gradient(145deg, rgba(254, 226, 226, 0.85), #fff);
+      }
+
+      .schedule-card--missed .schedule-card__status {
+        color: #991b1b;
+      }
+
+      .schedule-empty {
+        grid-column: 1 / -1;
+        text-align: center;
+        padding: 2rem 1.5rem;
+        border-radius: var(--radius-md);
+        border: 1px dashed rgba(228, 68, 122, 0.3);
+        background: rgba(255, 245, 248, 0.65);
+        color: var(--color-muted);
+        font-weight: 500;
+      }
+
+      .card-helper {
+        font-size: 0.95rem;
+        color: var(--color-muted);
+        text-align: center;
+      }
+
+      .card-helper__link {
+        color: var(--color-primary);
+        font-weight: 600;
+        text-decoration: none;
+      }
+
+      .card-helper__link:hover,
+      .card-helper__link:focus-visible {
+        text-decoration: underline;
+      }
+
+      @media (max-width: 720px) {
         body {
           padding: clamp(1rem, 6vw, 1.5rem);
+        }
+
+        .card-headline {
+          align-items: flex-start;
         }
 
         .info-item {
           grid-template-columns: 1fr;
           gap: 0.35rem;
-        }
-
-        .info-grid {
-          grid-template-columns: 1fr;
         }
 
         .card-actions {
@@ -757,27 +603,13 @@
           width: 100%;
         }
 
-        .script-header {
-          flex-direction: column;
-          align-items: flex-start;
-        }
-
-        .plan-overview {
+        .schedule-card {
           grid-template-columns: 1fr;
+          text-align: center;
         }
 
-        .plan-entry-header {
-          align-items: flex-start;
-        }
-
-        .script-planner-hint {
-          flex-direction: column;
-          align-items: stretch;
-        }
-
-        th,
-        td {
-          font-size: 0.9rem;
+        .schedule-card__info {
+          justify-items: center;
         }
       }
     </style>
@@ -786,13 +618,21 @@
   <body data-page="influencer">
     <div class="container" id="influencerPage">
       <header class="hero">
-        <p>Painel da Influenciadora</p>
-        <h1 id="influencerGreeting">Bem-vinda, Pinklover 💗</h1>
+        <div class="hero__content">
+          <p class="hero__eyebrow">Clube Pinklovers</p>
+          <h1 class="hero__heading">Seu painel de influenciadora</h1>
+          <p class="hero__greeting" id="influencerGreeting">Bem-vinda, Pinklover 💗</p>
+        </div>
+        <nav class="hero-nav" aria-label="Navegação do painel">
+          <a class="hero-nav__link" href="influencer-plan.html">Roteiros</a>
+          <a class="hero-nav__link" href="influencer-performance.html">Desempenho</a>
+        </nav>
       </header>
 
       <section class="card" aria-labelledby="influencer-info-title">
         <div class="card-headline">
           <h2 id="influencer-info-title">Seus dados</h2>
+          <p>Informações essenciais da sua conta.</p>
         </div>
         <div id="influencerDetails" class="info-grid" aria-live="polite"></div>
         <p id="influencerContractMessage" class="message" hidden data-auto-hide="true"></p>
@@ -804,113 +644,64 @@
         </div>
       </section>
 
-      <section class="card" id="mainDashboard" aria-labelledby="influencer-dashboard-title">
+      <section class="card" aria-labelledby="cycle-summary-title">
         <div class="card-headline">
-          <h2 id="influencer-dashboard-title">Seu painel</h2>
-          <p>Escolha o que deseja visualizar:</p>
+          <h2 id="cycle-summary-title">Resumo do ciclo</h2>
+          <p>Veja como está seu desempenho geral neste mês.</p>
         </div>
-
-        <div class="dashboard-options">
-          <a class="dashboard-option" href="influencer-performance.html">
-            <div aria-hidden="true" style="font-size: 2rem">📊</div>
-            <h3>Desempenho</h3>
-            <p>Acompanhe seus pedidos, vendas e comissões.</p>
-          </a>
-
-          <button
-            class="dashboard-option"
-            type="button"
-            data-open-planner="influencer-plan.html"
-          >
-            <div aria-hidden="true" style="font-size: 2rem">🎥</div>
-            <h3>Roteiros</h3>
-            <p>Acesse o planejador dedicado para agendar e revisar seus roteiros.</p>
-          </button>
-
-          <a class="dashboard-option" href="pinklovers-influencer.html">
-            <div aria-hidden="true" style="font-size: 2rem">💗</div>
-            <h3>Painel Pinklovers</h3>
-            <p>Gerencie agenda, envios e comprovantes dos stories.</p>
-          </a>
+        <div class="highlight-grid">
+          <article class="highlight-card">
+            <span class="highlight-label">Período do ciclo</span>
+            <span class="highlight-value" id="planCyclePeriod" data-plan-cycle>–</span>
+            <span class="highlight-helper" id="planCycleHelper" data-plan-cycle-helper>
+              Estamos preparando seus dados.
+            </span>
+          </article>
+          <article class="highlight-card">
+            <span class="highlight-label">Multiplicador atual</span>
+            <span class="highlight-value" id="planMultiplierValue" data-plan-multiplier>–</span>
+            <span class="highlight-helper" id="planMultiplierLabel" data-plan-multiplier-label>
+              Multiplicador do ciclo
+            </span>
+          </article>
+          <article class="highlight-card">
+            <span class="highlight-label">Dias planejados</span>
+            <span class="highlight-value" id="planPlannedCount" data-plan-planned>0</span>
+            <span class="highlight-helper">Entregas cadastradas</span>
+          </article>
+          <article class="highlight-card">
+            <span class="highlight-label">Dias validados</span>
+            <span class="highlight-value" id="planValidatedCount" data-plan-validated>0</span>
+            <span class="highlight-helper">Histórico aprovado</span>
+          </article>
         </div>
-      </section>
-
-      <section
-        id="performanceSection"
-        class="card section influencer-section"
-        aria-labelledby="performance-title"
-        hidden
-      >
-        <div class="card-headline">
-          <h2 id="performance-title">📊 Desempenho</h2>
-          <p>Visualize os resultados das suas campanhas e comissões.</p>
-        </div>
-
-        <div class="performance-summary" id="influencerSalesSummary" aria-live="polite"></div>
+        <div class="metric-grid" id="influencerSalesSummary" aria-live="polite"></div>
         <p id="influencerSalesMessage" class="message" hidden data-auto-hide="true"></p>
-
-        <div class="table-wrapper">
-          <table id="influencerSalesTable">
-            <thead>
-              <tr>
-                <th>Número do pedido</th>
-                <th>Data</th>
-                <th>Pontos</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
-
-        <div class="section-actions">
-          <button class="btn-back" type="button" data-target="main">← Voltar</button>
-        </div>
       </section>
 
-      <section
-        id="scriptsSection"
-        class="card section influencer-section"
-        aria-labelledby="scripts-title"
-        hidden
-      >
-        <div class="card-headline">
-          <h2 id="scripts-title">🎥 Roteiros de Conteúdo</h2>
-          <p>Ideias e orientações preparadas especialmente para você.</p>
-        </div>
-
-        <div class="plan-overview" aria-live="polite">
-          <div class="plan-stat">
-            <span class="plan-label">Período do ciclo</span>
-            <span class="plan-value" id="planCyclePeriod">–</span>
+      <section class="card" aria-labelledby="schedule-title">
+        <div class="card-headline schedule-headline">
+          <div>
+            <h2 id="schedule-title">Agendamentos</h2>
+            <p>Confira seus conteúdos programados para o ciclo.</p>
           </div>
-          <div class="plan-stat">
-            <span class="plan-label">Dias agendados</span>
-            <span class="plan-value" id="planScheduledCount">0</span>
-          </div>
-          <div class="plan-stat">
-            <span class="plan-label">Dias validados</span>
-            <span class="plan-value" id="planValidatedCount">0</span>
+          <div class="schedule-counts">
+            <span class="schedule-count schedule-count--validated">
+              <strong data-plan-validated>0</strong>
+              <small>Validados</small>
+            </span>
+            <span class="schedule-count schedule-count--pending">
+              <strong data-plan-pending>0</strong>
+              <small>Pendentes</small>
+            </span>
           </div>
         </div>
-
-        <div class="plan-list-wrapper">
-          <div class="plan-list-header">
-            <div class="plan-list-header__content">
-              <h3>📅 Sua agenda</h3>
-              <p>Os dias planejados aparecem aqui. Use o novo planejador para ajustar datas ou roteiros.</p>
-            </div>
-            <a class="plan-open-button" href="influencer-plan.html">Abrir novo planejador</a>
-          </div>
-          <p id="planMessage" class="message" hidden data-auto-hide="true"></p>
-          <ul id="planEntriesList" class="plan-entries" aria-live="polite"></ul>
-        </div>
-
-        <p id="influencerScriptsMessage" class="message" hidden data-auto-hide="true"></p>
-        <div id="influencerScriptsList" class="scripts-list" aria-live="polite"></div>
-
-        <div class="section-actions">
-          <button class="btn-back" type="button" data-target="main">← Voltar</button>
-        </div>
+        <div id="planScheduleBoard" class="schedule-board" aria-live="polite"></div>
+        <p id="planMessage" class="message" hidden data-auto-hide="true"></p>
+        <p class="card-helper">
+          Precisa ajustar datas ou roteiros? Abra o
+          <a href="influencer-plan.html" class="card-helper__link">planejador completo</a>.
+        </p>
       </section>
     </div>
   </body>
