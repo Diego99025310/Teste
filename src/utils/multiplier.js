@@ -1,71 +1,82 @@
-const MULTIPLIER_BANDS = [
-  { min: 1, max: 4, multiplier: 1.0, label: '1 a 4 stories validados (100%)' },
-  { min: 5, max: 10, multiplier: 1.25, label: '5 a 10 stories validados (125%)' },
-  { min: 11, max: 15, multiplier: 1.5, label: '11 a 15 stories validados (150%)' },
-  { min: 16, max: 20, multiplier: 1.75, label: '16 a 20 stories validados (175%)' },
-  { min: 21, max: 30, multiplier: 2.0, label: '21 a 30 stories validados (200%)' }
+const ACTIVATION_BANDS = [
+  { min: 1, max: 4, factor: 1.0, label: '1 a 4 ativações validadas (100%)' },
+  { min: 5, max: 9, factor: 1.25, label: '5 a 9 ativações validadas (125%)' },
+  { min: 10, max: 14, factor: 1.5, label: '10 a 14 ativações validadas (150%)' },
+  { min: 15, max: 19, factor: 1.75, label: '15 a 19 ativações validadas (175%)' },
+  { min: 20, max: Infinity, factor: 2.0, label: '20 ou mais ativações validadas (200%)' }
 ];
 
 const { roundPoints } = require('./points');
 
-const calculateCommissionMultiplier = (validatedDays) => {
-  const days = Number(validatedDays);
-  if (!Number.isFinite(days) || days <= 0) {
+const getMultiplier = (activations) => {
+  const count = Number(activations);
+  if (!Number.isFinite(count) || count <= 0) {
     return {
-      multiplier: 0,
+      factor: 0,
+      label: 'Sem ativações validadas no ciclo',
       band: null,
-      label: 'Sem stories validados no ciclo',
-      validatedDays: 0
+      activations: 0
     };
   }
 
-  const band = MULTIPLIER_BANDS.find((entry) => days >= entry.min && days <= entry.max);
+  const band = ACTIVATION_BANDS.find((entry) => count >= entry.min && count <= entry.max);
   if (band) {
     return {
-      multiplier: band.multiplier,
-      band,
+      factor: band.factor,
       label: band.label,
-      validatedDays: days
+      band,
+      activations: count
     };
   }
 
-  const lastBand = MULTIPLIER_BANDS[MULTIPLIER_BANDS.length - 1];
+  const lastBand = ACTIVATION_BANDS[ACTIVATION_BANDS.length - 1];
   if (!lastBand) {
     return {
-      multiplier: 0,
+      factor: 0,
+      label: 'Sem configuração de multiplicador',
       band: null,
-      label: 'Sem configuracao de multiplicador',
-      validatedDays: days
+      activations: count
     };
   }
 
-  const multiplier = days >= lastBand.min ? lastBand.multiplier : 0;
-  const label = days >= lastBand.min
-    ? `Acima de ${lastBand.max} stories validados (${Math.round(multiplier * 100)}%)`
-    : 'Sem configuracao de multiplicador';
   return {
-    multiplier,
+    factor: lastBand.factor,
+    label: lastBand.label,
     band: lastBand,
-    label,
-    validatedDays: days
+    activations: count
   };
 };
 
-const summarizePoints = (basePoints, validatedDays) => {
+const calculateCommissionMultiplier = (activations) => {
+  const multiplierData = getMultiplier(activations);
+  return {
+    multiplier: multiplierData.factor,
+    factor: multiplierData.factor,
+    band: multiplierData.band,
+    label: multiplierData.label,
+    activations: multiplierData.activations,
+    validatedDays: multiplierData.activations
+  };
+};
+
+const summarizePoints = (basePoints, activations) => {
   const base = Number(basePoints) > 0 ? roundPoints(basePoints) : 0;
-  const multiplierData = calculateCommissionMultiplier(validatedDays);
-  const total = roundPoints(base * multiplierData.multiplier);
+  const multiplierData = calculateCommissionMultiplier(activations);
+  const total = roundPoints(base * multiplierData.factor);
   return {
     basePoints: base,
     multiplier: multiplierData.multiplier,
+    factor: multiplierData.factor,
     label: multiplierData.label,
+    activations: multiplierData.activations,
     validatedDays: multiplierData.validatedDays,
     totalPoints: total
   };
 };
 
 module.exports = {
-  MULTIPLIER_BANDS,
+  ACTIVATION_BANDS,
+  getMultiplier,
   calculateCommissionMultiplier,
   summarizePoints
 };
