@@ -221,39 +221,62 @@ button {
   gap: 12px;
 }
 
-.view-script-action {
+.card-actions {
   display: flex;
-  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
-.view-script-button {
+.card-actions__button {
+  flex: 1 1 150px;
+  min-height: 48px;
+  border-radius: 12px;
+  border: 1px solid transparent;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  gap: 6px;
   padding: 12px 20px;
-  border-radius: 12px;
-  background: var(--pink-500);
-  color: #fff;
+  background: #fff;
+  color: var(--gray-700);
   font-weight: 600;
   text-decoration: none;
-  transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
-.view-script-button::before {
-  content: '\1F441';
+.card-actions__button:focus-visible {
+  outline: 3px solid rgba(255, 105, 180, 0.35);
+  outline-offset: 2px;
 }
 
-.view-script-button:hover,
-.view-script-button:focus-visible {
+.card-actions__button--view {
+  border-color: var(--pink-500);
+  color: var(--pink-600);
+}
+
+.card-actions__button--view:hover,
+.card-actions__button--view:focus-visible {
+  background: rgba(255, 105, 180, 0.12);
+  border-color: var(--pink-600);
+  color: var(--pink-600);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 16px rgba(255, 105, 180, 0.12);
+}
+
+.card-actions__button--schedule {
+  background: var(--pink-500);
+  color: #fff;
+  border-color: var(--pink-500);
+}
+
+.card-actions__button--schedule:hover,
+.card-actions__button--schedule:focus-visible {
   background: var(--pink-600);
+  border-color: var(--pink-600);
+  color: #fff;
   transform: translateY(-1px);
   box-shadow: 0 8px 16px rgba(255, 105, 180, 0.2);
-  color: #fff;
-}
-
-.view-script-button:focus-visible {
-  outline: 3px solid rgba(255, 105, 180, 0.4);
-  outline-offset: 2px;
 }
 
 .schedule-occurrences {
@@ -349,56 +372,6 @@ button {
   background: rgba(255, 105, 180, 0.12);
   border-color: var(--pink-600);
   color: var(--pink-600);
-}
-
-.card-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.card-actions .primary {
-  flex: 1 1 160px;
-  min-height: 48px;
-  border-radius: 12px;
-  border: 0;
-  background: var(--pink-500);
-  color: #fff;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.card-actions .primary:hover {
-  background: var(--pink-600);
-  transform: translateY(-1px);
-  box-shadow: 0 8px 16px rgba(255, 105, 180, 0.2);
-}
-
-.card-actions .secondary {
-  flex: 1 1 120px;
-  min-height: 44px;
-  border-radius: 12px;
-  border: 1px solid var(--gray-300);
-  background: #fff;
-  color: var(--gray-700);
-  cursor: pointer;
-  transition: background 0.2s ease, border-color 0.2s ease;
-}
-
-.card-actions .secondary:hover {
-  background: var(--gray-100);
-  border-color: var(--gray-600);
-}
-
-.card-actions .danger {
-  border-color: rgba(208, 18, 120, 0.4);
-  color: var(--pink-700);
-}
-
-.card-actions .danger:hover {
-  background: rgba(255, 105, 180, 0.12);
-  border-color: var(--pink-600);
 }
 
 .date-popover {
