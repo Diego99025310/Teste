@@ -246,21 +246,17 @@ const buildScriptViewerUrl = (scriptId) => {
 };
 
 const createViewScriptAction = (script) => {
-  const container = document.createElement('div');
-  container.className = 'view-script-action';
-
   const link = document.createElement('a');
-  link.className = 'view-script-button';
+  link.className = 'card-actions__button card-actions__button--view';
   link.href = buildScriptViewerUrl(script?.id);
   link.target = '_blank';
   link.rel = 'noopener noreferrer';
-  link.textContent = 'Ver roteiro completo';
+  link.textContent = 'Visualizar';
   if (script?.title) {
     link.setAttribute('aria-label', `Abrir roteiro completo de ${script.title} em uma nova aba`);
   }
 
-  container.appendChild(link);
-  return container;
+  return link;
 };
 
 const normalizePlan = (plan) => {
@@ -567,7 +563,18 @@ const renderRoteiros = () => {
     const details = document.createElement('div');
     details.className = 'roteiro-details';
 
-    details.appendChild(createViewScriptAction(script));
+    const actions = document.createElement('div');
+    actions.className = 'card-actions';
+
+    const viewButton = createViewScriptAction(script);
+    actions.appendChild(viewButton);
+
+    const scheduleBtn = document.createElement('button');
+    scheduleBtn.className = 'card-actions__button card-actions__button--schedule';
+    scheduleBtn.type = 'button';
+    scheduleBtn.textContent = 'Agendar';
+    scheduleBtn.addEventListener('click', () => openDatePicker(script));
+    actions.appendChild(scheduleBtn);
 
     if (occurrences.length) {
       const list = document.createElement('div');
@@ -597,18 +604,25 @@ const renderRoteiros = () => {
           info.appendChild(statusChip);
         }
 
-        const actionsContainer = document.createElement('div');
-        actionsContainer.className = 'schedule-occurrence__actions';
+        const statusKey = typeof plan.status === 'string' ? plan.status.toLowerCase() : 'scheduled';
+        const canRemove = plan._new || statusKey === 'scheduled';
 
-        const removeBtn = document.createElement('button');
-        removeBtn.type = 'button';
-        removeBtn.className = 'occurrence-remove';
-        removeBtn.textContent = 'Remover';
-        removeBtn.addEventListener('click', () => removePlanOccurrence(plan, removeBtn));
+        if (canRemove) {
+          const actionsContainer = document.createElement('div');
+          actionsContainer.className = 'schedule-occurrence__actions';
 
-        actionsContainer.appendChild(removeBtn);
+          const removeBtn = document.createElement('button');
+          removeBtn.type = 'button';
+          removeBtn.className = 'occurrence-remove';
+          removeBtn.textContent = 'Remover';
+          removeBtn.addEventListener('click', () => removePlanOccurrence(plan, removeBtn));
 
-        occurrence.append(info, actionsContainer);
+          actionsContainer.appendChild(removeBtn);
+
+          occurrence.append(info, actionsContainer);
+        } else {
+          occurrence.appendChild(info);
+        }
         list.appendChild(occurrence);
       });
 
@@ -616,19 +630,8 @@ const renderRoteiros = () => {
     }
 
     card.appendChild(header);
-    card.appendChild(details);
-
-    const actions = document.createElement('div');
-    actions.className = 'card-actions';
-
-    const scheduleBtn = document.createElement('button');
-    scheduleBtn.className = 'primary';
-    scheduleBtn.type = 'button';
-    scheduleBtn.textContent = '➕ Adicionar data';
-    scheduleBtn.addEventListener('click', () => openDatePicker(script));
-    actions.appendChild(scheduleBtn);
-
     card.appendChild(actions);
+    card.appendChild(details);
     elements.roteirosList.appendChild(card);
   });
 };
