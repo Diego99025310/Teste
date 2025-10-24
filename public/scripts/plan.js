@@ -249,11 +249,9 @@ const createViewScriptAction = (script) => {
   const link = document.createElement('a');
   link.className = 'card-actions__button card-actions__button--view';
   link.href = buildScriptViewerUrl(script?.id);
-  link.target = '_blank';
-  link.rel = 'noopener noreferrer';
   link.textContent = 'Visualizar';
   if (script?.title) {
-    link.setAttribute('aria-label', `Abrir roteiro completo de ${script.title} em uma nova aba`);
+    link.setAttribute('aria-label', `Abrir roteiro completo de ${script.title}`);
   }
 
   return link;
