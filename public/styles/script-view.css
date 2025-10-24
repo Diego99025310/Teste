@@ -184,11 +184,18 @@ a:focus-visible {
 
 .embedded-video {
   position: relative;
-  width: 100%;
-  padding-top: 56.25%;
+  width: min(100%, 640px);
+  margin: 0 auto;
   border-radius: 18px;
   overflow: hidden;
   background: #000;
+  --embedded-video-ratio: 16 / 9;
+}
+
+.embedded-video::before {
+  content: '';
+  display: block;
+  padding-top: var(--embedded-video-aspect, 56.25%);
 }
 
 .embedded-video iframe {
@@ -197,6 +204,34 @@ a:focus-visible {
   width: 100%;
   height: 100%;
   border: 0;
+}
+
+.embedded-video--landscape {
+  --embedded-video-aspect: 56.25%;
+}
+
+.embedded-video--vertical {
+  --embedded-video-aspect: 177.78%;
+  max-width: min(100%, 420px);
+}
+
+@supports (aspect-ratio: 16 / 9) {
+  .embedded-video,
+  .embedded-video::before {
+    padding-top: 0;
+  }
+
+  .embedded-video {
+    aspect-ratio: var(--embedded-video-ratio, 16 / 9);
+  }
+
+  .embedded-video--landscape {
+    --embedded-video-ratio: 16 / 9;
+  }
+
+  .embedded-video--vertical {
+    --embedded-video-ratio: 9 / 16;
+  }
 }
 
 .script-video .video-link {

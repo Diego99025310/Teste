@@ -447,12 +447,15 @@
     return '';
   };
 
-  const createEmbeddedVideo = ({ embedUrl, provider, url } = {}) => {
+  const createEmbeddedVideo = ({ embedUrl, format, provider, url } = {}) => {
     const src = deriveEmbeddedVideoUrl({ embedUrl, provider, url });
     if (!src) return null;
 
     const wrapper = document.createElement('div');
     wrapper.className = 'embedded-video';
+    const orientation = typeof format === 'string' && format.toLowerCase() === 'vertical' ? 'vertical' : 'landscape';
+    wrapper.classList.add(`embedded-video--${orientation}`);
+    wrapper.dataset.orientation = orientation;
 
     const iframe = document.createElement('iframe');
     iframe.src = src;
@@ -484,7 +487,12 @@
     container.className = className;
 
     if (embedUrl) {
-      const embed = createEmbeddedVideo({ embedUrl, provider: video.provider, url });
+      const embed = createEmbeddedVideo({
+        embedUrl,
+        provider: video.provider,
+        url,
+        format: video.format ?? video.videoFormat ?? null
+      });
       if (embed) {
         container.appendChild(embed);
       }
@@ -3511,11 +3519,13 @@
           const directUrl = toTrimmedString(script.video.url ?? script.video.href ?? '');
           const embedUrl = toTrimmedString(script.video.embedUrl ?? '');
           const provider = toTrimmedString(script.video.provider ?? '');
+          const format = toTrimmedString(script.video.format ?? script.video.videoFormat ?? '');
           if (directUrl || embedUrl) {
             return {
               url: directUrl || null,
               embedUrl: embedUrl || null,
-              provider: provider || null
+              provider: provider || null,
+              format: format || null
             };
           }
         }
@@ -3523,12 +3533,14 @@
         const fallbackUrl = toTrimmedString(script?.video_url ?? script?.videoUrl ?? '');
         const fallbackEmbed = toTrimmedString(script?.video_embed_url ?? script?.videoEmbedUrl ?? '');
         const fallbackProvider = toTrimmedString(script?.video_provider ?? script?.videoProvider ?? '');
+        const fallbackFormat = toTrimmedString(script?.video_format ?? script?.videoFormat ?? '');
 
         if (fallbackUrl || fallbackEmbed) {
           return {
             url: fallbackUrl || null,
             embedUrl: fallbackEmbed || null,
-            provider: fallbackProvider || null
+            provider: fallbackProvider || null,
+            format: fallbackFormat || null
           };
         }
 
@@ -3545,6 +3557,7 @@
         editorValue: convertScriptHtmlToEditorValue(rawDescription),
         video,
         videoUrl: video?.url || '',
+        videoFormat: video?.format || null,
         createdAt: script?.created_at ?? script?.createdAt ?? null,
         updatedAt: script?.updated_at ?? script?.updatedAt ?? null
       };

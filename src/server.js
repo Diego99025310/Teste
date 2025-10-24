@@ -200,10 +200,22 @@ const extractYouTubeVideoId = (url) => {
 
 const INSTAGRAM_PATH_PREFIXES = new Set(['p', 'reel', 'tv']);
 
+const normalizeVideoFormat = (value) => {
+  const normalized = trimString(value)?.toLowerCase();
+  if (!normalized) return null;
+  if (['vertical', 'portrait'].includes(normalized)) {
+    return 'vertical';
+  }
+  if (['landscape', 'horizontal', 'widescreen'].includes(normalized)) {
+    return 'landscape';
+  }
+  return null;
+};
+
 const parseScriptVideoLink = (rawValue) => {
   const trimmed = trimString(rawValue);
   if (!trimmed) {
-    return { url: null, provider: null, embedUrl: null };
+    return { url: null, provider: null, embedUrl: null, format: null };
   }
 
   let normalized = ensureUrlHasProtocol(trimmed);
@@ -214,16 +226,31 @@ const parseScriptVideoLink = (rawValue) => {
     return { error: 'Informe um link de vídeo válido do YouTube ou Instagram.' };
   }
 
+  let overrideFormat =
+    normalizeVideoFormat(parsedUrl.searchParams.get('layout')) ||
+    normalizeVideoFormat(parsedUrl.searchParams.get('orientation'));
+
+  if (!overrideFormat && parsedUrl.hash) {
+    const hashValue = parsedUrl.hash.replace(/^#/, '').split(/[&?]/)[0];
+    overrideFormat = normalizeVideoFormat(hashValue);
+  }
+
   const host = parsedUrl.hostname.replace(/^www\./i, '').toLowerCase();
   if (host === 'youtu.be' || host.endsWith('youtube.com')) {
     const videoId = extractYouTubeVideoId(parsedUrl);
     if (!videoId) {
       return { error: 'Informe um link válido de vídeo do YouTube.' };
     }
+    const pathSegments = parsedUrl.pathname.split('/').filter(Boolean);
+    const firstSegment = (pathSegments[0] || '').toLowerCase();
+    const isShort = firstSegment === 'shorts';
+    const urlPath = isShort ? `https://www.youtube.com/shorts/${videoId}` : `https://www.youtube.com/watch?v=${videoId}`;
+    const format = overrideFormat || 'vertical';
     return {
-      url: `https://www.youtube.com/watch?v=${videoId}`,
+      url: urlPath,
       provider: 'youtube',
-      embedUrl: `https://www.youtube.com/embed/${videoId}`
+      embedUrl: `https://www.youtube.com/embed/${videoId}`,
+      format
     };
   }
 
@@ -240,34 +267,43 @@ const parseScriptVideoLink = (rawValue) => {
     }
 
     const canonical = `https://www.instagram.com/${prefix}/${code}/`;
+    const isVertical = prefix === 'reel' || prefix === 'tv';
+    const format = overrideFormat || (isVertical ? 'vertical' : 'vertical');
     return {
       url: canonical,
       provider: 'instagram',
-      embedUrl: `${canonical}embed/`
+      embedUrl: `${canonical}embed/`,
+      format
     };
   }
 
   return { error: 'Informe um link de vídeo válido do YouTube ou Instagram.' };
 };
 
-const buildScriptVideoPayload = (rawValue) => {
+const buildScriptVideoPayload = (rawValue, rawFormat = null) => {
   const parsed = parseScriptVideoLink(rawValue);
   if (!parsed || parsed.error || !parsed.url) {
     return null;
   }
+  const format = normalizeVideoFormat(parsed.format) ?? normalizeVideoFormat(rawFormat);
   return {
     url: parsed.url,
     provider: parsed.provider,
-    embedUrl: parsed.embedUrl
+    embedUrl: parsed.embedUrl,
+    format: format ?? null
   };
 };
 
 const decorateScriptRow = (script) => {
   if (!script) return null;
-  const video = buildScriptVideoPayload(script.video_url ?? script.videoUrl ?? null);
+  const video = buildScriptVideoPayload(
+    script.video_url ?? script.videoUrl ?? null,
+    script.video_format ?? script.videoFormat ?? null
+  );
   return {
     ...script,
     video_url: video?.url ?? (script.video_url ?? script.videoUrl ?? null),
+    video_format: video?.format ?? (script.video_format ?? script.videoFormat ?? null),
     video
   };
 };
@@ -555,20 +591,26 @@ const listInfluencerSummaryStmt = db.prepare(`
 `);
 
 const insertContentScriptStmt = db.prepare(
-  'INSERT INTO content_scripts (titulo, descricao, video_url, created_by) VALUES (?, ?, ?, ?)'
+  'INSERT INTO content_scripts (titulo, descricao, video_url, video_format, created_by) VALUES (?, ?, ?, ?, ?)'
 );
 const listContentScriptsStmt = db.prepare(
-  'SELECT id, titulo, descricao, video_url, created_at, updated_at FROM content_scripts ORDER BY datetime(created_at) DESC, id DESC'
+  'SELECT id, titulo, descricao, video_url, video_format, created_at, updated_at FROM content_scripts ORDER BY datetime(created_at) DESC, id DESC'
 );
 const findContentScriptByIdStmt = db.prepare(
-  'SELECT id, titulo, descricao, video_url, created_at, updated_at FROM content_scripts WHERE id = ?'
+  'SELECT id, titulo, descricao, video_url, video_format, created_at, updated_at FROM content_scripts WHERE id = ?'
 );
 const updateContentScriptStmt = db.prepare(
-  'UPDATE content_scripts SET titulo = ?, descricao = ?, video_url = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+  'UPDATE content_scripts SET titulo = ?, descricao = ?, video_url = ?, video_format = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
 );
 const deleteContentScriptStmt = db.prepare('DELETE FROM content_scripts WHERE id = ?');
 const listContentScriptsForMigrationStmt = db.prepare('SELECT id, descricao FROM content_scripts');
 const updateContentScriptDescriptionStmt = db.prepare('UPDATE content_scripts SET descricao = ? WHERE id = ?');
+const listContentScriptsVideoMetadataStmt = db.prepare(
+  'SELECT id, video_url, video_format FROM content_scripts WHERE video_url IS NOT NULL'
+);
+const updateContentScriptVideoMetadataStmt = db.prepare(
+  'UPDATE content_scripts SET video_url = ?, video_format = ? WHERE id = ?'
+);
 
 const findCycleByIdStmt = db.prepare(
   'SELECT id, cycle_year, cycle_month, status, started_at, closed_at, created_at, updated_at FROM monthly_cycles WHERE id = ?'
@@ -638,7 +680,8 @@ const listPlansByInfluencerStmt = db.prepare(
           p.updated_at,
           s.titulo AS script_title,
           s.descricao AS script_description,
-          s.video_url AS script_video_url
+          s.video_url AS script_video_url,
+          s.video_format AS script_video_format
      FROM influencer_plans p
      LEFT JOIN content_scripts s ON s.id = p.content_script_id
     WHERE p.cycle_id = ?
@@ -860,6 +903,34 @@ const migrateContentScriptsToHtml = () => {
 };
 
 migrateContentScriptsToHtml();
+
+const backfillContentScriptVideoMetadata = () => {
+  const rows = listContentScriptsVideoMetadataStmt.all();
+  let updatedCount = 0;
+
+  rows.forEach((row) => {
+    const parsed = parseScriptVideoLink(row.video_url);
+    if (!parsed || parsed.error || !parsed.url) {
+      return;
+    }
+
+    const normalizedUrl = parsed.url;
+    const normalizedFormat = normalizeVideoFormat(parsed.format);
+    const storedUrl = trimString(row.video_url) || null;
+    const storedFormat = normalizeVideoFormat(row.video_format);
+
+    if (normalizedUrl !== storedUrl || normalizedFormat !== storedFormat) {
+      updateContentScriptVideoMetadataStmt.run(normalizedUrl, normalizedFormat, row.id);
+      updatedCount += 1;
+    }
+  });
+
+  if (updatedCount > 0) {
+    console.log(`Atualizados ${updatedCount} roteiros com metadados de vídeo normalizados.`);
+  }
+};
+
+backfillContentScriptVideoMetadata();
 
 const getCurrentCycleParts = (referenceDate = new Date()) => {
   const date = referenceDate instanceof Date ? referenceDate : new Date();
@@ -2552,7 +2623,10 @@ const collectInfluencerPlanData = (cycle, influencer, { scriptLimit = 15 } = {})
 
 const serializePlanForExtendedResponse = (plan) => {
   if (!plan) return null;
-  const video = buildScriptVideoPayload(plan.script_video_url ?? plan.scriptVideoUrl ?? null);
+  const video = buildScriptVideoPayload(
+    plan.script_video_url ?? plan.scriptVideoUrl ?? null,
+    plan.script_video_format ?? plan.scriptVideoFormat ?? null
+  );
   return {
     id: plan.id,
     cycleId: plan.cycle_id,
@@ -2564,6 +2638,7 @@ const serializePlanForExtendedResponse = (plan) => {
     scriptTitle: plan.script_title,
     scriptDescription: plan.script_description,
     scriptVideoUrl: video?.url ?? (plan.script_video_url ?? plan.scriptVideoUrl ?? null),
+    scriptVideoFormat: video?.format ?? (plan.script_video_format ?? plan.scriptVideoFormat ?? null),
     scriptVideo: video,
     createdAt: plan.created_at,
     updatedAt: plan.updated_at,
@@ -2582,7 +2657,10 @@ const serializePlanForExtendedResponse = (plan) => {
 
 const serializeScriptForExtendedResponse = (script) => {
   if (!script) return null;
-  const video = buildScriptVideoPayload(script.video_url ?? script.videoUrl ?? null);
+  const video = buildScriptVideoPayload(
+    script.video_url ?? script.videoUrl ?? null,
+    script.video_format ?? script.videoFormat ?? null
+  );
   return {
     id: script.id,
     title: script.titulo,
@@ -2590,6 +2668,7 @@ const serializeScriptForExtendedResponse = (script) => {
     preview: buildScriptPreview(script.descricao),
     video_url: video?.url ?? (script.video_url ?? script.videoUrl ?? null),
     videoUrl: video?.url ?? (script.video_url ?? script.videoUrl ?? null),
+    videoFormat: video?.format ?? (script.video_format ?? script.videoFormat ?? null),
     video,
     createdAt: script.created_at,
     updatedAt: script.updated_at
@@ -4008,9 +4087,16 @@ app.post('/scripts', authenticate, authorizeMaster, (req, res) => {
   const truncatedDescription = rawDescription.length > 6000 ? rawDescription.slice(0, 6000) : rawDescription;
   const descricao = normalizeScriptDescription(truncatedDescription);
   const videoUrl = parsedVideo?.url ?? null;
+  const videoFormat = normalizeVideoFormat(parsedVideo?.format);
 
   try {
-    const result = insertContentScriptStmt.run(titulo, descricao, videoUrl, req.auth?.user?.id || null);
+    const result = insertContentScriptStmt.run(
+      titulo,
+      descricao,
+      videoUrl,
+      videoFormat,
+      req.auth?.user?.id || null
+    );
     const script = findContentScriptByIdStmt.get(result.lastInsertRowid);
     return res.status(201).json(decorateScriptRow(script));
   } catch (error) {
@@ -4055,15 +4141,17 @@ app.put('/scripts/:id', authenticate, authorizeMaster, (req, res) => {
     }
 
     let videoUrl = existing.video_url ?? null;
+    let videoFormat = normalizeVideoFormat(existing.video_format ?? existing.videoFormat ?? null);
     if (hasVideoField) {
       const parsedVideo = parseScriptVideoLink(rawVideoLink);
       if (parsedVideo?.error) {
         return res.status(400).json({ error: parsedVideo.error });
       }
       videoUrl = parsedVideo?.url ?? null;
+      videoFormat = normalizeVideoFormat(parsedVideo?.format);
     }
 
-    updateContentScriptStmt.run(titulo, descricao, videoUrl, scriptId);
+    updateContentScriptStmt.run(titulo, descricao, videoUrl, videoFormat, scriptId);
     const updated = findContentScriptByIdStmt.get(scriptId);
     return res.status(200).json(decorateScriptRow(updated));
   } catch (error) {

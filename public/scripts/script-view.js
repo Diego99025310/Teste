@@ -246,12 +246,15 @@ const deriveEmbeddedVideoUrl = ({ embedUrl, provider, url }) => {
   return '';
 };
 
-const createEmbeddedVideo = ({ embedUrl, provider, url } = {}) => {
+const createEmbeddedVideo = ({ embedUrl, format, provider, url } = {}) => {
   const src = deriveEmbeddedVideoUrl({ embedUrl, provider, url });
   if (!src) return null;
 
   const wrapper = document.createElement('div');
   wrapper.className = 'embedded-video';
+  const orientation = typeof format === 'string' && format.toLowerCase() === 'vertical' ? 'vertical' : 'landscape';
+  wrapper.classList.add(`embedded-video--${orientation}`);
+  wrapper.dataset.orientation = orientation;
 
   const iframe = document.createElement('iframe');
   iframe.src = src;
@@ -277,11 +280,13 @@ const extractScriptVideo = (script) => {
     const url = toTrimmedString(script.video.url ?? script.video.href ?? '');
     const embedUrl = toTrimmedString(script.video.embedUrl ?? '');
     const provider = toTrimmedString(script.video.provider ?? '');
+    const format = toTrimmedString(script.video.format ?? script.video.videoFormat ?? '');
     if (url || embedUrl) {
       return {
         url: url || null,
         embedUrl: embedUrl || null,
-        provider: provider || null
+        provider: provider || null,
+        format: format || null
       };
     }
   }
@@ -289,12 +294,14 @@ const extractScriptVideo = (script) => {
   const fallbackUrl = toTrimmedString(script.video_url ?? script.videoUrl ?? '');
   const fallbackEmbed = toTrimmedString(script.video_embed_url ?? script.videoEmbedUrl ?? '');
   const fallbackProvider = toTrimmedString(script.video_provider ?? script.videoProvider ?? '');
+  const fallbackFormat = toTrimmedString(script.video_format ?? script.videoFormat ?? '');
 
   if (fallbackUrl || fallbackEmbed) {
     return {
       url: fallbackUrl || null,
       embedUrl: fallbackEmbed || null,
-      provider: fallbackProvider || null
+      provider: fallbackProvider || null,
+      format: fallbackFormat || null
     };
   }
 
@@ -310,7 +317,12 @@ const renderScriptVideo = (video) => {
     return;
   }
 
-  const embed = createEmbeddedVideo({ embedUrl: video.embedUrl, provider: video.provider, url: video.url });
+  const embed = createEmbeddedVideo({
+    embedUrl: video.embedUrl,
+    provider: video.provider,
+    url: video.url,
+    format: video.format ?? null
+  });
   if (embed) {
     container.appendChild(embed);
   }
