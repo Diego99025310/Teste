@@ -512,6 +512,7 @@ const createContentScriptsTable = (tableName = 'content_scripts') => `
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     titulo TEXT NOT NULL,
     descricao TEXT NOT NULL,
+    video_url TEXT,
     created_by INTEGER,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -537,6 +538,7 @@ const ensureContentScriptsTable = () => {
 
   ensureColumn('titulo', 'titulo TEXT NOT NULL DEFAULT ""');
   ensureColumn('descricao', 'descricao TEXT NOT NULL DEFAULT ""');
+  ensureColumn('video_url', 'video_url TEXT');
   ensureColumn('created_by', 'created_by INTEGER');
   ensureColumn('created_at', 'created_at DATETIME DEFAULT CURRENT_TIMESTAMP');
   ensureColumn('updated_at', 'updated_at DATETIME DEFAULT CURRENT_TIMESTAMP');

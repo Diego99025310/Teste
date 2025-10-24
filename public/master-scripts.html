@@ -20,12 +20,24 @@
       <section class="card">
         <h2>Cadastrar novo roteiro</h2>
         <p class="note">
-          Informe um título e uma descrição com o passo a passo ou dicas que deseja compartilhar.
+          Informe um título, opcionalmente um link de vídeo, e descreva o passo a passo ou dicas que deseja
+          compartilhar.
         </p>
         <form id="scriptForm">
           <label>
             <span class="section-title">Título</span>
             <input type="text" name="title" placeholder="Ex.: Rotina pós-treino" required maxlength="180" />
+          </label>
+
+          <label>
+            <span class="section-title">Link do vídeo (opcional)</span>
+            <input
+              type="url"
+              name="videoUrl"
+              inputmode="url"
+              maxlength="300"
+              placeholder="Cole um link do YouTube ou Instagram"
+            />
           </label>
 
           <label>
