@@ -160,6 +160,118 @@ const normalizeScriptDescription = (value = '') => {
   return convertPlainTextToHtml(trimmed);
 };
 
+const ensureUrlHasProtocol = (value = '') => {
+  if (typeof value !== 'string' || !value.trim()) {
+    return '';
+  }
+  const trimmed = value.trim();
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed;
+  }
+  return `https://${trimmed}`;
+};
+
+const validateYouTubeVideoId = (value) => {
+  if (typeof value !== 'string') return null;
+  const candidate = value.trim();
+  return /^[A-Za-z0-9_-]{11}$/.test(candidate) ? candidate : null;
+};
+
+const extractYouTubeVideoId = (url) => {
+  if (!(url instanceof URL)) return null;
+  const host = url.hostname.replace(/^www\./i, '').toLowerCase();
+  const segments = url.pathname.split('/').filter(Boolean);
+
+  if (host === 'youtu.be') {
+    return validateYouTubeVideoId(segments[0] || '');
+  }
+
+  if (host.endsWith('youtube.com')) {
+    const searchId = validateYouTubeVideoId(url.searchParams.get('v'));
+    if (searchId) return searchId;
+
+    if (segments.length >= 2 && ['embed', 'shorts', 'live'].includes(segments[0])) {
+      return validateYouTubeVideoId(segments[1]);
+    }
+  }
+
+  return null;
+};
+
+const INSTAGRAM_PATH_PREFIXES = new Set(['p', 'reel', 'tv']);
+
+const parseScriptVideoLink = (rawValue) => {
+  const trimmed = trimString(rawValue);
+  if (!trimmed) {
+    return { url: null, provider: null, embedUrl: null };
+  }
+
+  let normalized = ensureUrlHasProtocol(trimmed);
+  let parsedUrl;
+  try {
+    parsedUrl = new URL(normalized);
+  } catch (error) {
+    return { error: 'Informe um link de vídeo válido do YouTube ou Instagram.' };
+  }
+
+  const host = parsedUrl.hostname.replace(/^www\./i, '').toLowerCase();
+  if (host === 'youtu.be' || host.endsWith('youtube.com')) {
+    const videoId = extractYouTubeVideoId(parsedUrl);
+    if (!videoId) {
+      return { error: 'Informe um link válido de vídeo do YouTube.' };
+    }
+    return {
+      url: `https://www.youtube.com/watch?v=${videoId}`,
+      provider: 'youtube',
+      embedUrl: `https://www.youtube.com/embed/${videoId}`
+    };
+  }
+
+  if (host === 'instagram.com' || host.endsWith('.instagram.com')) {
+    const segments = parsedUrl.pathname.split('/').filter(Boolean);
+    if (segments.length < 2) {
+      return { error: 'Informe um link válido de vídeo do Instagram.' };
+    }
+
+    const prefix = segments[0].toLowerCase();
+    const code = segments[1];
+    if (!INSTAGRAM_PATH_PREFIXES.has(prefix) || !/^[A-Za-z0-9_-]+$/.test(code)) {
+      return { error: 'Informe um link válido de vídeo do Instagram.' };
+    }
+
+    const canonical = `https://www.instagram.com/${prefix}/${code}/`;
+    return {
+      url: canonical,
+      provider: 'instagram',
+      embedUrl: `${canonical}embed/`
+    };
+  }
+
+  return { error: 'Informe um link de vídeo válido do YouTube ou Instagram.' };
+};
+
+const buildScriptVideoPayload = (rawValue) => {
+  const parsed = parseScriptVideoLink(rawValue);
+  if (!parsed || parsed.error || !parsed.url) {
+    return null;
+  }
+  return {
+    url: parsed.url,
+    provider: parsed.provider,
+    embedUrl: parsed.embedUrl
+  };
+};
+
+const decorateScriptRow = (script) => {
+  if (!script) return null;
+  const video = buildScriptVideoPayload(script.video_url ?? script.videoUrl ?? null);
+  return {
+    ...script,
+    video_url: video?.url ?? (script.video_url ?? script.videoUrl ?? null),
+    video
+  };
+};
+
 const isValidDate = (value) => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value.trim());
 
 const findUserByEmailStmt = db.prepare(
@@ -443,16 +555,16 @@ const listInfluencerSummaryStmt = db.prepare(`
 `);
 
 const insertContentScriptStmt = db.prepare(
-  'INSERT INTO content_scripts (titulo, descricao, created_by) VALUES (?, ?, ?)'
+  'INSERT INTO content_scripts (titulo, descricao, video_url, created_by) VALUES (?, ?, ?, ?)'
 );
 const listContentScriptsStmt = db.prepare(
-  'SELECT id, titulo, descricao, created_at, updated_at FROM content_scripts ORDER BY datetime(created_at) DESC, id DESC'
+  'SELECT id, titulo, descricao, video_url, created_at, updated_at FROM content_scripts ORDER BY datetime(created_at) DESC, id DESC'
 );
 const findContentScriptByIdStmt = db.prepare(
-  'SELECT id, titulo, descricao, created_at, updated_at FROM content_scripts WHERE id = ?'
+  'SELECT id, titulo, descricao, video_url, created_at, updated_at FROM content_scripts WHERE id = ?'
 );
 const updateContentScriptStmt = db.prepare(
-  'UPDATE content_scripts SET titulo = ?, descricao = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+  'UPDATE content_scripts SET titulo = ?, descricao = ?, video_url = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
 );
 const deleteContentScriptStmt = db.prepare('DELETE FROM content_scripts WHERE id = ?');
 const listContentScriptsForMigrationStmt = db.prepare('SELECT id, descricao FROM content_scripts');
@@ -525,7 +637,8 @@ const listPlansByInfluencerStmt = db.prepare(
           p.created_at,
           p.updated_at,
           s.titulo AS script_title,
-          s.descricao AS script_description
+          s.descricao AS script_description,
+          s.video_url AS script_video_url
      FROM influencer_plans p
      LEFT JOIN content_scripts s ON s.id = p.content_script_id
     WHERE p.cycle_id = ?
@@ -2439,6 +2552,7 @@ const collectInfluencerPlanData = (cycle, influencer, { scriptLimit = 15 } = {})
 
 const serializePlanForExtendedResponse = (plan) => {
   if (!plan) return null;
+  const video = buildScriptVideoPayload(plan.script_video_url ?? plan.scriptVideoUrl ?? null);
   return {
     id: plan.id,
     cycleId: plan.cycle_id,
@@ -2449,6 +2563,8 @@ const serializePlanForExtendedResponse = (plan) => {
     scriptId: plan.content_script_id,
     scriptTitle: plan.script_title,
     scriptDescription: plan.script_description,
+    scriptVideoUrl: video?.url ?? (plan.script_video_url ?? plan.scriptVideoUrl ?? null),
+    scriptVideo: video,
     createdAt: plan.created_at,
     updatedAt: plan.updated_at,
     canEdit: plan.status === 'scheduled' || plan.status === 'posted',
@@ -2456,7 +2572,9 @@ const serializePlanForExtendedResponse = (plan) => {
       ? {
           id: plan.content_script_id,
           title: plan.script_title,
-          description: plan.script_description
+          description: plan.script_description,
+          video,
+          videoUrl: video?.url ?? null
         }
       : null
   };
@@ -2464,11 +2582,15 @@ const serializePlanForExtendedResponse = (plan) => {
 
 const serializeScriptForExtendedResponse = (script) => {
   if (!script) return null;
+  const video = buildScriptVideoPayload(script.video_url ?? script.videoUrl ?? null);
   return {
     id: script.id,
     title: script.titulo,
     description: script.descricao,
     preview: buildScriptPreview(script.descricao),
+    video_url: video?.url ?? (script.video_url ?? script.videoUrl ?? null),
+    videoUrl: video?.url ?? (script.video_url ?? script.videoUrl ?? null),
+    video,
     createdAt: script.created_at,
     updatedAt: script.updated_at
   };
@@ -3834,7 +3956,10 @@ app.post('/master/cycles/:id/close', authenticate, authorizeMaster, (req, res) =
 
 app.get('/scripts', authenticate, verificarAceite, (req, res) => {
   try {
-    const rows = listContentScriptsStmt.all();
+    const rows = listContentScriptsStmt
+      .all()
+      .map((row) => decorateScriptRow(row))
+      .filter(Boolean);
     return res.status(200).json(rows);
   } catch (error) {
     console.error('Erro ao listar roteiros:', error);
@@ -3854,7 +3979,7 @@ app.get('/scripts/:id', authenticate, verificarAceite, (req, res) => {
     if (!script) {
       return res.status(404).json({ error: 'Roteiro nao encontrado.' });
     }
-    return res.status(200).json(script);
+    return res.status(200).json(decorateScriptRow(script));
   } catch (error) {
     console.error('Erro ao buscar roteiro:', error);
     return res.status(500).json({ error: 'Nao foi possivel carregar o roteiro solicitado.' });
@@ -3864,6 +3989,7 @@ app.get('/scripts/:id', authenticate, verificarAceite, (req, res) => {
 app.post('/scripts', authenticate, authorizeMaster, (req, res) => {
   const rawTitle = trimString(req.body?.titulo ?? req.body?.title);
   const rawDescription = trimString(req.body?.descricao ?? req.body?.description);
+  const rawVideoLink = req.body?.video_url ?? req.body?.videoUrl ?? req.body?.link;
 
   if (!rawTitle || rawTitle.length < 3) {
     return res.status(400).json({ error: 'Informe um titulo com pelo menos 3 caracteres.' });
@@ -3873,14 +3999,20 @@ app.post('/scripts', authenticate, authorizeMaster, (req, res) => {
     return res.status(400).json({ error: 'Informe uma descricao com pelo menos 10 caracteres.' });
   }
 
+  const parsedVideo = parseScriptVideoLink(rawVideoLink);
+  if (parsedVideo?.error) {
+    return res.status(400).json({ error: parsedVideo.error });
+  }
+
   const titulo = rawTitle.slice(0, 180);
   const truncatedDescription = rawDescription.length > 6000 ? rawDescription.slice(0, 6000) : rawDescription;
   const descricao = normalizeScriptDescription(truncatedDescription);
+  const videoUrl = parsedVideo?.url ?? null;
 
   try {
-    const result = insertContentScriptStmt.run(titulo, descricao, req.auth?.user?.id || null);
+    const result = insertContentScriptStmt.run(titulo, descricao, videoUrl, req.auth?.user?.id || null);
     const script = findContentScriptByIdStmt.get(result.lastInsertRowid);
-    return res.status(201).json(script);
+    return res.status(201).json(decorateScriptRow(script));
   } catch (error) {
     console.error('Erro ao cadastrar roteiro:', error);
     return res.status(500).json({ error: 'Nao foi possivel cadastrar o roteiro.' });
@@ -3896,6 +4028,13 @@ app.put('/scripts/:id', authenticate, authorizeMaster, (req, res) => {
 
   const rawTitle = trimString(req.body?.titulo ?? req.body?.title);
   const rawDescription = trimString(req.body?.descricao ?? req.body?.description);
+  const hasVideoField =
+    Object.prototype.hasOwnProperty.call(req.body || {}, 'video_url') ||
+    Object.prototype.hasOwnProperty.call(req.body || {}, 'videoUrl') ||
+    Object.prototype.hasOwnProperty.call(req.body || {}, 'link');
+  const rawVideoLink = hasVideoField
+    ? req.body?.video_url ?? req.body?.videoUrl ?? req.body?.link
+    : undefined;
 
   if (!rawTitle || rawTitle.length < 3) {
     return res.status(400).json({ error: 'Informe um titulo com pelo menos 3 caracteres.' });
@@ -3915,9 +4054,18 @@ app.put('/scripts/:id', authenticate, authorizeMaster, (req, res) => {
       return res.status(404).json({ error: 'Roteiro nao encontrado.' });
     }
 
-    updateContentScriptStmt.run(titulo, descricao, scriptId);
+    let videoUrl = existing.video_url ?? null;
+    if (hasVideoField) {
+      const parsedVideo = parseScriptVideoLink(rawVideoLink);
+      if (parsedVideo?.error) {
+        return res.status(400).json({ error: parsedVideo.error });
+      }
+      videoUrl = parsedVideo?.url ?? null;
+    }
+
+    updateContentScriptStmt.run(titulo, descricao, videoUrl, scriptId);
     const updated = findContentScriptByIdStmt.get(scriptId);
-    return res.status(200).json(updated);
+    return res.status(200).json(decorateScriptRow(updated));
   } catch (error) {
     console.error('Erro ao atualizar roteiro:', error);
     return res.status(500).json({ error: 'Nao foi possivel atualizar o roteiro.' });

@@ -10,6 +10,7 @@ const elements = {
   statusMessage: document.getElementById('status-message'),
   article: document.getElementById('script-article'),
   description: document.getElementById('script-description'),
+  video: document.getElementById('script-video'),
   logoutBtn: document.getElementById('logout-btn')
 };
 
@@ -150,6 +151,90 @@ const formatDateTime = (value) => {
   }).format(parsed);
 };
 
+const toTrimmedString = (value) => {
+  if (value == null) return '';
+  return typeof value === 'string' ? value.trim() : String(value).trim();
+};
+
+const createEmbeddedVideo = ({ embedUrl, provider } = {}) => {
+  const src = toTrimmedString(embedUrl);
+  if (!src) return null;
+
+  const wrapper = document.createElement('div');
+  wrapper.className = 'embedded-video';
+
+  const iframe = document.createElement('iframe');
+  iframe.src = src;
+  iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
+  iframe.allowFullscreen = true;
+  iframe.title = provider === 'instagram' ? 'Vídeo do Instagram' : 'Vídeo do YouTube';
+
+  wrapper.appendChild(iframe);
+  return wrapper;
+};
+
+const extractScriptVideo = (script) => {
+  if (!script) return null;
+  if (script.video && typeof script.video === 'object') {
+    const url = toTrimmedString(script.video.url ?? script.video.href ?? '');
+    const embedUrl = toTrimmedString(script.video.embedUrl ?? '');
+    const provider = toTrimmedString(script.video.provider ?? '');
+    if (url || embedUrl) {
+      return {
+        url: url || null,
+        embedUrl: embedUrl || null,
+        provider: provider || null
+      };
+    }
+  }
+
+  const fallbackUrl = toTrimmedString(script.video_url ?? script.videoUrl ?? '');
+  const fallbackEmbed = toTrimmedString(script.video_embed_url ?? script.videoEmbedUrl ?? '');
+  const fallbackProvider = toTrimmedString(script.video_provider ?? script.videoProvider ?? '');
+
+  if (fallbackUrl || fallbackEmbed) {
+    return {
+      url: fallbackUrl || null,
+      embedUrl: fallbackEmbed || null,
+      provider: fallbackProvider || null
+    };
+  }
+
+  return null;
+};
+
+const renderScriptVideo = (video) => {
+  const container = elements.video;
+  if (!container) return;
+  container.innerHTML = '';
+  if (!video || (!video.url && !video.embedUrl)) {
+    container.setAttribute('hidden', '');
+    return;
+  }
+
+  const embed = createEmbeddedVideo({ embedUrl: video.embedUrl, provider: video.provider });
+  if (embed) {
+    container.appendChild(embed);
+  }
+
+  if (video.url) {
+    const link = document.createElement('a');
+    link.href = video.url;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.className = 'video-link';
+    link.textContent = 'Assistir no site original';
+    container.appendChild(link);
+  }
+
+  if (!container.childNodes.length) {
+    container.setAttribute('hidden', '');
+    return;
+  }
+
+  container.removeAttribute('hidden');
+};
+
 const renderScript = (script) => {
   state.script = script;
   const title = script?.titulo ?? script?.title ?? `Roteiro #${state.scriptId ?? ''}`.trim();
@@ -183,6 +268,8 @@ const renderScript = (script) => {
     elements.description.innerHTML = descriptionHtml ||
       '<p>Este roteiro não possui conteúdo cadastrado no momento.</p>';
   }
+
+  renderScriptVideo(extractScriptVideo(script));
 
   elements.article?.removeAttribute('hidden');
   showMessage('', 'info');
