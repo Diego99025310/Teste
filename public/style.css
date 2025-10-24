@@ -985,6 +985,7 @@ label.stacked textarea {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  align-items: center;
 }
 
 .embedded-video {
@@ -993,8 +994,20 @@ label.stacked textarea {
   margin: 0 auto;
   border-radius: 0.75rem;
   overflow: hidden;
-  background: #000;
+  background-color: #050505;
+  background-image: linear-gradient(135deg, rgba(255, 105, 180, 0.3), rgba(255, 20, 147, 0.25));
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.16);
   --embedded-video-ratio: 16 / 9;
+}
+
+.embedded-video--has-thumbnail {
+  background-image: var(--embedded-video-thumbnail);
+  background-size: cover;
+  background-position: center;
+}
+
+.embedded-video.is-playing {
+  background-image: none;
 }
 
 .embedded-video::before {
@@ -1009,6 +1022,12 @@ label.stacked textarea {
   width: 100%;
   height: 100%;
   border: 0;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+
+.embedded-video.is-playing iframe {
+  opacity: 1;
 }
 
 .embedded-video--landscape {
@@ -1018,6 +1037,13 @@ label.stacked textarea {
 .embedded-video--vertical {
   --embedded-video-aspect: 177.78%;
   max-width: min(100%, 420px);
+}
+
+.embedded-video--provider-instagram iframe {
+  width: 120%;
+  height: 120%;
+  left: -10%;
+  top: -10%;
 }
 
 @supports (aspect-ratio: 16 / 9) {
@@ -1039,16 +1065,62 @@ label.stacked textarea {
   }
 }
 
-.script-management-video .video-link {
-  align-self: flex-start;
-  font-weight: 600;
-  color: var(--pink-600);
-  text-decoration: none;
+.embedded-video__overlay {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at center, rgba(0, 0, 0, 0) 35%, rgba(0, 0, 0, 0.55) 100%);
+  cursor: pointer;
+  transition: background 0.3s ease;
 }
 
-.script-management-video .video-link:hover,
-.script-management-video .video-link:focus-visible {
-  text-decoration: underline;
+.embedded-video__overlay:hover {
+  background: radial-gradient(circle at center, rgba(0, 0, 0, 0.05) 30%, rgba(0, 0, 0, 0.6) 100%);
+}
+
+.embedded-video__overlay:focus-visible {
+  outline: 3px solid rgba(255, 105, 180, 0.6);
+  outline-offset: 4px;
+}
+
+.embedded-video__overlay-icon {
+  width: clamp(64px, 12vw, 88px);
+  height: clamp(64px, 12vw, 88px);
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--pink-500), var(--pink-600));
+  box-shadow: 0 18px 30px rgba(255, 105, 180, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.embedded-video__overlay-icon::before {
+  content: '';
+  border-style: solid;
+  border-width: clamp(12px, 2.6vw, 18px) 0 clamp(12px, 2.6vw, 18px) clamp(18px, 3.6vw, 26px);
+  border-color: transparent transparent transparent #fff;
+  margin-left: clamp(2px, 0.4vw, 4px);
+}
+
+.embedded-video__overlay:hover .embedded-video__overlay-icon {
+  transform: scale(1.05);
+  box-shadow: 0 20px 36px rgba(255, 105, 180, 0.45);
+}
+
+.embedded-video__overlay-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .script-management-item__body {

@@ -215,6 +215,26 @@ const buildInstagramEmbedUrl = (url) => {
   return `https://www.instagram.com/${prefix}/${code}/embed/`;
 };
 
+const normalizeProvider = (provider, fallbackUrl = '') => {
+  const normalized = (provider || '').toLowerCase();
+  if (normalized.includes('youtube')) return 'youtube';
+  if (normalized.includes('instagram')) return 'instagram';
+
+  const direct = ensureUrlHasProtocol(fallbackUrl);
+  if (!direct) return normalized || '';
+
+  try {
+    const parsed = new URL(direct);
+    const host = parsed.hostname.replace(/^www\./i, '').toLowerCase();
+    if (host.includes('youtube')) return 'youtube';
+    if (host.includes('instagram')) return 'instagram';
+  } catch (error) {
+    // Ignore parsing errors
+  }
+
+  return normalized || '';
+};
+
 const deriveEmbeddedVideoUrl = ({ embedUrl, provider, url }) => {
   const existing = toTrimmedString(embedUrl);
   if (existing) {
@@ -233,31 +253,113 @@ const deriveEmbeddedVideoUrl = ({ embedUrl, provider, url }) => {
     return '';
   }
 
-  const normalizedProvider = (provider || '').toLowerCase();
-  if (normalizedProvider === 'youtube' || parsed.hostname.replace(/^www\./i, '').toLowerCase().includes('youtube')) {
+  const normalizedProvider = normalizeProvider(provider, direct);
+  if (normalizedProvider === 'youtube') {
     const videoId = extractYouTubeId(parsed);
     return videoId ? `https://www.youtube.com/embed/${videoId}` : '';
   }
 
-  if (normalizedProvider === 'instagram' || parsed.hostname.replace(/^www\./i, '').toLowerCase().includes('instagram')) {
+  if (normalizedProvider === 'instagram') {
     return buildInstagramEmbedUrl(parsed);
   }
 
   return '';
 };
 
+const decorateEmbedUrl = (src, provider) => {
+  try {
+    const parsed = new URL(src);
+    if (provider === 'youtube') {
+      parsed.searchParams.set('rel', '0');
+      parsed.searchParams.set('modestbranding', '1');
+      parsed.searchParams.set('playsinline', '1');
+    } else if (provider === 'instagram') {
+      parsed.searchParams.set('utm_source', 'ig_embed');
+      parsed.searchParams.set('enable_video', '1');
+      parsed.searchParams.set('hidecaption', '1');
+    }
+    return parsed.toString();
+  } catch (error) {
+    return src;
+  }
+};
+
+const buildAutoplayUrl = (src, provider) => {
+  const decorated = decorateEmbedUrl(src, provider);
+  try {
+    const parsed = new URL(decorated);
+    if (provider === 'youtube') {
+      parsed.searchParams.set('autoplay', '1');
+      parsed.searchParams.set('mute', '1');
+    } else if (provider === 'instagram') {
+      parsed.searchParams.set('autoplay', '1');
+      parsed.searchParams.set('mute', '1');
+    }
+    return parsed.toString();
+  } catch (error) {
+    return decorated;
+  }
+};
+
+const extractYouTubeIdFromEmbed = (src) => {
+  try {
+    const parsed = new URL(src);
+    const segments = parsed.pathname.split('/').filter(Boolean);
+    const candidate = segments[segments.length - 1];
+    if (candidate && /^[A-Za-z0-9_-]{11}$/.test(candidate)) {
+      return candidate;
+    }
+    const searchId = parsed.searchParams.get('v');
+    return searchId && /^[A-Za-z0-9_-]{11}$/.test(searchId) ? searchId : null;
+  } catch (error) {
+    return null;
+  }
+};
+
+const createOverlayButton = () => {
+  const overlay = document.createElement('button');
+  overlay.type = 'button';
+  overlay.className = 'embedded-video__overlay';
+
+  const icon = document.createElement('span');
+  icon.className = 'embedded-video__overlay-icon';
+  icon.setAttribute('aria-hidden', 'true');
+
+  const label = document.createElement('span');
+  label.className = 'embedded-video__overlay-label';
+  label.textContent = 'Reproduzir vídeo';
+
+  overlay.append(icon, label);
+  return overlay;
+};
+
 const createEmbeddedVideo = ({ embedUrl, format, provider, url } = {}) => {
   const src = deriveEmbeddedVideoUrl({ embedUrl, provider, url });
   if (!src) return null;
+
+  const normalizedProvider = normalizeProvider(provider, embedUrl || url);
+  const decoratedSrc = decorateEmbedUrl(src, normalizedProvider);
+  const playbackSrc = buildAutoplayUrl(decoratedSrc, normalizedProvider);
 
   const wrapper = document.createElement('div');
   wrapper.className = 'embedded-video';
   const orientation = typeof format === 'string' && format.toLowerCase() === 'vertical' ? 'vertical' : 'landscape';
   wrapper.classList.add(`embedded-video--${orientation}`);
   wrapper.dataset.orientation = orientation;
+  if (normalizedProvider) {
+    wrapper.dataset.provider = normalizedProvider;
+    wrapper.classList.add(`embedded-video--provider-${normalizedProvider}`);
+  }
+
+  if (normalizedProvider === 'youtube') {
+    const videoId = extractYouTubeIdFromEmbed(decoratedSrc) || extractYouTubeIdFromEmbed(playbackSrc);
+    if (videoId) {
+      wrapper.style.setProperty('--embedded-video-thumbnail', `url("https://i.ytimg.com/vi/${videoId}/hqdefault.jpg")`);
+      wrapper.classList.add('embedded-video--has-thumbnail');
+    }
+  }
 
   const iframe = document.createElement('iframe');
-  iframe.src = src;
   iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
   iframe.allowFullscreen = true;
   iframe.setAttribute('allowfullscreen', '');
@@ -265,12 +367,22 @@ const createEmbeddedVideo = ({ embedUrl, format, provider, url } = {}) => {
   iframe.setAttribute('loading', 'lazy');
   iframe.referrerPolicy = 'strict-origin-when-cross-origin';
   iframe.setAttribute('scrolling', 'no');
-  if ((provider || '').toLowerCase() === 'instagram') {
+  if (normalizedProvider === 'instagram') {
     iframe.setAttribute('allowtransparency', 'true');
   }
-  iframe.title = provider === 'instagram' ? 'Vídeo do Instagram' : 'Vídeo do YouTube';
+  iframe.title = normalizedProvider === 'instagram' ? 'Vídeo do Instagram' : 'Vídeo do YouTube';
+  iframe.dataset.src = playbackSrc;
 
-  wrapper.appendChild(iframe);
+  const overlay = createOverlayButton();
+  overlay.addEventListener('click', () => {
+    if (!iframe.src) {
+      iframe.src = iframe.dataset.src || decoratedSrc;
+    }
+    wrapper.classList.add('is-playing');
+    overlay.remove();
+  });
+
+  wrapper.append(iframe, overlay);
   return wrapper;
 };
 
@@ -325,16 +437,6 @@ const renderScriptVideo = (video) => {
   });
   if (embed) {
     container.appendChild(embed);
-  }
-
-  if (video.url) {
-    const link = document.createElement('a');
-    link.href = video.url;
-    link.target = '_blank';
-    link.rel = 'noopener noreferrer';
-    link.className = 'video-link';
-    link.textContent = 'Assistir no site original';
-    container.appendChild(link);
   }
 
   if (!container.childNodes.length) {
