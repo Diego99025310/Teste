@@ -374,15 +374,56 @@ const createEmbeddedVideo = ({ embedUrl, format, provider, url } = {}) => {
   iframe.dataset.src = playbackSrc;
 
   const overlay = createOverlayButton();
-  overlay.addEventListener('click', () => {
+  const startPlayback = (restart = false) => {
+    const targetSrc = iframe.dataset.src || decoratedSrc;
+    if (!targetSrc) return;
+
+    const assignSrc = () => {
+      iframe.src = targetSrc;
+      wrapper.classList.add('is-playing');
+      wrapper.classList.add('has-started');
+    };
+
     if (!iframe.src) {
-      iframe.src = iframe.dataset.src || decoratedSrc;
+      assignSrc();
+      return;
     }
-    wrapper.classList.add('is-playing');
+
+    if (!restart) {
+      wrapper.classList.add('is-playing');
+      wrapper.classList.add('has-started');
+      return;
+    }
+
+    iframe.src = '';
+    const schedule = window.requestAnimationFrame || ((fn) => window.setTimeout(fn, 0));
+    schedule(assignSrc);
+  };
+
+  overlay.addEventListener('click', () => {
+    startPlayback(false);
     overlay.remove();
   });
 
+  const controls = document.createElement('div');
+  controls.className = 'embedded-video__controls';
+
+  if (normalizedProvider === 'instagram') {
+    const replayButton = document.createElement('button');
+    replayButton.type = 'button';
+    replayButton.className = 'embedded-video__replay';
+    replayButton.textContent = 'Assistir novamente';
+    replayButton.addEventListener('click', () => {
+      startPlayback(true);
+    });
+    controls.appendChild(replayButton);
+  }
+
   wrapper.append(iframe, overlay);
+
+  if (controls.childElementCount > 0) {
+    wrapper.appendChild(controls);
+  }
   return wrapper;
 };
 
