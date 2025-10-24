@@ -238,7 +238,7 @@ a:focus-visible {
   height: 100%;
   left: 0;
   top: 0;
-  transform: scale(1.55) translateY(-6%);
+  transform: scale(1.55) translateY(5%);
   transform-origin: center;
 }
 
