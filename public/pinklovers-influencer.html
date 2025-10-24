@@ -10,15 +10,63 @@
   <body class="pinklover-dashboard">
     <header class="page-hero">
       <div class="page-hero__container">
-        <span class="page-hero__eyebrow">Clube Pinklovers</span>
-        <h1>Seu painel de influenciadora</h1>
-        <p>
-          Visualize o progresso do ciclo, acompanhe as entregas de stories e organize seu
-          calendário com a curadoria HidraPink.
-        </p>
-        <div class="page-hero__actions">
-          <a class="primary-button" href="influencer-plan.html">Abrir planejador de roteiros</a>
-          <a class="ghost-button" href="influencer-performance.html">Ver desempenho</a>
+        <div class="page-hero__content">
+          <span class="page-hero__eyebrow">Clube Pinklovers</span>
+          <h1>Seu painel de influenciadora</h1>
+          <p>
+            Visualize o progresso do ciclo, acompanhe as entregas de stories e organize seu
+            calendário com a curadoria HidraPink.
+          </p>
+          <div class="page-hero__actions">
+            <a class="primary-button" href="influencer-plan.html">
+              <span class="button-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" role="presentation" focusable="false">
+                  <path
+                    d="M6 12h10.5m0 0L13 8.5m3.5 3.5L13 15.5"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.6"
+                  />
+                </svg>
+              </span>
+              <span>Abrir planejador de roteiros</span>
+            </a>
+            <a class="ghost-button" href="influencer-performance.html">
+              <span class="button-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" role="presentation" focusable="false">
+                  <path
+                    d="M6 16.5V10m4 6.5V7.5m4 9V11m4 5.5V6"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.6"
+                  />
+                </svg>
+              </span>
+              <span>Ver desempenho</span>
+            </a>
+          </div>
+        </div>
+        <div class="page-hero__visual" aria-hidden="true">
+          <div class="hero-device">
+            <div class="hero-device__screen">
+              <div class="hero-card hero-card--primary">
+                <span class="hero-card__label">Próxima entrega</span>
+                <strong class="hero-card__title">Reels Hydra Boost</strong>
+                <p class="hero-card__meta">12 de maio • 18h</p>
+              </div>
+              <div class="hero-card hero-card--secondary">
+                <span class="hero-card__label">Stories validados</span>
+                <strong class="hero-card__title">8</strong>
+                <p class="hero-card__meta">de 12 entregas</p>
+              </div>
+            </div>
+            <div class="hero-bubble hero-bubble--one"></div>
+            <div class="hero-bubble hero-bubble--two"></div>
+          </div>
         </div>
       </div>
     </header>
@@ -36,7 +84,7 @@
           </div>
         </div>
         <div class="stats-grid">
-          <article class="stat-card">
+          <article class="stat-card stat-card--featured">
             <span class="stat-card__label">Período</span>
             <strong class="stat-card__value" id="cycle-period">–</strong>
           </article>
@@ -80,6 +128,11 @@
           </p>
         </div>
         <div class="planner-card__schedule">
+          <div class="planner-card__tabs" role="tablist" aria-label="Filtro de agendamentos">
+            <button type="button" class="planner-tab is-active" aria-pressed="true">Próximos</button>
+            <button type="button" class="planner-tab" aria-pressed="false">Esta semana</button>
+            <button type="button" class="planner-tab" aria-pressed="false">Concluídos</button>
+          </div>
           <div class="planner-card__header">
             <h3>Próximos agendamentos</h3>
             <p class="muted" id="plan-helper-text">
@@ -220,6 +273,9 @@
 
           const card = document.createElement('article');
           card.className = 'plan-card';
+          if (plan.status) {
+            card.dataset.status = plan.status;
+          }
 
           const header = document.createElement('header');
 

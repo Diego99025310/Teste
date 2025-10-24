@@ -104,47 +104,6 @@
         opacity: 0.9;
       }
 
-      .hero-nav {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.75rem;
-      }
-
-      .hero-nav__link {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
-        padding: 0.75rem 1.75rem;
-        border-radius: 999px;
-        background: rgba(255, 255, 255, 0.16);
-        color: #e78b8b;
-        font-weight: 600;
-        text-decoration: none;
-        transition: transform var(--transition), background var(--transition), box-shadow var(--transition);
-      }
-
-      .hero-nav__link::before {
-        display: inline-block;
-        font-size: 1.15rem;
-      }
-
-      .hero-nav__link[href*='plan']::before {
-        content: '🎥';
-      }
-
-      .hero-nav__link[href*='performance']::before {
-        content: '📊';
-      }
-
-      .hero-nav__link:hover,
-      .hero-nav__link:focus-visible {
-        transform: translateY(-2px);
-        background: #e087873d;
-        box-shadow: 0 0.75rem 1.75rem rgba(0, 0, 0, 0.12);
-        outline: none;
-      }
-
       .card {
         background: var(--color-surface);
         border-radius: var(--radius-lg);
@@ -246,42 +205,128 @@
       }
 
       .card-actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 1rem;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(13.75rem, 1fr));
+        gap: 1.25rem;
+        align-items: stretch;
       }
 
-      .card-actions button {
-        border: none;
+      .card-actions nav {
+        display: contents;
+      }
+
+      .action-chip {
+        --chip-bg: linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(255, 242, 248, 0.95));
+        --chip-border: linear-gradient(135deg, rgba(228, 68, 122, 0.35), rgba(240, 121, 153, 0.18));
+        --chip-icon-bg: linear-gradient(135deg, rgba(228, 68, 122, 0.18), rgba(240, 121, 153, 0.32));
+        --chip-icon-color: var(--color-primary);
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 0.85rem;
+        padding: 1.05rem 1.35rem;
+        border-radius: 1.75rem;
+        border: 1px solid transparent;
+        background: var(--chip-bg) padding-box, var(--chip-border) border-box;
+        box-shadow: 0 1.1rem 2.6rem rgba(228, 68, 122, 0.12);
+        color: var(--color-text);
+        font: inherit;
         font-weight: 600;
-        padding: 0.85rem 1.75rem;
-        border-radius: 999px;
+        text-align: left;
+        text-decoration: none;
         cursor: pointer;
         transition: transform var(--transition), box-shadow var(--transition), background var(--transition);
       }
 
-      #viewSignedContractButton {
-        background: linear-gradient(145deg, #fff, #fff7fb);
-        color: var(--color-primary);
-        box-shadow: 0 1rem 2.5rem rgba(228, 68, 122, 0.15);
+      .action-chip__icon {
+        width: 2.75rem;
+        height: 2.75rem;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        background: var(--chip-icon-bg);
+        color: var(--chip-icon-color);
+        font-size: 1.35rem;
+        box-shadow: inset 0 0.25rem 0.85rem rgba(228, 68, 122, 0.16);
+        flex-shrink: 0;
       }
 
-      #viewSignedContractButton:disabled {
-        opacity: 0.6;
+      .action-chip__text {
+        display: grid;
+        gap: 0.3rem;
+      }
+
+      .action-chip__title {
+        font-size: 1rem;
+        line-height: 1.2;
+        color: inherit;
+      }
+
+      .action-chip__subtitle {
+        font-size: 0.85rem;
+        font-weight: 500;
+        color: var(--color-muted);
+      }
+
+      .action-chip:not([disabled]):hover,
+      .action-chip:not([disabled]):focus-visible {
+        transform: translateY(-3px);
+        box-shadow: 0 1.35rem 2.9rem rgba(228, 68, 122, 0.18);
+        outline: none;
+      }
+
+      .action-chip:focus-visible {
+        outline: 3px solid rgba(228, 68, 122, 0.28);
+        outline-offset: 3px;
+      }
+
+      .action-chip[disabled] {
+        opacity: 0.55;
         cursor: not-allowed;
+        box-shadow: none;
+        transform: none;
+      }
+
+      .action-chip[disabled] .action-chip__icon {
+        filter: saturate(0.6);
+      }
+
+      .action-chip--contract {
+        --chip-border: linear-gradient(135deg, rgba(228, 68, 122, 0.28), rgba(240, 121, 153, 0.12));
+      }
+
+      .action-chip--planner {
+        --chip-border: linear-gradient(135deg, rgba(144, 97, 241, 0.32), rgba(144, 97, 241, 0.12));
+        --chip-icon-bg: linear-gradient(135deg, rgba(144, 97, 241, 0.2), rgba(144, 97, 241, 0.35));
+        --chip-icon-color: #7055f9;
+      }
+
+      .action-chip--performance {
+        --chip-border: linear-gradient(135deg, rgba(66, 193, 168, 0.3), rgba(66, 193, 168, 0.12));
+        --chip-icon-bg: linear-gradient(135deg, rgba(66, 193, 168, 0.24), rgba(66, 193, 168, 0.38));
+        --chip-icon-color: #1d9d83;
+      }
+
+      .action-chip--logout {
+        --chip-bg: linear-gradient(145deg, rgba(228, 68, 122, 0.95), rgba(240, 121, 153, 0.92));
+        --chip-border: linear-gradient(135deg, rgba(228, 68, 122, 0.95), rgba(240, 121, 153, 0.95));
+        color: #fff;
+        box-shadow: 0 1.4rem 3rem rgba(228, 68, 122, 0.28);
+      }
+
+      .action-chip--logout .action-chip__subtitle {
+        color: rgba(255, 255, 255, 0.72);
+      }
+
+      .action-chip--logout .action-chip__icon {
+        background: rgba(255, 255, 255, 0.2);
+        color: #fff;
         box-shadow: none;
       }
 
-      .button-logout {
-        background: linear-gradient(145deg, var(--color-primary), var(--color-secondary));
-        color: #fff;
-        box-shadow: 0 1rem 2.5rem rgba(228, 68, 122, 0.15);
-      }
-
-      .card-actions button:not(:disabled):hover,
-      .card-actions button:not(:disabled):focus-visible {
-        transform: translateY(-2px);
-        outline: none;
+      .action-chip--logout:not([disabled]):hover,
+      .action-chip--logout:not([disabled]):focus-visible {
+        box-shadow: 0 1.6rem 3.4rem rgba(228, 68, 122, 0.32);
       }
 
       .message {
@@ -595,11 +640,10 @@
         }
 
         .card-actions {
-          flex-direction: column;
-          align-items: stretch;
+          grid-template-columns: 1fr;
         }
 
-        .card-actions button {
+        .action-chip {
           width: 100%;
         }
 
@@ -634,19 +678,48 @@
         <div id="influencerDetails" class="info-grid" aria-live="polite"></div>
         
         <p id="influencerContractMessage" class="message" hidden data-auto-hide="true"></p>
-        <div class="card-actions">
-          <button type="button" id="viewSignedContractButton" disabled>
-            Visualizar contrato assinado
+        <div class="card-actions" role="group" aria-label="Ações rápidas do painel">
+          <button
+            type="button"
+            id="viewSignedContractButton"
+            class="action-chip action-chip--contract"
+            disabled
+          >
+            <span class="action-chip__icon" aria-hidden="true">📝</span>
+            <span class="action-chip__text">
+              <span class="action-chip__title">Contrato</span>
+              <span class="action-chip__subtitle">Consultar assinatura</span>
+            </span>
           </button>
 
-          <nav class="hero-nav" aria-label="Navegação do painel">
-            <a class="hero-nav__link" href="influencer-plan.html">Roteiros</a>
-            <a class="hero-nav__link" href="influencer-performance.html">Desempenho</a>
+          <nav class="card-actions__nav" aria-label="Navegação do painel">
+            <a class="action-chip action-chip--planner" href="influencer-plan.html">
+              <span class="action-chip__icon" aria-hidden="true">🗓️</span>
+              <span class="action-chip__text">
+                <span class="action-chip__title">Roteiros</span>
+                <span class="action-chip__subtitle">Organize suas entregas</span>
+              </span>
+            </a>
+            <a class="action-chip action-chip--performance" href="influencer-performance.html">
+              <span class="action-chip__icon" aria-hidden="true">📈</span>
+              <span class="action-chip__text">
+                <span class="action-chip__title">Desempenho</span>
+                <span class="action-chip__subtitle">Resultados e metas</span>
+              </span>
+            </a>
           </nav>
 
-
-
-          <button type="button" class="button-logout" data-action="logout">Sair</button>
+          <button
+            type="button"
+            class="action-chip action-chip--logout button-logout"
+            data-action="logout"
+          >
+            <span class="action-chip__icon" aria-hidden="true">🚪</span>
+            <span class="action-chip__text">
+              <span class="action-chip__title">Sair</span>
+              <span class="action-chip__subtitle">Encerrar sessão</span>
+            </span>
+          </button>
         </div>
       </section>
 
