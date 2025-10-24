@@ -694,6 +694,22 @@ a:hover {
   letter-spacing: 0.28em;
 }
 
+.plan-card[data-status='validated'] {
+  --plan-accent: #22c55e;
+}
+
+.plan-card[data-status='scheduled'] {
+  --plan-accent: #f59e0b;
+}
+
+.plan-card[data-status='posted'] {
+  --plan-accent: #3b82f6;
+}
+
+.plan-card[data-status='missed'] {
+  --plan-accent: #ef4444;
+}
+
 .status-badge {
   display: inline-flex;
   align-items: center;
