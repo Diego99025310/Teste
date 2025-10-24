@@ -358,6 +358,58 @@
     element.innerHTML = html;
   };
 
+  const createEmbeddedVideo = ({ embedUrl, provider } = {}) => {
+    const src = toTrimmedString(embedUrl);
+    if (!src) return null;
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'embedded-video';
+
+    const iframe = document.createElement('iframe');
+    iframe.src = src;
+    iframe.allow =
+      'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
+    iframe.allowFullscreen = true;
+    iframe.title = provider === 'instagram' ? 'Vídeo do Instagram' : 'Vídeo do YouTube';
+
+    wrapper.appendChild(iframe);
+    return wrapper;
+  };
+
+  const createVideoSection = (video, { className = 'script-management-video', linkLabel } = {}) => {
+    if (!video || typeof video !== 'object') return null;
+    const url = toTrimmedString(video.url || video.href || '');
+    const embedUrl = toTrimmedString(video.embedUrl || '');
+
+    if (!url && !embedUrl) return null;
+
+    const container = document.createElement('div');
+    container.className = className;
+
+    if (embedUrl) {
+      const embed = createEmbeddedVideo({ embedUrl, provider: video.provider });
+      if (embed) {
+        container.appendChild(embed);
+      }
+    }
+
+    if (url) {
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.target = '_blank';
+      anchor.rel = 'noopener noreferrer';
+      anchor.className = 'video-link';
+      anchor.textContent = linkLabel || 'Assistir no site original';
+      container.appendChild(anchor);
+    }
+
+    if (!container.childNodes.length) {
+      return null;
+    }
+
+    return container;
+  };
+
   const stripDiacritics = (value = '') => {
     const stringValue = String(value ?? '');
     if (typeof stringValue.normalize === 'function') {
@@ -1275,15 +1327,18 @@
     return Array.isArray(data) ? data : [];
   };
 
-  const createScript = async ({ title, description }) =>
-    apiFetch('/scripts', { method: 'POST', body: { title, description } });
+  const createScript = async ({ title, description, videoUrl }) =>
+    apiFetch('/scripts', { method: 'POST', body: { title, description, videoUrl } });
 
-  const updateScript = async ({ id, title, description }) => {
+  const updateScript = async ({ id, title, description, videoUrl }) => {
     const scriptId = Number(id);
     if (!Number.isInteger(scriptId) || scriptId <= 0) {
       throw new Error('Identificador de roteiro invalido.');
     }
-    return apiFetch(`/scripts/${scriptId}`, { method: 'PUT', body: { title, description } });
+    return apiFetch(`/scripts/${scriptId}`, {
+      method: 'PUT',
+      body: { title, description, videoUrl }
+    });
   };
 
   const deleteScript = async (id) => {
@@ -3328,6 +3383,7 @@
     const newScriptShortcutButton = document.getElementById('newScriptShortcutButton');
 
     const titleInput = form?.elements.title || form?.elements.titulo;
+    const videoInput = form?.elements.videoUrl || form?.elements.video || form?.elements.link || null;
     const descriptionInput = form?.elements.description || form?.elements.descricao;
     const submitButton = form?.querySelector('button[type="submit"]');
 
@@ -3353,12 +3409,45 @@
             ? script.description
             : '';
 
+      const resolveVideo = () => {
+        if (script?.video && typeof script.video === 'object') {
+          const directUrl = toTrimmedString(script.video.url ?? script.video.href ?? '');
+          const embedUrl = toTrimmedString(script.video.embedUrl ?? '');
+          const provider = toTrimmedString(script.video.provider ?? '');
+          if (directUrl || embedUrl) {
+            return {
+              url: directUrl || null,
+              embedUrl: embedUrl || null,
+              provider: provider || null
+            };
+          }
+        }
+
+        const fallbackUrl = toTrimmedString(script?.video_url ?? script?.videoUrl ?? '');
+        const fallbackEmbed = toTrimmedString(script?.video_embed_url ?? script?.videoEmbedUrl ?? '');
+        const fallbackProvider = toTrimmedString(script?.video_provider ?? script?.videoProvider ?? '');
+
+        if (fallbackUrl || fallbackEmbed) {
+          return {
+            url: fallbackUrl || null,
+            embedUrl: fallbackEmbed || null,
+            provider: fallbackProvider || null
+          };
+        }
+
+        return null;
+      };
+
+      const video = resolveVideo();
+
       return {
         id,
         title: rawTitle || 'Roteiro sem título',
         rawTitle,
         description: rawDescription,
         editorValue: convertScriptHtmlToEditorValue(rawDescription),
+        video,
+        videoUrl: video?.url || '',
         createdAt: script?.created_at ?? script?.createdAt ?? null,
         updatedAt: script?.updated_at ?? script?.updatedAt ?? null
       };
@@ -3463,6 +3552,14 @@
         }
         bodyInner.appendChild(descriptionEl);
 
+        const videoSection = createVideoSection(script.video, {
+          className: 'script-management-video',
+          linkLabel: 'Assistir no site original'
+        });
+        if (videoSection) {
+          bodyInner.appendChild(videoSection);
+        }
+
         const createdAt = script.createdAt;
         const updatedAt = script.updatedAt;
         const hasDifferentDates = createdAt && updatedAt && createdAt !== updatedAt;
@@ -3529,6 +3626,10 @@
       if (titleInput) {
         titleInput.removeAttribute('aria-invalid');
       }
+      if (videoInput) {
+        videoInput.value = '';
+        videoInput.removeAttribute('aria-invalid');
+      }
       if (descriptionInput) {
         descriptionInput.removeAttribute('aria-invalid');
       }
@@ -3555,6 +3656,10 @@
       if (titleInput) {
         titleInput.value = script.rawTitle || script.title || '';
         titleInput.removeAttribute('aria-invalid');
+      }
+      if (videoInput) {
+        videoInput.value = script.video?.url || script.videoUrl || '';
+        videoInput.removeAttribute('aria-invalid');
       }
       if (descriptionInput) {
         const editorValue = script.editorValue || script.description || '';
@@ -3686,11 +3791,13 @@
 
       const title = toTrimmedString(titleInput?.value || '');
       const description = toTrimmedString(descriptionInput?.value || '');
+      const videoUrlValue = toTrimmedString(videoInput?.value || '');
 
       const isValidTitle = Boolean(title) && title.length >= 3;
       const isValidDescription = Boolean(description) && description.length >= 10;
 
       flagInvalidField(titleInput, isValidTitle);
+      flagInvalidField(videoInput, true);
       flagInvalidField(descriptionInput, isValidDescription);
 
       if (!isValidTitle) {
@@ -3722,10 +3829,15 @@
 
       try {
         if (isEditing) {
-          await updateScript({ id: editingScriptId, title, description });
+          await updateScript({
+            id: editingScriptId,
+            title,
+            description,
+            videoUrl: videoUrlValue || null
+          });
           setMessage(formMessageEl, 'Roteiro atualizado com sucesso!', 'success');
         } else {
-          await createScript({ title, description });
+          await createScript({ title, description, videoUrl: videoUrlValue || null });
           setMessage(formMessageEl, 'Roteiro cadastrado com sucesso!', 'success');
         }
 
@@ -3741,6 +3853,9 @@
               : 'Nao foi possivel cadastrar o roteiro.'),
           'error'
         );
+        if (videoInput && error.message && /vídeo|video/i.test(error.message)) {
+          flagInvalidField(videoInput, false);
+        }
       } finally {
         if (submitButton) {
           submitButton.disabled = false;
