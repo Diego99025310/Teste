@@ -131,7 +131,7 @@
 
       .info-grid {
         display: grid;
-        gap: 1rem;
+        gap: 1.25rem;
       }
 
       .info-grid--contract {
@@ -140,33 +140,38 @@
         margin-top: 0.5rem;
       }
 
-      @media (min-width: 900px) {
-        .info-grid {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-      }
-
       .info-item {
         margin: 0;
-        display: grid;
-        grid-template-columns: minmax(0, 8.5rem) 1fr;
-        gap: 0.5rem 1rem;
-        align-items: center;
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        align-items: flex-start;
       }
 
       .info-item dt {
         font-weight: 600;
         color: var(--color-muted);
+        letter-spacing: 0.01em;
       }
 
       .info-item dd {
         margin: 0;
+        width: 100%;
         color: var(--color-primary);
         font-weight: 600;
         display: flex;
-        gap: 0.75rem;
         flex-wrap: wrap;
         align-items: center;
+        justify-content: flex-start;
+        gap: 0.65rem;
+        word-break: break-word;
+      }
+
+      .detail-actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.65rem;
       }
 
       .detail-link {
@@ -635,8 +640,7 @@
         }
 
         .info-item {
-          grid-template-columns: 1fr;
-          gap: 0.35rem;
+          width: 100%;
         }
 
         .card-actions {
@@ -677,7 +681,13 @@
         </div>
         <div id="influencerDetails" class="info-grid" aria-live="polite"></div>
         
-        <p id="influencerContractMessage" class="message" hidden data-auto-hide="true"></p>
+        <p
+          id="influencerContractMessage"
+          class="message"
+          hidden
+          data-auto-hide="true"
+          data-hide-on-success="true"
+        ></p>
         <div class="card-actions" role="group" aria-label="Ações rápidas do painel">
           <button
             type="button"

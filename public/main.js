@@ -854,12 +854,14 @@
       delete element.dataset.type;
     }
     const hasContent = text.trim().length > 0;
+    const hideOnSuccess = element.dataset.hideOnSuccess === 'true';
     const shouldAutoHide =
       element.dataset.autoHide === 'true' ||
       element.hasAttribute('data-auto-hide') ||
       element.hasAttribute('hidden');
-    if (shouldAutoHide) {
-      if (hasContent) {
+    const shouldStayHidden = hideOnSuccess && type === 'success';
+    if (shouldAutoHide || hideOnSuccess) {
+      if (hasContent && !shouldStayHidden) {
         element.removeAttribute('hidden');
       } else {
         element.setAttribute('hidden', '');
