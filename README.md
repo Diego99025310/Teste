@@ -1,178 +1,210 @@
-# Sistema HidraPink
+# HidraPink Influence Manager
 
-Manual técnico-operacional da plataforma utilizada para gerir influenciadoras, ciclos mensais de conteúdo, importação de vendas e cálculo de comissões. Este README centraliza arquitetura, configuração e os fluxos práticos para usuários master e influenciadoras.
+![GitHub last commit](https://img.shields.io/github/last-commit/Diego99025310/Teste?style=for-the-badge)
+![GitHub repo size](https://img.shields.io/github/repo-size/Diego99025310/Teste?color=ff69b4&style=for-the-badge)
+![Node.js CI](https://img.shields.io/badge/tests-node--test-blueviolet?style=for-the-badge)
+![License: MIT](https://img.shields.io/badge/license-MIT-green?style=for-the-badge)
 
-## Sumário
-
-1. [Visão geral da arquitetura](#visão-geral-da-arquitetura)
-2. [Estrutura de diretórios](#estrutura-de-diretórios)
-3. [Configuração, dependências e execução](#configuração-dependências-e-execução)
-4. [Base de dados e modelos](#base-de-dados-e-modelos)
-5. [Papéis e rotinas de uso](#papéis-e-rotinas-de-uso)
-   - [Master (admin)](#master-admin)
-   - [Influenciadora](#influenciadora)
-6. [Agendamento de roteiros e ciclo editorial](#agendamento-de-roteiros-e-ciclo-editorial)
-7. [Importação de vendas e integração com Shopify](#importação-de-vendas-e-integração-com-shopify)
-8. [Ferramentas complementares e automações](#ferramentas-complementares-e-automações)
-9. [Testes automatizados e garantia de qualidade](#testes-automatizados-e-garantia-de-qualidade)
-10. [Documentação complementar](#documentação-complementar)
+Plataforma full-stack desenvolvida em **Node.js + Express + SQLite**, com front-end web responsivo pronto para empacotamento em Electron. O sistema foi projetado para **gestão operacional de influenciadoras**: cadastro completo, agendamento de roteiros, acompanhamento de stories e cálculo de comissões. O público-alvo são equipes de marketing e operações que precisam de um fluxo auditável, colaborativo e centralizado para suas campanhas recorrentes.
 
 ---
 
-## Visão geral da arquitetura
+## 📚 Sumário
 
-- **Backend**: servidor Express 5 (`src/server.js`) com rotas REST protegidas por JWT, manipulação de ciclo mensal, agendamento de roteiros, importação de vendas e cálculo de comissões.【F:src/server.js†L1-L3156】
-- **Banco de dados**: SQLite via `better-sqlite3`, com migrações idempotentes, índices de unicidade e checkpoints WAL, inicializado em `src/database.js`. O banco padrão é `database.sqlite` e pode ser realocado via `DATABASE_PATH`.【F:src/database.js†L1-L399】
-- **Front-end**: páginas estáticas em `public/` consumindo a API por `fetch` (gerenciado por `public/main.js`), com telas independentes para masters e influenciadoras (login, planner, dashboards e aceite contratual).【F:public/main.js†L1-L200】
-- **Middlewares e rotas auxiliares**: autenticação JWT, autorização master (`authorizeMaster`), verificação de aceite (`verificarAceite`) e fluxo dedicado de assinatura em `src/routes/aceite.js`.【F:src/middlewares/verificarAceite.js†L1-L67】【F:src/routes/aceite.js†L1-L766】
+- [🚀 Visão Geral](#-visão-geral)
+- [🧰 Tecnologias](#-tecnologias)
+- [🖥️ Pré-requisitos](#️-pré-requisitos)
+- [⚙️ Instalação](#️-instalação)
+- [▶️ Execução e Uso](#️-execução-e-uso)
+- [🗂️ Estrutura de Pastas](#️-estrutura-de-pastas)
+- [📊 Fluxos Principais](#-fluxos-principais)
+  - [Master (Admin)](#master-admin)
+  - [Influenciadora](#influenciadora)
+- [🗺️ Roadmap](#️-roadmap)
+- [🤝 Contribuição](#-contribuição)
+- [📄 Licença](#-licença)
+- [📎 Recursos Complementares](#-recursos-complementares)
 
-O servidor é responsável por manter a consistência entre cadastros de influenciadoras, planejamentos de conteúdo, submissões de stories, validações de master e fechamento mensal com multiplicadores de comissão.【F:src/server.js†L604-L3091】
+---
 
-## Estrutura de diretórios
+## 🚀 Visão Geral
 
-```text
-├── src/
-│   ├── server.js          # API Express e regras de negócio
-│   ├── database.js        # Inicialização SQLite, migrações, índices
-│   ├── config/env.js      # Carregamento de variáveis de ambiente (.env)
-│   ├── middlewares/       # Autenticação, autorização e aceite de termos
-│   ├── routes/            # Rotas auxiliares (ex.: aceite)
-│   └── utils/             # Hash, pontuação, multiplicadores e formatações
-├── public/                # Interfaces HTML/CSS/JS (dashboards, planner, aceite)
-├── docs/                  # Guias operacionais e especificações
-├── scripts/               # Scripts CLI (ex.: filtro de pedidos Shopify)
-├── tests/                 # Testes automatizados (`node --test`)
-├── data/                  # Artefatos de apoio (ex.: lista de cupons válidos)
-├── package.json           # Scripts npm e dependências
-└── README.md              # Este manual
+O HidraPink centraliza toda a jornada operacional de uma campanha de influência digital. Com ele é possível:
+
+- Realizar onboarding de influenciadoras com controle de contratos e termos de aceite.
+- Planejar e validar roteiros de conteúdo em ciclos mensais.
+- Registrar submissões de stories, aprovações e ajustes diretamente na plataforma.
+- Importar vendas via CSV, aplicar regras de pontuação e fechar comissões automaticamente.
+- Oferecer painéis separados para **masters** (time de operações) e **influenciadoras** (usuárias finais).
+
+A aplicação pode ser executada como servidor web (Express) ou embalada em um wrapper desktop (Electron) utilizando o front-end estático presente em `public/`.
+
+---
+
+## 🧰 Tecnologias
+
+- 🟢 **Node.js 18+** — runtime e scripts CLI.
+- ⚡ **Express 5** — camada HTTP, rotas REST e middlewares.
+- 🗄️ **SQLite + better-sqlite3** — banco relacional embutido com WAL habilitado.
+- 🔐 **jsonwebtoken & bcryptjs** — autenticação baseada em JWT e hashing seguro.
+- 🎨 **HTML5, CSS3 e JavaScript** — front-end responsivo servido por arquivos estáticos.
+- 🧪 **node:test & SuperTest** — testes automatizados de API.
+- 🖥️ **Electron (opcional)** — empacotamento desktop do front-end para operação local.
+
+---
+
+## 🖥️ Pré-requisitos
+
+Certifique-se de possuir os seguintes itens antes de iniciar:
+
+- [Node.js](https://nodejs.org/) **18.0.0 ou superior**
+- npm (instalado com o Node.js)
+- Python 3.x (opcional, para scripts auxiliares em `scripts/`)
+- Sistema operacional macOS, Linux ou Windows
+
+---
+
+## ⚙️ Instalação
+
+```bash
+# 1. Clonar o repositório
+git clone https://github.com/Diego99025310/Teste.git
+cd Teste
+
+# 2. Instalar dependências
+npm install
+
+# 3. Configurar variáveis de ambiente
+cp .env.example .env            # se disponível; caso contrário, crie um novo arquivo .env
 ```
 
-## Configuração, dependências e execução
+Configurações importantes (arquivo `.env`):
 
-1. **Pré-requisitos**
-   - Node.js 18 ou superior.
-   - Python 3.x (opcional, para executar scripts auxiliares).
-2. **Instalação**
-   ```bash
-   npm install
-   ```
-3. **Variáveis de ambiente** (carregadas por `src/config/env.js`)
-   - `DATABASE_PATH`: caminho para o arquivo SQLite (padrão `database.sqlite`).
-   - `MASTER_EMAIL` / `MASTER_PASSWORD`: credenciais do usuário master inicial.【F:src/server.js†L604-L632】
-   - `JWT_SECRET` / `JWT_EXPIRATION`: assinatura e expiração do token.
-4. **Execução**
-   ```bash
-   npm start   # sobe o servidor Express em modo desenvolvimento
-   ```
-5. **Testes**
-   ```bash
-   npm test    # roda node --test com banco isolado
-   ```
+| Variável             | Descrição                                                                 |
+|----------------------|---------------------------------------------------------------------------|
+| `DATABASE_PATH`      | Caminho para o arquivo SQLite (padrão `./database.sqlite`).               |
+| `MASTER_EMAIL`       | Email do usuário master inicial.                                          |
+| `MASTER_PASSWORD`    | Senha do usuário master inicial.                                          |
+| `JWT_SECRET`         | Chave de assinatura dos tokens JWT.                                       |
+| `JWT_EXPIRATION`     | Tempo de expiração (ex.: `1d`, `12h`).                                    |
 
-Ao iniciar, o backend cria/migra o banco, garante o usuário master e publica os assets estáticos em `public/`, com fallback para `index.html` e rota dedicada para o termo de aceite (`/aceite-termos`).【F:src/server.js†L13-L40】【F:src/server.js†L3144-L3156】
+---
 
-## Base de dados e modelos
+## ▶️ Execução e Uso
 
-`src/database.js` habilita WAL, foreign keys e checkpoints automáticos, além de aplicar migrações incrementais. Entidades principais:
+```bash
+# Executar em modo desenvolvimento
+npm start
 
-- **users**: credenciais master/influenciadora, flags de senha obrigatória e normalização de telefone.【F:src/database.js†L124-L208】
-- **influenciadoras**: dados pessoais, cupom, comissionamento, vínculo com usuário, hash/código de assinatura e controles de aceite/dispensa.【F:src/database.js†L212-L399】
-- **content_scripts**: roteiros reutilizáveis para planejamento editorial.【F:src/server.js†L2926-L2959】
-- **influencer_plans**: agenda do ciclo vigente com data, roteiro selecionado e status de validação.【F:src/server.js†L2552-L2698】
-- **story_submissions**: evidências de stories (links, validação automática/manual, histórico de ajustes).【F:src/server.js†L2700-L2854】
-- **monthly_cycles / monthly_commissions**: abertura, acompanhamento e fechamento de ciclos com multiplicadores calculados em `utils/multiplier.js`.【F:src/server.js†L2860-L3091】【F:src/utils/multiplier.js†L1-L71】
-- **sales / sale_sku_points / sku_points**: importação de pedidos, associação de SKUs a pontos e consolidação de comissões por cupom.【F:src/server.js†L2962-L3091】【F:src/server.js†L2413-L2550】
-- **aceite_termos**: registro de aceite contratual com hash SHA-256 do HTML assinado e metadados de autenticação.【F:src/routes/aceite.js†L9-L200】【F:src/utils/hash.js†L1-L19】
+# Rodar testes automatizados
+npm test
+```
 
-Validações de CPF (`normalizeDigits`, cálculo de dígitos verificadores) e unicidade de email/telefone/cupom/Instagram são executadas antes de persistir dados, bloqueando duplicidades na camada de aplicação e no banco.【F:src/server.js†L835-L1463】
+Durante o primeiro `npm start`, o servidor Express:
 
-## Papéis e rotinas de uso
+1. Inicializa/migra o banco SQLite, incluindo índices e dados padrão.
+2. Garante a existência do usuário master com as credenciais definidas.
+3. Publica o front-end estático em `http://localhost:3000`.
 
-### Master (admin)
+### Acesso rápido
 
-Responsável por configurar o ecossistema, acompanhar resultados e validar entregas.
+1. Abra `http://localhost:3000` no navegador.
+2. Realize login como **master** utilizando as credenciais do `.env`.
+3. Cadastre influenciadoras manualmente ou importe um CSV.
+4. Compartilhe o acesso com as influenciadoras para que planejem roteiros e submetam entregas.
 
-1. **Acesso inicial**
-   - Realizar login via `/login` com as credenciais master definidas no `.env`. O token JWT será armazenado pelo front-end e reaproveitado nas demais rotas.【F:src/server.js†L766-L833】【F:public/main.js†L1-L200】
-2. **Onboarding de influenciadoras**
-   - Cadastro individual: `POST /influenciadora` com dados completos (CPF validado, contatos, cupom, endereço). A resposta retorna senha provisória e eventual código de assinatura para repasse seguro.【F:src/server.js†L835-L1206】
-   - Importação em massa: carregar CSV na tela master correspondente, que usa `/influenciadoras/import/preview` para validar e `/confirm` para gravar dados, gerando credenciais automaticamente.【F:src/server.js†L2413-L2550】
-3. **Gestão contratual**
-   - Monitorar aceite de termos via `/api/aceite/*`, conceder dispensas quando necessário e reenviar códigos de assinatura para influenciadoras pendentes.【F:src/routes/aceite.js†L535-L766】
-4. **Curadoria de roteiros**
-   - Criar e revisar roteiros em `/master/scripts`, persistindo-os em `content_scripts`. Cada roteiro pode ser marcado como ativo/inativo, descrito em HTML sanitizado e fica disponível no planner das influenciadoras.【F:src/server.js†L2926-L2959】
-5. **Validação de stories e fechamento**
-   - Acompanhar `story_submissions` no painel master: aprovar, solicitar ajustes ou rejeitar, atualizando automaticamente o status no planejamento.【F:src/server.js†L2700-L2854】
-   - Fechar ciclo mensal pela rota `/master/cycles/:id/close`, que consolida pontos, aplica multiplicadores e grava `monthly_commissions`. O resumo inclui totais de stories validados, bônus e valores monetários.【F:src/server.js†L2860-L3091】【F:src/utils/multiplier.js†L1-L71】
-6. **Importação e auditoria de vendas**
-   - Realizar preview de CSV via `/sales/import/preview`, corrigir erros sinalizados e confirmar com `/sales/import/confirm`, garantindo unicidade por número de pedido. Dashboards de resumo (`/sales/summary/:id`) exibem comissões geradas por cupom e período.【F:src/server.js†L2413-L2550】【F:src/server.js†L2962-L3091】
-7. **Relatórios e suporte**
-   - Consultar `/influenciadoras/consulta` para visão consolidada por influenciadora (dados cadastrais, vendas e pontos).【F:src/server.js†L3108-L3142】
-   - Acionar scripts auxiliares (ex.: `scripts/filter_orders.py`) para pré-validar arquivos antes do upload corporativo.【F:scripts/filter_orders.py†L1-L160】
+### Exemplos de uso
+
+- **Agendamento de roteiros**: masters criam roteiros reutilizáveis e disponibilizam para o ciclo corrente; influenciadoras selecionam datas e enviam para aprovação.
+- **Importação de vendas**: painel master permite upload de relatórios Shopify (`orders_export.csv`) para cálculo de comissões em tempo real.
+- **Dashboard pessoal**: cada influenciadora acompanha pontos, entregas validadas e histórico financeiro.
+
+> ![Interface da dashboard (placeholder)](docs/img/dashboard-placeholder.png)
+
+> ![Planner de roteiros (placeholder)](docs/img/planner-placeholder.png)
+
+Para empacotar via Electron, utilize os arquivos em `public/` como front-end e configure um processo principal que consuma a API local (ex.: `http://localhost:3000`).
+
+---
+
+## 🗂️ Estrutura de Pastas
+
+```text
+├── public/                # Front-end responsivo (HTML, CSS e JS)
+│   └── main.js            # Consumo da API e interações de UI
+├── src/
+│   ├── server.js          # Servidor Express, rotas REST e regras de negócio
+│   ├── database.js        # Setup SQLite, migrações e transações
+│   ├── config/
+│   │   └── env.js         # Carregamento de variáveis de ambiente
+│   ├── middlewares/       # Autenticação, autorização e aceite contratual
+│   ├── routes/            # Fluxo de aceite e rotas segmentadas
+│   └── utils/             # Funções utilitárias (hash, pontuação, multiplicadores)
+├── scripts/               # Scripts auxiliares para CSVs e auditoria
+├── docs/                  # Documentação operacional detalhada
+├── tests/                 # Testes automatizados com node:test + SuperTest
+├── data/                  # Artefatos de apoio (cupons válidos, templates)
+├── package.json           # Dependências e scripts npm
+└── README.md              # Guia técnico principal
+```
+
+---
+
+## 📊 Fluxos Principais
+
+### Master (Admin)
+
+1. **Onboarding** — cadastra influenciadoras via formulário ou importação em massa (CSV) com validações de CPF, e-mail e cupom.
+2. **Gestão contratual** — monitora termos de aceite e gera códigos de assinatura únicos por influenciadora.
+3. **Curadoria de roteiros** — publica roteiros ativos por ciclo, configurando descrições, links e metas de entrega.
+4. **Validação de stories** — avalia submissões, solicita ajustes e aprova entregas para liberar pontuação.
+5. **Importação de vendas** — importa relatórios Shopify, associa SKUs a pontos e calcula comissões automaticamente.
+6. **Fechamento mensal** — consolida multiplicadores, bônus e exporta relatórios financeiros por influenciadora.
 
 ### Influenciadora
 
-Usuária final responsável por planejar, comprovar e acompanhar suas entregas.
+1. **Primeiro acesso** — recebe credenciais, troca senha e aceita termos antes de acessar dashboards.
+2. **Planner de roteiros** — agenda entregas nas datas sugeridas, atualiza agendamentos e acompanha status.
+3. **Submissão de stories** — envia evidências (links, imagens) para aprovação do master.
+4. **Painel de desempenho** — consulta pontos acumulados, vendas atribuídas ao cupom e histórico de comissões.
+5. **Notificações e suporte** — visualiza pendências, solicita revisões e mantém comunicação com a equipe master.
 
-1. **Primeiro acesso**
-   - Recebe e-mail ou mensagem com login (email/telefone) e senha provisória gerados pelo master. O front-end força a troca de senha caso `must_change_password` esteja ativo.【F:src/server.js†L1066-L1206】【F:public/main.js†L1-L200】
-2. **Aceite de termos**
-   - Após login, o middleware `verificarAceite` bloqueia o acesso a rotas protegidas até que a influenciadora aceite o termo vigente ou insira o código de assinatura fornecido. O fluxo `/aceite-termos` registra hash do documento, canal, IP e timestamp para auditoria.【F:src/middlewares/verificarAceite.js†L1-L67】【F:src/routes/aceite.js†L9-L200】
-3. **Planejamento de roteiros**
-   - Na tela “Agendar Roteiros”, a usuária consome `/influencer/plan` para visualizar o ciclo atual e a lista de roteiros disponíveis, filtrando entre agendados e disponíveis. Cada card possui ações para escolher a data (via date picker nativo) ou editar uma data existente.【F:src/server.js†L2552-L2698】【F:docs/INSTRUCOES_AGENDAMENTO_ROTEIROS.md.md†L12-L80】
-   - Ao confirmar, o front-end monta um lote e envia para `POST /influencer/plan`; ajustes posteriores usam `PUT /influencer/plan/:id`.
-4. **Entrega de stories**
-   - Submete comprovantes (links, prints) pela tela de submissões, alimentando `story_submissions` com status inicial “pendente”. Pode acompanhar aprovações ou retornos do master em tempo real.【F:src/server.js†L2700-L2854】
-5. **Dashboard pessoal**
-   - `/influencer/dashboard` apresenta indicadores de pontos, entregas e vendas atribuídas ao cupom da influenciadora, incluindo totais confirmados e pendentes por ciclo.【F:src/server.js†L2693-L2750】
-6. **Histórico e notificações**
-   - Histórico de ciclos anteriores disponível em `/influencer/history`, garantindo transparência sobre stories aprovados, multiplicadores aplicados e comissões recebidas.【F:src/server.js†L2752-L2854】
+---
 
-## Agendamento de roteiros e ciclo editorial
+## 🗺️ Roadmap
 
-O planejamento mensal segue uma rotina predefinida:
+- [ ] Empacotamento oficial em Electron com auto-atualização.
+- [ ] Integração com serviços de armazenamento de mídia (S3, Cloudinary).
+- [ ] Notificações push via Firebase/OneSignal.
+- [ ] Dashboard analítico com gráficos e exportação para BI.
+- [ ] Integração nativa com plataformas de e-commerce além de Shopify.
 
-1. **Preparação do ciclo**
-   - Masters criam ou atualizam o ciclo corrente (datas de início/fim) e publicam roteiros ativos. Os roteiros são armazenados com HTML sanitizado para exibição no mobile e desktop.【F:src/server.js†L2926-L2959】
-2. **Seleção pela influenciadora**
-   - Ao acessar a tela de planner, a API retorna: informações do ciclo, backlog de roteiros sugeridos, agendamentos anteriores e bloqueios de data (ex.: datas passadas ou fora da janela). O front-end identifica roteiros já vinculados para destacar status visual (agendado, disponível).【F:src/server.js†L2552-L2698】【F:docs/INSTRUCOES_AGENDAMENTO_ROTEIROS.md.md†L16-L80】
-3. **Agendamento e edição**
-   - Cada card possui ação “Agendar” que abre input `type="date"`. Ao escolher a data, o agendamento é registrado localmente e o botão “Salvar Agendamentos” envia o lote ao backend. O servidor valida conflitos (mesma data/roteiro duplicado), limites por ciclo e garante atomicidade via transação antes de gravar em `influencer_plans` e `monthly_cycles`.
-4. **Validação e acompanhamento**
-   - Masters visualizam os agendamentos agregados, aprovam ou reprovam entregas via `/master/validations`. Aprovações vinculam o `story_submission` correspondente, atualizam o planner e alimentam os cálculos de multiplicador.
-5. **Fechamento do ciclo**
-   - No fim do mês, o fechamento executa `summarizeCommission` para cada influenciadora, cruzando pontos base, multiplicador por faixa de stories e bônus adicionais. Os resultados são persistidos em `monthly_commissions`, liberando indicadores no dashboard da influenciadora.【F:src/utils/multiplier.js†L1-L71】【F:src/server.js†L2860-L3091】
+---
 
-Recomendações mobile-first (implementadas no planner atual): lista vertical de roteiros, botão flutuante de salvar, filtros rápidos, e uso de date picker nativo para acelerar a seleção no celular.【F:docs/INSTRUCOES_AGENDAMENTO_ROTEIROS.md.md†L16-L80】
+## 🤝 Contribuição
 
-## Importação de vendas e integração com Shopify
+1. Faça um fork deste repositório.
+2. Crie uma branch de feature: `git checkout -b feature/minha-feature`.
+3. Commit suas alterações: `git commit -m "feat: minha feature"`.
+4. Faça push para a branch: `git push origin feature/minha-feature`.
+5. Abra um Pull Request descrevendo as alterações e cenários de teste.
 
-1. **Preparação do arquivo**
-   - Exportar relatórios do Shopify (CSV) ou utilizar o script `scripts/filter_orders.py` para limpar linhas inválidas antes do upload. O script reaproveita as regras de validação do backend (data de pagamento, subtotal positivo, cupom válido).【F:scripts/filter_orders.py†L1-L160】【F:data/valid_coupons.json†L1-L18】
-2. **Preview no painel master**
-   - A tela master envia o arquivo para `/sales/import/preview`. O backend detecta o layout, normaliza SKUs, cruza com `sku_points` e devolve relatório linha a linha com erros (pedido duplicado, cupom inexistente, data ausente) e totais por cupom.【F:src/server.js†L2413-L2489】
-3. **Confirmação**
-   - Apenas quando todas as linhas são válidas é possível chamar `/sales/import/confirm`, que grava pedidos e itens em transação, mantendo unicidade por número de pedido (`uniq_sales_order_number`). Pontos e comissões resultantes são imediatamente refletidos nos dashboards.【F:src/server.js†L2489-L2550】【F:src/server.js†L2962-L3091】
-4. **Operações pontuais**
-   - Masters podem ajustar vendas individuais via `POST/PUT/DELETE /sales`, recalculando comissões conforme regras vigentes (taxa base e multiplicadores). Relatórios por influenciadora e por ciclo ficam disponíveis em `/sales/summary/:id`.
+Siga o padrão de commits semânticos e garanta que os testes passem antes de enviar seu PR.
 
-## Ferramentas complementares e automações
+---
 
-- **Aceite contratual**: `/api/aceite` gera tokens, valida códigos de assinatura e disponibiliza comprovantes HTML com hash SHA-256, garantindo auditoria completa do fluxo de assinatura.【F:src/routes/aceite.js†L9-L200】【F:src/utils/hash.js†L1-L19】
-- **Scripts CLI**: `scripts/filter_orders.py` processa relatórios Shopify e pode ser integrado em pipelines CI/CD para pré-validação automática.【F:scripts/filter_orders.py†L1-L160】
-- **Docs operacionais**: `docs/pinklovers-api.md`, `docs/pinklovers-influencer-planner.md` e `docs/INSTRUCOES_AGENDAMENTO_ROTEIROS.md.md` detalham endpoints, layouts de telas e instruções mobile-first complementares.
-- **Ambiente local**: `docs/local-development.md` descreve como executar migrations, seeds e scripts de manutenção durante o desenvolvimento.【F:docs/local-development.md†L1-L80】
+## 📄 Licença
 
-## Testes automatizados e garantia de qualidade
+Este projeto é distribuído sob a licença MIT. Você é livre para usar, clonar e adaptar conforme as condições descritas.
 
-- `npm test` executa a suíte `node --test` apontando para um banco isolado, validando autenticação, CRUD de influenciadoras, aceite contratual, importação e cálculo de multiplicadores.【F:package.json†L1-L20】【F:tests/app.test.js†L55-L200】【F:tests/multiplier.test.js†L1-L26】
-- Os testes atuam como especificação viva: alterações em regras de negócio devem ser acompanhadas de atualizações na suíte para evitar regressões (por exemplo, mudanças em validação de CPF, limites de agendamento ou cálculo de multiplicadores).
+---
 
-## Documentação complementar
+## 📎 Recursos Complementares
 
-- `docs/SYSTEM_DOCUMENTATION.md`: visão arquitetural detalhada, incluindo diagramas de fluxo e relacionamentos entre módulos.
-- `docs/pinklovers-influencer-planner.md`: guia funcional do planner com referências de UI e fluxos de aprovação.
-- `docs/sales-import.md`: passo a passo específico da importação de vendas.
-- `docs/cronograma-ativacoes.md`: cronograma sugerido para campanhas e eventos.
+- [Guia de agendamento de roteiros](docs/INSTRUCOES_AGENDAMENTO_ROTEIROS.md.md)
+- [Estrutura visual e estilos](estrutura-estilos.md)
+- [Exemplo de exportação Shopify](orders_export.csv)
+- [Dataset de pedidos validados](orders_valid.csv)
+- [Scripts de apoio para CSV](scripts/)
 
-Utilize estes materiais em conjunto com o README para treinar novos masters, orientar influenciadoras e padronizar processos internos.
+Para dúvidas adicionais, abra uma issue ou entre em contato com o mantenedor.
