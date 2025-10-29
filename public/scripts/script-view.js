@@ -1,7 +1,12 @@
 const state = {
   loading: false,
   scriptId: null,
-  script: null
+  script: null,
+  cycle: null,
+  scheduleOccurrences: [],
+  scheduleLoading: false,
+  scheduling: false,
+  scheduleError: null
 };
 
 const elements = {
@@ -16,7 +21,26 @@ const elements = {
   closing: document.getElementById('script-closing'),
   notes: document.getElementById('script-notes'),
   notesSection: document.getElementById('script-notes-section'),
-  logoutBtn: document.getElementById('logout-btn')
+  scheduleButton: document.getElementById('schedule-script-btn'),
+  scheduleButtonLabel: document.querySelector('#schedule-script-btn .schedule-btn__label'),
+  scheduleStatus: document.getElementById('schedule-status'),
+  scheduleFeedback: document.getElementById('schedule-feedback'),
+  scheduleDateInput: document.getElementById('schedule-date-input')
+};
+
+const DEFAULT_SCHEDULE_LABEL = elements.scheduleButtonLabel?.textContent?.trim() || 'Agendar Roteiro';
+
+const STATUS_LABELS = {
+  scheduled: 'Agendado',
+  validated: 'Validado',
+  posted: 'Publicado',
+  missed: 'Atrasado'
+};
+
+const getStatusLabel = (status) => {
+  if (!status || typeof status !== 'string') return null;
+  const key = status.toLowerCase();
+  return STATUS_LABELS[key] ?? null;
 };
 
 const session = (() => {
@@ -103,7 +127,12 @@ const logout = () => {
   }
 };
 
-elements.logoutBtn?.addEventListener('click', logout);
+elements.scheduleButton?.addEventListener('click', handleScheduleButtonClick);
+elements.scheduleDateInput?.addEventListener('change', (event) => {
+  const value = event?.target?.value ?? '';
+  scheduleScript(value);
+  event?.target?.blur?.();
+});
 
 const ensureAuth = () => {
   const token = getToken();
@@ -127,12 +156,160 @@ const showMessage = (message, type = 'info') => {
   elements.statusMessage.removeAttribute('hidden');
 };
 
+const setScheduleFeedback = (message, type = 'info') => {
+  if (!elements.scheduleFeedback) return;
+  if (!message) {
+    elements.scheduleFeedback.textContent = '';
+    elements.scheduleFeedback.className = 'schedule-feedback';
+    elements.scheduleFeedback.setAttribute('hidden', '');
+    return;
+  }
+
+  const classes = ['schedule-feedback'];
+  if (type === 'success') {
+    classes.push('schedule-feedback--success');
+  } else if (type === 'error') {
+    classes.push('schedule-feedback--error');
+  }
+
+  elements.scheduleFeedback.className = classes.join(' ');
+  elements.scheduleFeedback.textContent = message;
+  elements.scheduleFeedback.removeAttribute('hidden');
+};
+
+const setScheduleButtonLabel = (label) => {
+  if (!elements.scheduleButtonLabel) return;
+  elements.scheduleButtonLabel.textContent = label;
+};
+
+const setScheduleDateInputDisabled = (disabled) => {
+  if (!elements.scheduleDateInput) return;
+  if (disabled) {
+    elements.scheduleDateInput.setAttribute('disabled', '');
+    elements.scheduleDateInput.setAttribute('aria-disabled', 'true');
+  } else {
+    elements.scheduleDateInput.removeAttribute('disabled');
+    elements.scheduleDateInput.removeAttribute('aria-disabled');
+  }
+};
+
+const applyScheduleDateConstraints = () => {
+  if (!elements.scheduleDateInput) return;
+
+  if (state.cycle?.startDate) {
+    elements.scheduleDateInput.min = state.cycle.startDate;
+  } else {
+    elements.scheduleDateInput.removeAttribute('min');
+  }
+
+  if (state.cycle?.endDate) {
+    elements.scheduleDateInput.max = state.cycle.endDate;
+  } else {
+    elements.scheduleDateInput.removeAttribute('max');
+  }
+};
+
+const setScheduleButtonLoading = (loading, label) => {
+  if (!elements.scheduleButton) return;
+  if (loading) {
+    elements.scheduleButton.setAttribute('data-loading', 'true');
+    if (label) {
+      setScheduleButtonLabel(label);
+    }
+  } else {
+    elements.scheduleButton.removeAttribute('data-loading');
+    setScheduleButtonLabel(DEFAULT_SCHEDULE_LABEL);
+  }
+};
+
+const setScheduleButtonDisabled = (disabled) => {
+  if (!elements.scheduleButton) return;
+  if (disabled) {
+    elements.scheduleButton.setAttribute('disabled', '');
+    elements.scheduleButton.setAttribute('aria-disabled', 'true');
+  } else {
+    elements.scheduleButton.removeAttribute('disabled');
+    elements.scheduleButton.removeAttribute('aria-disabled');
+  }
+  setScheduleDateInputDisabled(disabled);
+};
+
 const setLoading = (loading) => {
   state.loading = loading;
   if (loading) {
     showMessage('Carregando roteiro...', 'info');
     elements.article?.setAttribute('hidden', '');
   }
+};
+
+const updateScheduleButtonAvailability = () => {
+  if (!elements.scheduleButton) return;
+  const disabled =
+    !state.scriptId ||
+    state.scheduleLoading ||
+    state.scheduling ||
+    (!state.cycle && Boolean(state.scheduleError));
+  setScheduleButtonDisabled(disabled);
+  applyScheduleDateConstraints();
+};
+
+const renderScheduleStatus = () => {
+  if (!elements.scheduleStatus) return;
+
+  if (state.scheduleLoading) {
+    elements.scheduleStatus.textContent = 'Carregando informações de agendamento...';
+    elements.scheduleStatus.className = 'schedule-status schedule-status--loading';
+    elements.scheduleStatus.removeAttribute('hidden');
+    return;
+  }
+
+  if (state.scheduleError) {
+    elements.scheduleStatus.textContent = state.scheduleError;
+    elements.scheduleStatus.className = 'schedule-status schedule-status--error';
+    elements.scheduleStatus.removeAttribute('hidden');
+    return;
+  }
+
+  const messages = [];
+  if (state.cycle?.startDate && state.cycle?.endDate) {
+    messages.push(
+      `Ciclo vigente: ${formatDateLabel(state.cycle.startDate)} até ${formatDateLabel(state.cycle.endDate)}.`
+    );
+  } else if (state.cycle?.startDate || state.cycle?.endDate) {
+    const startLabel = state.cycle?.startDate ? formatDateLabel(state.cycle.startDate) : null;
+    const endLabel = state.cycle?.endDate ? formatDateLabel(state.cycle.endDate) : null;
+    if (startLabel && endLabel) {
+      messages.push(`Ciclo vigente: ${startLabel} até ${endLabel}.`);
+    } else if (startLabel) {
+      messages.push(`Ciclo iniciado em ${startLabel}.`);
+    } else if (endLabel) {
+      messages.push(`Ciclo encerra em ${endLabel}.`);
+    }
+  }
+
+  if (state.scheduleOccurrences.length) {
+    const formattedOccurrences = state.scheduleOccurrences
+      .map((occurrence) => {
+        const dateLabel = formatDateLabel(occurrence.date);
+        const statusLabel = getStatusLabel(occurrence.status);
+        return statusLabel ? `${dateLabel} (${statusLabel})` : dateLabel;
+      })
+      .join(' • ');
+    messages.push(`Agendado para: ${formattedOccurrences}.`);
+  } else if (state.cycle) {
+    messages.push('Nenhum agendamento cadastrado para este roteiro ainda.');
+  }
+
+  if (!messages.length) {
+    elements.scheduleStatus.textContent = '';
+    elements.scheduleStatus.className = 'schedule-status';
+    elements.scheduleStatus.setAttribute('hidden', '');
+    return;
+  }
+
+  elements.scheduleStatus.textContent = messages.join(' ');
+  elements.scheduleStatus.className = 'schedule-status';
+  elements.scheduleStatus.removeAttribute('hidden');
 };
 
 const normalizeDateInput = (value) => {
@@ -154,6 +331,13 @@ const formatDateTime = (value) => {
     dateStyle: 'long',
     timeStyle: 'short'
   }).format(parsed);
+};
+
+const formatDateLabel = (isoDate) => {
+  if (!isoDate || typeof isoDate !== 'string' || isoDate.length < 10) return isoDate;
+  const [year, month, day] = isoDate.slice(0, 10).split('-');
+  if (!year || !month || !day) return isoDate;
+  return `${day.padStart(2, '0')}/${month.padStart(2, '0')}/${year}`;
 };
 
 const toTrimmedString = (value) => {
@@ -180,6 +364,220 @@ const setSectionContent = (element, html, { optional = false, fallback = 'Conte�
   section?.removeAttribute('hidden');
 };
 
+const fetchWithAuth = async (url, { method = 'GET', body, headers = {} } = {}) => {
+  if (!ensureAuth()) {
+    throw new Error('Sessão expirada. Faça login novamente.');
+  }
+
+  const token = getToken();
+  if (!token) {
+    throw new Error('Sessão expirada. Faça login novamente.');
+  }
+
+  const response = await fetch(url, {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+      ...headers
+    },
+    body: body !== undefined ? (typeof body === 'string' ? body : JSON.stringify(body)) : undefined
+  });
+
+  let data = null;
+  const contentType = response.headers.get('content-type') || '';
+  if (contentType.includes('application/json')) {
+    data = await response.json();
+  } else {
+    const text = await response.text();
+    data = text ? { message: text } : {};
+  }
+
+  if (!response.ok) {
+    if (response.status === 401) {
+      logout();
+    }
+    const error = new Error(data?.error || data?.message || 'Erro ao conectar com o servidor.');
+    error.status = response.status;
+    error.data = data;
+    throw error;
+  }
+
+  return data;
+};
+
+const normalizeCycle = (cycle) => {
+  if (!cycle) return null;
+
+  const now = new Date();
+  const fallbackYear = now.getFullYear();
+  const fallbackMonth = now.getMonth() + 1;
+
+  const year = Number(cycle.year ?? cycle.cycle_year ?? fallbackYear);
+  const month = Number(cycle.month ?? cycle.cycle_month ?? fallbackMonth);
+  const monthLabel = String(month).padStart(2, '0');
+
+  const toDateOnly = (value) => {
+    if (!value || typeof value !== 'string') return null;
+    if (value.length >= 10) {
+      return value.slice(0, 10);
+    }
+    return null;
+  };
+
+  const startDate =
+    toDateOnly(cycle.startDate) ||
+    toDateOnly(cycle.started_at) ||
+    `${year}-${monthLabel}-01`;
+
+  const computeCycleEnd = () => {
+    const lastDay = new Date(year, month, 0).getDate();
+    return `${year}-${monthLabel}-${String(lastDay).padStart(2, '0')}`;
+  };
+
+  const endDate =
+    toDateOnly(cycle.endDate) ||
+    toDateOnly(cycle.ended_at) ||
+    computeCycleEnd();
+
+  return {
+    id: cycle.id ?? null,
+    year,
+    month,
+    startDate,
+    endDate
+  };
+};
+
+const normalizePlan = (plan) => {
+  if (!plan || plan._removed) return null;
+  const scriptId = plan.content_script_id ?? plan.scriptId ?? plan.script_id ?? plan.contentScriptId ?? null;
+  const normalizedScriptId = Number(scriptId);
+  if (!Number.isInteger(normalizedScriptId)) return null;
+
+  const rawDate = plan.scheduled_date ?? plan.date ?? plan.scheduledDate ?? null;
+  const date = typeof rawDate === 'string' && rawDate.length >= 10 ? rawDate.slice(0, 10) : null;
+  if (!date) return null;
+
+  const status = typeof plan.status === 'string' ? plan.status.toLowerCase() : null;
+
+  return {
+    scriptId: normalizedScriptId,
+    date,
+    status
+  };
+};
+
+const isDateWithinCycle = (isoDate) => {
+  if (!isoDate) return false;
+  if (!state.cycle) return true;
+  const { startDate, endDate } = state.cycle;
+  if (startDate && isoDate < startDate) return false;
+  if (endDate && isoDate > endDate) return false;
+  return true;
+};
+
+const loadScheduleContext = async ({ silent = false } = {}) => {
+  if (!state.scriptId || !elements.scheduleButton) return;
+
+  if (!silent) {
+    state.scheduleLoading = true;
+    state.scheduleError = null;
+    setScheduleButtonLoading(true, 'Carregando...');
+    setScheduleButtonDisabled(true);
+    renderScheduleStatus();
+  }
+
+  try {
+    const data = await fetchWithAuth('/api/influencer/plan');
+    state.cycle = normalizeCycle(data?.cycle);
+    const occurrences = Array.isArray(data?.plans)
+      ? data.plans
+          .map((plan) => normalizePlan(plan))
+          .filter((plan) => plan && plan.scriptId === state.scriptId)
+      : [];
+    state.scheduleOccurrences = occurrences;
+    state.scheduleError = null;
+    if (!silent) {
+      setScheduleFeedback('', 'info');
+    }
+  } catch (error) {
+    const message = error?.message || 'Não foi possível carregar os agendamentos.';
+    state.scheduleError = message;
+    setScheduleFeedback(message, 'error');
+  } finally {
+    state.scheduleLoading = false;
+    if (!silent) {
+      setScheduleButtonLoading(false);
+    }
+    renderScheduleStatus();
+    updateScheduleButtonAvailability();
+  }
+};
+
+function handleScheduleButtonClick() {
+  if (!elements.scheduleDateInput || state.scheduleLoading || state.scheduling) return;
+  if (!ensureAuth()) return;
+
+  elements.scheduleDateInput.value = '';
+  applyScheduleDateConstraints();
+  setScheduleDateInputDisabled(false);
+
+  window.requestAnimationFrame(() => {
+    if (typeof elements.scheduleDateInput.showPicker === 'function') {
+      elements.scheduleDateInput.showPicker();
+    } else {
+      elements.scheduleDateInput.focus();
+      elements.scheduleDateInput.click();
+    }
+  });
+}
+
+const scheduleScript = async (isoDate) => {
+  if (!isoDate || state.scheduling) return;
+  const normalizedDate = typeof isoDate === 'string' ? isoDate.slice(0, 10) : null;
+  if (!normalizedDate) return;
+
+  if (!isDateWithinCycle(normalizedDate)) {
+    setScheduleFeedback('Escolha uma data dentro do ciclo vigente.', 'error');
+    return;
+  }
+
+  if (state.scheduleOccurrences.some((occurrence) => occurrence.date === normalizedDate)) {
+    setScheduleFeedback('Esse roteiro já está agendado para essa data.', 'error');
+    return;
+  }
+
+  if (!ensureAuth()) return;
+
+  state.scheduling = true;
+  setScheduleButtonLoading(true, 'Agendando...');
+  setScheduleButtonDisabled(true);
+
+  try {
+    await fetchWithAuth('/api/influencer/plan', {
+      method: 'POST',
+      body: {
+        schedules: [
+          {
+            scriptId: state.scriptId,
+            date: normalizedDate,
+            append: true
+          }
+        ]
+      }
+    });
+    setScheduleFeedback('Agendamento enviado para aprovação 💗', 'success');
+    await loadScheduleContext({ silent: true });
+  } catch (error) {
+    const message = error?.message || 'Não foi possível agendar o roteiro.';
+    setScheduleFeedback(message, 'error');
+  } finally {
+    state.scheduling = false;
+    setScheduleButtonLoading(false);
+    updateScheduleButtonAvailability();
+  }
+};
 
 const renderScript = (script) => {
   state.script = script;
@@ -299,6 +697,7 @@ const initialize = () => {
   state.scriptId = numericId;
   if (!ensureAuth()) return;
   loadScript();
+  loadScheduleContext();
 };
 
 if (document.readyState === 'loading') {
