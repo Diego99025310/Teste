@@ -46,32 +46,7 @@
         </article>
 
         <section class="script-schedule" aria-labelledby="script-schedule-title">
-          <div class="script-schedule__card">
-            <h2 id="script-schedule-title" class="script-schedule__title">Agendar roteiro</h2>
-            <p class="script-schedule__description">
-              Escolha o melhor dia para gravar este conteúdo e confirme o agendamento.
-            </p>
-            <div
-              id="schedule-status"
-              class="schedule-status"
-              hidden
-              aria-live="polite"
-            ></div>
-            <div
-              id="schedule-feedback"
-              class="schedule-feedback"
-              hidden
-              aria-live="polite"
-            ></div>
-            <label class="script-schedule__label" for="schedule-date-input">
-              Selecione uma data no calendário
-            </label>
-            <input
-              type="date"
-              id="schedule-date-input"
-              class="schedule-date-input"
-              aria-describedby="schedule-status schedule-feedback"
-            />
+
             <div class="script-schedule__actions">
               <button
                 type="button"
@@ -84,18 +59,11 @@
               </button>
               <a class="script-schedule__back" href="influencer-plan.html">Voltar</a>
             </div>
-          </div>
         </section>
       </main>
     </div>
 
-    <input
-      type="date"
-      id="schedule-date-input"
-      class="schedule-date-input"
-      aria-hidden="true"
-      tabindex="-1"
-    />
+
 
     <script type="module" src="/scripts/script-view.js"></script>
   </body>
