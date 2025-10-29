@@ -16,6 +16,8 @@
 
       <main class="script-main" aria-live="polite">
         <div id="status-message" class="status-message" hidden></div>
+        <div id="schedule-status" class="schedule-status" hidden aria-live="polite"></div>
+        <div id="schedule-feedback" class="schedule-feedback" hidden aria-live="polite"></div>
         <article id="script-article" class="script-article" hidden>
           <section class="script-section" data-section="duration">
             <h2 class="script-section__title">Duração</h2>
@@ -86,6 +88,14 @@
         </section>
       </main>
     </div>
+
+    <input
+      type="date"
+      id="schedule-date-input"
+      class="schedule-date-input"
+      aria-hidden="true"
+      tabindex="-1"
+    />
 
     <script type="module" src="/scripts/script-view.js"></script>
   </body>
