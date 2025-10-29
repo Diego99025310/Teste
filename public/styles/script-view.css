@@ -53,64 +53,17 @@ a:focus-visible {
   margin: 0 auto;
 }
 
+
 .page-header {
   margin: 24px 16px;
-  padding: 24px;
+  padding: 32px 28px;
   background: linear-gradient(135deg, var(--pink-500), var(--pink-600));
   color: #fff;
-  border-radius: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  flex-wrap: wrap;
-  box-shadow: var(--shadow-lg);
-}
-
-.page-header__actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 12px;
-  flex: 0 0 auto;
-  flex-wrap: wrap;
-}
-
-.page-header__left {
-  display: flex;
-  gap: 16px;
-  align-items: center;
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.back-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 10px 18px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.2);
-  color: #fff;
-  font-weight: 600;
-  transition: background 0.2s ease, transform 0.2s ease;
-}
-
-.back-link::before {
-  content: '←';
-  font-size: 1.1rem;
-}
-
-.back-link:hover,
-.back-link:focus-visible {
-  background: rgba(255, 255, 255, 0.3);
-  transform: translateY(-1px);
-}
-
-.page-header__titles {
+  border-radius: 24px;
   display: grid;
-  gap: 6px;
-  min-width: 0;
+  gap: 8px;
+  justify-items: flex-start;
+  box-shadow: var(--shadow-lg);
 }
 
 .page-header__subtitle {
@@ -133,21 +86,51 @@ a:focus-visible {
   opacity: 0.85;
 }
 
-.logout-btn {
-  background: rgba(255, 255, 255, 0.2);
-  border: 0;
-  color: #fff;
+.schedule-script-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 28px;
   border-radius: 999px;
-  padding: 10px 18px;
-  cursor: pointer;
+  border: 1px solid transparent;
+  background: var(--pink-500);
+  color: #fff;
   font-weight: 600;
-  transition: background 0.2s ease, transform 0.2s ease;
+  font-size: 1.05rem;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 10px 22px rgba(255, 105, 180, 0.28);
+  min-width: 220px;
 }
 
-.logout-btn:hover,
-.logout-btn:focus-visible {
-  background: rgba(255, 255, 255, 0.3);
+.schedule-script-btn:focus-visible {
+  outline: 3px solid rgba(255, 255, 255, 0.6);
+  outline-offset: 2px;
+}
+
+.schedule-script-btn:hover,
+.schedule-script-btn:focus-visible {
+  background: var(--pink-600);
   transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(255, 105, 180, 0.32);
+}
+
+.schedule-script-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.schedule-btn__icon {
+  font-size: 1.1rem;
+}
+
+.schedule-btn__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .schedule-script-btn {
@@ -196,9 +179,9 @@ a:focus-visible {
 }
 
 .script-main {
-  margin: 0 16px;
+  margin: 0 16px 48px;
   display: grid;
-  gap: 20px;
+  gap: 28px;
 }
 
 .status-message {
@@ -252,19 +235,21 @@ a:focus-visible {
   margin: 0 0 0.9rem;
 }
 
+
 .schedule-status,
 .schedule-feedback {
   padding: 16px 20px;
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.88);
   box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.6);
   color: var(--gray-700);
   font-weight: 500;
+  text-align: center;
 }
 
 .schedule-status {
-  margin-top: -4px;
+  margin-top: 12px;
 }
 
 .schedule-status--loading {
@@ -297,17 +282,108 @@ a:focus-visible {
   color: #8b174e;
 }
 
+
 .schedule-date-input {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  border: 0;
-  clip: rect(0 0 0 0);
-  clip-path: inset(50%);
-  overflow: hidden;
-  white-space: nowrap;
+  width: 100%;
+  padding: 16px 18px;
+  border-radius: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.65);
+  background: rgba(255, 255, 255, 0.92);
+  font-size: 1.05rem;
+  font-weight: 500;
+  color: var(--gray-700);
+  text-align: center;
+  box-shadow: 0 12px 26px rgba(255, 105, 180, 0.2);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border 0.2s ease;
+}
+
+.schedule-date-input:hover,
+.schedule-date-input:focus-visible {
+  border-color: rgba(255, 20, 147, 0.55);
+  box-shadow: 0 16px 32px rgba(255, 20, 147, 0.25);
+  transform: translateY(-1px);
+  outline: none;
+}
+
+.schedule-date-input:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+.script-schedule {
+  display: flex;
+  justify-content: center;
+}
+
+.script-schedule__card {
+  width: min(720px, 100%);
+  padding: clamp(2rem, 4vw, 3rem);
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.3), transparent 60%),
+    radial-gradient(circle at 80% 0%, rgba(255, 255, 255, 0.2), transparent 65%),
+    linear-gradient(135deg, rgba(255, 105, 180, 0.15), rgba(255, 255, 255, 0.9));
+  box-shadow: 0 20px 44px rgba(255, 105, 180, 0.22);
+  display: grid;
+  gap: 20px;
+  text-align: center;
+}
+
+.script-schedule__title {
+  margin: 0;
+  font-size: clamp(1.4rem, 3vw, 1.8rem);
+  color: var(--pink-700);
+}
+
+.script-schedule__description {
+  margin: 0;
+  color: var(--gray-700);
+  font-size: 1rem;
+}
+
+.script-schedule__label {
+  font-weight: 600;
+  color: var(--pink-700);
+}
+
+.script-schedule__actions {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.script-schedule__actions .schedule-script-btn {
+  flex: 1 1 220px;
+}
+
+.script-schedule__back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 28px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.65);
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--pink-600);
+  font-weight: 600;
+  min-width: 160px;
+  box-shadow: 0 12px 26px rgba(255, 105, 180, 0.18);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border 0.2s ease;
+}
+
+.script-schedule__back:hover,
+.script-schedule__back:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 30px rgba(255, 105, 180, 0.24);
+  border-color: rgba(255, 20, 147, 0.45);
+}
+
+.script-schedule__back:focus-visible {
+  outline: 3px solid rgba(255, 20, 147, 0.35);
+  outline-offset: 2px;
 }
 
 .script-section__content ul,
@@ -345,15 +421,25 @@ a:focus-visible {
 @media (max-width: 640px) {
   .page-header {
     margin: 16px;
-    padding: 20px;
+    padding: 24px;
+    justify-items: stretch;
   }
 
-  .back-link {
-    padding: 10px 14px;
+  .script-main {
+    margin: 0 16px 32px;
+    gap: 24px;
   }
 
-  .logout-btn {
+  .script-schedule__card {
+    padding: 28px 20px;
+  }
+
+  .script-schedule__actions {
+    flex-direction: column;
+  }
+
+  .script-schedule__actions .schedule-script-btn,
+  .script-schedule__back {
     width: 100%;
-    justify-content: center;
   }
 }

@@ -21,7 +21,6 @@ const elements = {
   closing: document.getElementById('script-closing'),
   notes: document.getElementById('script-notes'),
   notesSection: document.getElementById('script-notes-section'),
-  logoutBtn: document.getElementById('logout-btn'),
   scheduleButton: document.getElementById('schedule-script-btn'),
   scheduleButtonLabel: document.querySelector('#schedule-script-btn .schedule-btn__label'),
   scheduleStatus: document.getElementById('schedule-status'),
@@ -128,7 +127,6 @@ const logout = () => {
   }
 };
 
-elements.logoutBtn?.addEventListener('click', logout);
 elements.scheduleButton?.addEventListener('click', handleScheduleButtonClick);
 elements.scheduleDateInput?.addEventListener('change', (event) => {
   const value = event?.target?.value ?? '';
@@ -184,6 +182,33 @@ const setScheduleButtonLabel = (label) => {
   elements.scheduleButtonLabel.textContent = label;
 };
 
+const setScheduleDateInputDisabled = (disabled) => {
+  if (!elements.scheduleDateInput) return;
+  if (disabled) {
+    elements.scheduleDateInput.setAttribute('disabled', '');
+    elements.scheduleDateInput.setAttribute('aria-disabled', 'true');
+  } else {
+    elements.scheduleDateInput.removeAttribute('disabled');
+    elements.scheduleDateInput.removeAttribute('aria-disabled');
+  }
+};
+
+const applyScheduleDateConstraints = () => {
+  if (!elements.scheduleDateInput) return;
+
+  if (state.cycle?.startDate) {
+    elements.scheduleDateInput.min = state.cycle.startDate;
+  } else {
+    elements.scheduleDateInput.removeAttribute('min');
+  }
+
+  if (state.cycle?.endDate) {
+    elements.scheduleDateInput.max = state.cycle.endDate;
+  } else {
+    elements.scheduleDateInput.removeAttribute('max');
+  }
+};
+
 const setScheduleButtonLoading = (loading, label) => {
   if (!elements.scheduleButton) return;
   if (loading) {
@@ -206,6 +231,7 @@ const setScheduleButtonDisabled = (disabled) => {
     elements.scheduleButton.removeAttribute('disabled');
     elements.scheduleButton.removeAttribute('aria-disabled');
   }
+  setScheduleDateInputDisabled(disabled);
 };
 
 const setLoading = (loading) => {
@@ -224,6 +250,7 @@ const updateScheduleButtonAvailability = () => {
     state.scheduling ||
     (!state.cycle && Boolean(state.scheduleError));
   setScheduleButtonDisabled(disabled);
+  applyScheduleDateConstraints();
 };
 
 const renderScheduleStatus = () => {
@@ -493,17 +520,8 @@ function handleScheduleButtonClick() {
   if (!ensureAuth()) return;
 
   elements.scheduleDateInput.value = '';
-  if (state.cycle?.startDate) {
-    elements.scheduleDateInput.min = state.cycle.startDate;
-  } else {
-    elements.scheduleDateInput.removeAttribute('min');
-  }
-
-  if (state.cycle?.endDate) {
-    elements.scheduleDateInput.max = state.cycle.endDate;
-  } else {
-    elements.scheduleDateInput.removeAttribute('max');
-  }
+  applyScheduleDateConstraints();
+  setScheduleDateInputDisabled(false);
 
   window.requestAnimationFrame(() => {
     if (typeof elements.scheduleDateInput.showPicker === 'function') {
