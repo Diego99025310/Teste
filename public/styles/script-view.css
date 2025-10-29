@@ -67,6 +67,15 @@ a:focus-visible {
   box-shadow: var(--shadow-lg);
 }
 
+.page-header__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+}
+
 .page-header__left {
   display: flex;
   gap: 16px;
@@ -141,6 +150,51 @@ a:focus-visible {
   transform: translateY(-1px);
 }
 
+.schedule-script-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 22px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: var(--pink-500);
+  color: #fff;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 10px 22px rgba(255, 105, 180, 0.28);
+}
+
+.schedule-script-btn:focus-visible {
+  outline: 3px solid rgba(255, 255, 255, 0.6);
+  outline-offset: 2px;
+}
+
+.schedule-script-btn:hover,
+.schedule-script-btn:focus-visible {
+  background: var(--pink-600);
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(255, 105, 180, 0.32);
+}
+
+.schedule-script-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.schedule-btn__icon {
+  font-size: 1.1rem;
+}
+
+.schedule-btn__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .script-main {
   margin: 0 16px;
   display: grid;
@@ -196,6 +250,64 @@ a:focus-visible {
 
 .script-section__content p {
   margin: 0 0 0.9rem;
+}
+
+.schedule-status,
+.schedule-feedback {
+  padding: 16px 20px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  color: var(--gray-700);
+  font-weight: 500;
+}
+
+.schedule-status {
+  margin-top: -4px;
+}
+
+.schedule-status--loading {
+  border-color: rgba(255, 105, 180, 0.45);
+  background: rgba(255, 105, 180, 0.16);
+  color: var(--pink-700);
+}
+
+.schedule-status--error {
+  border-color: rgba(208, 18, 120, 0.45);
+  background: rgba(208, 18, 120, 0.14);
+  color: #8b174e;
+}
+
+.schedule-feedback {
+  border-style: dashed;
+  border-color: rgba(255, 105, 180, 0.4);
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.schedule-feedback--success {
+  border-color: rgba(76, 175, 80, 0.45);
+  background: rgba(76, 175, 80, 0.12);
+  color: #2f6b33;
+}
+
+.schedule-feedback--error {
+  border-color: rgba(208, 18, 120, 0.45);
+  background: rgba(208, 18, 120, 0.16);
+  color: #8b174e;
+}
+
+.schedule-date-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  border: 0;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 .script-section__content ul,
