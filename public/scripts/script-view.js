@@ -25,6 +25,7 @@ const elements = {
   scheduleButtonLabel: document.querySelector('#schedule-script-btn .schedule-btn__label'),
   scheduleStatus: document.getElementById('schedule-status'),
   scheduleFeedback: document.getElementById('schedule-feedback'),
+  scheduleCard: document.getElementById('schedule-card'),
   scheduleDateInput: document.getElementById('schedule-date-input')
 };
 
@@ -180,6 +181,12 @@ const setScheduleFeedback = (message, type = 'info') => {
 const setScheduleButtonLabel = (label) => {
   if (!elements.scheduleButtonLabel) return;
   elements.scheduleButtonLabel.textContent = label;
+};
+
+const revealScheduleCard = () => {
+  if (!elements.scheduleCard) return;
+  if (!elements.scheduleCard.hasAttribute('hidden')) return;
+  elements.scheduleCard.removeAttribute('hidden');
 };
 
 const setScheduleDateInputDisabled = (disabled) => {
@@ -518,6 +525,8 @@ const loadScheduleContext = async ({ silent = false } = {}) => {
 function handleScheduleButtonClick() {
   if (!elements.scheduleDateInput || state.scheduleLoading || state.scheduling) return;
   if (!ensureAuth()) return;
+
+  revealScheduleCard();
 
   elements.scheduleDateInput.value = '';
   applyScheduleDateConstraints();
