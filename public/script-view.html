@@ -14,6 +14,29 @@
         <p id="script-meta" class="script-meta" hidden aria-live="polite"></p>
       </header>
 
+      <section id="script-schedule" class="script-schedule" aria-labelledby="script-schedule-title">
+        <h2 id="script-schedule-title" class="visually-hidden">Agendar este roteiro</h2>
+        <div class="script-schedule__actions">
+          <button
+            type="button"
+            class="schedule-script-btn"
+            id="schedule-script-btn"
+            aria-label="Agendar este roteiro"
+            aria-haspopup="dialog"
+            aria-expanded="false"
+          >
+            <span class="schedule-btn__icon" aria-hidden="true">📅</span>
+            <span class="schedule-btn__label">Agendar Roteiro</span>
+          </button>
+          <a class="script-schedule__back" href="influencer-plan.html">Voltar</a>
+        </div>
+        <div
+          id="script-schedule-popover-host"
+          class="script-schedule__popover-host"
+          aria-live="polite"
+        ></div>
+      </section>
+
       <main class="script-main" aria-live="polite">
         <div id="status-message" class="status-message" hidden></div>
         <div id="schedule-status" class="schedule-status" hidden aria-live="polite"></div>
@@ -43,30 +66,12 @@
             <h2 class="script-section__title">Notas adicionais</h2>
             <div id="script-notes" class="script-section__content rich-text"></div>
           </section>
+
+
+
         </article>
 
-        <section id="script-schedule" class="script-schedule" aria-labelledby="script-schedule-title">
-          <h2 id="script-schedule-title" class="visually-hidden">Agendar este roteiro</h2>
-          <div class="script-schedule__actions">
-            <button
-              type="button"
-              class="schedule-script-btn"
-              id="schedule-script-btn"
-              aria-label="Agendar este roteiro"
-              aria-haspopup="dialog"
-              aria-expanded="false"
-            >
-              <span class="schedule-btn__icon" aria-hidden="true">📅</span>
-              <span class="schedule-btn__label">Agendar Roteiro</span>
-            </button>
-            <a class="script-schedule__back" href="influencer-plan.html">Voltar</a>
-          </div>
-          <div
-            id="script-schedule-popover-host"
-            class="script-schedule__popover-host"
-            aria-live="polite"
-          ></div>
-        </section>
+
       </main>
     </div>
 
