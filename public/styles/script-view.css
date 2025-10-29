@@ -133,51 +133,6 @@ a:focus-visible {
   gap: 4px;
 }
 
-.schedule-script-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 22px;
-  border-radius: 999px;
-  border: 1px solid transparent;
-  background: var(--pink-500);
-  color: #fff;
-  font-weight: 600;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
-  box-shadow: 0 10px 22px rgba(255, 105, 180, 0.28);
-}
-
-.schedule-script-btn:focus-visible {
-  outline: 3px solid rgba(255, 255, 255, 0.6);
-  outline-offset: 2px;
-}
-
-.schedule-script-btn:hover,
-.schedule-script-btn:focus-visible {
-  background: var(--pink-600);
-  transform: translateY(-1px);
-  box-shadow: 0 12px 24px rgba(255, 105, 180, 0.32);
-}
-
-.schedule-script-btn:disabled {
-  opacity: 0.65;
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
-}
-
-.schedule-btn__icon {
-  font-size: 1.1rem;
-}
-
-.schedule-btn__label {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
 .script-main {
   margin: 0 16px 48px;
   display: grid;

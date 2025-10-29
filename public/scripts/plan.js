@@ -572,28 +572,6 @@ const clearList = () => {
   }
 };
 
-const createSectionSummary = (label, content, { optional = false, fallback = '' } = {}) => {
-  const normalized = typeof content === 'string' ? content.trim() : '';
-  if (!normalized && optional) {
-    return null;
-  }
-
-  const section = document.createElement('div');
-  section.className = 'roteiro-section';
-
-  const title = document.createElement('h4');
-  title.className = 'roteiro-section__title';
-  title.textContent = label;
-  section.appendChild(title);
-
-  const body = document.createElement('p');
-  body.className = 'roteiro-section__content';
-  body.textContent = normalized || fallback || '';
-  section.appendChild(body);
-
-  return section;
-};
-
 const renderRoteiros = () => {
   if (!elements.roteirosList) return;
   clearList();
@@ -622,61 +600,10 @@ const renderRoteiros = () => {
     const header = document.createElement('div');
     header.className = 'roteiro-header';
 
-    const headerInfo = document.createElement('div');
-    headerInfo.className = 'roteiro-header__info';
-
     const title = document.createElement('h3');
     title.className = 'roteiro-title';
     title.textContent = script.title;
-    headerInfo.appendChild(title);
-
-    if (script.durationText) {
-      const duration = document.createElement('span');
-      duration.className = 'roteiro-duration';
-      duration.textContent = script.durationText;
-      headerInfo.appendChild(duration);
-    }
-
-    if (script.product) {
-      const badge = document.createElement('span');
-      badge.className = 'roteiro-badge';
-      badge.textContent = script.product;
-      headerInfo.appendChild(badge);
-    }
-
-    if (script.preview) {
-      const preview = document.createElement('p');
-      preview.className = 'roteiro-preview';
-      preview.textContent = script.preview;
-      headerInfo.appendChild(preview);
-    }
-
-    header.appendChild(headerInfo);
-
-    const details = document.createElement('div');
-    details.className = 'roteiro-details';
-
-    const sectionsContainer = document.createElement('div');
-    sectionsContainer.className = 'roteiro-sections';
-
-    const sections = [
-      createSectionSummary('Duração', script.durationText, { fallback: 'Duração não informada.' }),
-      createSectionSummary('Contexto', script.contextText, { fallback: 'Contexto não informado.' }),
-      createSectionSummary('Tarefa', script.taskText, { fallback: 'Tarefa não informada.' }),
-      createSectionSummary('Pontos importantes', script.importantPointsText, {
-        fallback: 'Pontos importantes não informados.'
-      }),
-      createSectionSummary('Finalização', script.closingText, { fallback: 'Finalização não informada.' }),
-      createSectionSummary('Notas adicionais', script.additionalNotesText, { optional: true })
-    ];
-
-    sections
-      .filter(Boolean)
-      .forEach((section) => sectionsContainer.appendChild(section));
-
-    if (sectionsContainer.childElementCount > 0) {
-      details.appendChild(sectionsContainer);
-    }
+    header.appendChild(title);
 
     const actions = document.createElement('div');
     actions.className = 'card-actions';
@@ -690,6 +617,9 @@ const renderRoteiros = () => {
     scheduleBtn.textContent = 'Agendar';
     scheduleBtn.addEventListener('click', () => openDatePicker(script));
     actions.appendChild(scheduleBtn);
+
+    card.appendChild(header);
+    card.appendChild(actions);
 
     if (occurrences.length) {
       const list = document.createElement('div');
@@ -741,12 +671,8 @@ const renderRoteiros = () => {
         list.appendChild(occurrence);
       });
 
-      details.appendChild(list);
+      card.appendChild(list);
     }
-
-    card.appendChild(header);
-    card.appendChild(actions);
-    card.appendChild(details);
     elements.roteirosList.appendChild(card);
   });
 };
