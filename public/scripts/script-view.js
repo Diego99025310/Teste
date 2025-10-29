@@ -488,7 +488,7 @@ const loadScheduleContext = async ({ silent = false } = {}) => {
   }
 };
 
-const handleScheduleButtonClick = () => {
+function handleScheduleButtonClick() {
   if (!elements.scheduleDateInput || state.scheduleLoading || state.scheduling) return;
   if (!ensureAuth()) return;
 
@@ -513,7 +513,7 @@ const handleScheduleButtonClick = () => {
       elements.scheduleDateInput.click();
     }
   });
-};
+}
 
 const scheduleScript = async (isoDate) => {
   if (!isoDate || state.scheduling) return;
