@@ -203,6 +203,32 @@ const buildScriptPreview = (sections = [], maxLength = 200) => {
   return `${plainText.slice(0, maxLength - 1).trim()}…`;
 };
 
+const buildLegacyDescriptionFromSections = ({
+  duracao = '',
+  contexto = '',
+  tarefa = '',
+  pontos_importantes = '',
+  finalizacao = '',
+  notas_adicionais = ''
+} = {}) => {
+  const sections = [
+    { label: 'Duração', value: duracao },
+    { label: 'Contexto', value: contexto },
+    { label: 'Tarefa', value: tarefa },
+    { label: 'Pontos importantes', value: pontos_importantes },
+    { label: 'Finalização', value: finalizacao },
+    { label: 'Notas adicionais', value: notas_adicionais }
+  ];
+
+  return sections
+    .filter((section) => section.value && section.value.trim().length > 0)
+    .map((section) => {
+      const heading = `<p><strong>${escapeHtml(section.label)}:</strong></p>`;
+      return `${heading}${section.value}`;
+    })
+    .join('');
+};
+
 const normalizeScriptRow = (script) => {
   if (!script) return null;
 
@@ -602,7 +628,7 @@ const listInfluencerSummaryStmt = db.prepare(`
 `);
 
 const insertContentScriptStmt = db.prepare(
-  'INSERT INTO content_scripts (titulo, duracao, contexto, tarefa, pontos_importantes, finalizacao, notas_adicionais, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+  'INSERT INTO content_scripts (titulo, duracao, contexto, tarefa, pontos_importantes, finalizacao, notas_adicionais, descricao, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)' 
 );
 const listContentScriptsStmt = db.prepare(
   'SELECT id, titulo, duracao, contexto, tarefa, pontos_importantes, finalizacao, notas_adicionais, created_at, updated_at FROM content_scripts ORDER BY datetime(created_at) DESC, id DESC'
@@ -611,14 +637,14 @@ const findContentScriptByIdStmt = db.prepare(
   'SELECT id, titulo, duracao, contexto, tarefa, pontos_importantes, finalizacao, notas_adicionais, created_at, updated_at FROM content_scripts WHERE id = ?'
 );
 const updateContentScriptStmt = db.prepare(
-  'UPDATE content_scripts SET titulo = ?, duracao = ?, contexto = ?, tarefa = ?, pontos_importantes = ?, finalizacao = ?, notas_adicionais = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+  'UPDATE content_scripts SET titulo = ?, duracao = ?, contexto = ?, tarefa = ?, pontos_importantes = ?, finalizacao = ?, notas_adicionais = ?, descricao = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
 );
 const deleteContentScriptStmt = db.prepare('DELETE FROM content_scripts WHERE id = ?');
 const listContentScriptsForMigrationStmt = db.prepare(
   'SELECT id, duracao, contexto, tarefa, pontos_importantes, finalizacao, notas_adicionais, descricao FROM content_scripts'
 );
 const updateContentScriptSectionsStmt = db.prepare(
-  'UPDATE content_scripts SET duracao = ?, contexto = ?, tarefa = ?, pontos_importantes = ?, finalizacao = ?, notas_adicionais = ? WHERE id = ?'
+  'UPDATE content_scripts SET duracao = ?, contexto = ?, tarefa = ?, pontos_importantes = ?, finalizacao = ?, notas_adicionais = ?, descricao = ? WHERE id = ?'
 );
 
 const findCycleByIdStmt = db.prepare(
@@ -940,6 +966,7 @@ const normalizeContentScriptsSections = () => {
         nextValues.pontos_importantes,
         nextValues.finalizacao,
         nextValues.notas_adicionais,
+        buildLegacyDescriptionFromSections(nextValues),
         row.id
       );
       updatedCount += 1;
@@ -4080,6 +4107,7 @@ app.post('/scripts', authenticate, authorizeMaster, (req, res) => {
 
   const titulo = rawTitle.slice(0, 180);
   const sections = sectionsResult.value;
+  const legacyDescription = buildLegacyDescriptionFromSections(sections);
 
   try {
     const result = insertContentScriptStmt.run(
@@ -4090,6 +4118,7 @@ app.post('/scripts', authenticate, authorizeMaster, (req, res) => {
       sections.pontos_importantes,
       sections.finalizacao,
       sections.notas_adicionais,
+      legacyDescription,
       req.auth?.user?.id || null
     );
     const script = findContentScriptByIdStmt.get(result.lastInsertRowid);
@@ -4120,6 +4149,7 @@ app.put('/scripts/:id', authenticate, authorizeMaster, (req, res) => {
 
   const titulo = rawTitle.slice(0, 180);
   const sections = sectionsResult.value;
+  const legacyDescription = buildLegacyDescriptionFromSections(sections);
 
   try {
     const existing = findContentScriptByIdStmt.get(scriptId);
@@ -4135,6 +4165,7 @@ app.put('/scripts/:id', authenticate, authorizeMaster, (req, res) => {
       sections.pontos_importantes,
       sections.finalizacao,
       sections.notas_adicionais,
+      legacyDescription,
       scriptId
     );
     const updated = findContentScriptByIdStmt.get(scriptId);
