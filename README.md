@@ -1,76 +1,210 @@
-# Sistema HidraPink – Visão Geral e Arquitetura
+# HidraPink Influence Manager
 
-## Visão geral do projeto
-O sistema HidraPink combina uma API Express, páginas estáticas e um banco SQLite para gerir o relacionamento com influenciadoras. O backend expõe rotas REST protegidas por JWT, processa importações de vendas e controla ciclos mensais de stories. O frontend é servido do diretório `public/` e reutiliza a mesma API para cadastros, dashboards e painéis especializados. A aplicação também inclui utilitários de linha de comando e documentação auxiliar em `docs/` para operar o programa Pinklovers de ponta a ponta.
+![GitHub last commit](https://img.shields.io/github/last-commit/Diego99025310/Teste?style=for-the-badge)
+![GitHub repo size](https://img.shields.io/github/repo-size/Diego99025310/Teste?color=ff69b4&style=for-the-badge)
+![Node.js CI](https://img.shields.io/badge/tests-node--test-blueviolet?style=for-the-badge)
+![License: MIT](https://img.shields.io/badge/license-MIT-green?style=for-the-badge)
 
-## Estrutura de diretórios
-```text
-├── src/
-│   ├── server.js          # Aplicação Express com rotas, autenticação e regras de negócio
-│   ├── database.js        # Inicialização do SQLite, migrações e índices
-│   ├── config/env.js      # Carregamento de variáveis de ambiente (.env)
-│   ├── middlewares/       # Middleware de aceite contratual
-│   ├── routes/            # Rotas modulares (por exemplo, aceite de termos)
-│   └── utils/             # Utilidades de hash, pontuação e multiplicadores
-├── public/                # Interfaces estáticas (login, dashboards, cadastros, planner)
-├── docs/                  # Guias funcionais, integrações e fluxos operacionais
-├── scripts/               # Ferramentas CLI (ex.: filtro de pedidos Shopify)
-├── tests/                 # Testes automatizados usando `node --test`
-├── data/                  # Arquivos auxiliares (ex.: cupons válidos)
-├── package.json           # Scripts npm e dependências do projeto
-└── README.md              # Este documento
+Plataforma full-stack desenvolvida em **Node.js + Express + SQLite**, com front-end web responsivo pronto para empacotamento em Electron. O sistema foi projetado para **gestão operacional de influenciadoras**: cadastro completo, agendamento de roteiros, acompanhamento de stories e cálculo de comissões. O público-alvo são equipes de marketing e operações que precisam de um fluxo auditável, colaborativo e centralizado para suas campanhas recorrentes.
+
+---
+
+## 📚 Sumário
+
+- [🚀 Visão Geral](#-visão-geral)
+- [🧰 Tecnologias](#-tecnologias)
+- [🖥️ Pré-requisitos](#️-pré-requisitos)
+- [⚙️ Instalação](#️-instalação)
+- [▶️ Execução e Uso](#️-execução-e-uso)
+- [🗂️ Estrutura de Pastas](#️-estrutura-de-pastas)
+- [📊 Fluxos Principais](#-fluxos-principais)
+  - [Master (Admin)](#master-admin)
+  - [Influenciadora](#influenciadora)
+- [🗺️ Roadmap](#️-roadmap)
+- [🤝 Contribuição](#-contribuição)
+- [📄 Licença](#-licença)
+- [📎 Recursos Complementares](#-recursos-complementares)
+
+---
+
+## 🚀 Visão Geral
+
+O HidraPink centraliza toda a jornada operacional de uma campanha de influência digital. Com ele é possível:
+
+- Realizar onboarding de influenciadoras com controle de contratos e termos de aceite.
+- Planejar e validar roteiros de conteúdo em ciclos mensais.
+- Registrar submissões de stories, aprovações e ajustes diretamente na plataforma.
+- Importar vendas via CSV, aplicar regras de pontuação e fechar comissões automaticamente.
+- Oferecer painéis separados para **masters** (time de operações) e **influenciadoras** (usuárias finais).
+
+A aplicação pode ser executada como servidor web (Express) ou embalada em um wrapper desktop (Electron) utilizando o front-end estático presente em `public/`.
+
+---
+
+## 🧰 Tecnologias
+
+- 🟢 **Node.js 18+** — runtime e scripts CLI.
+- ⚡ **Express 5** — camada HTTP, rotas REST e middlewares.
+- 🗄️ **SQLite + better-sqlite3** — banco relacional embutido com WAL habilitado.
+- 🔐 **jsonwebtoken & bcryptjs** — autenticação baseada em JWT e hashing seguro.
+- 🎨 **HTML5, CSS3 e JavaScript** — front-end responsivo servido por arquivos estáticos.
+- 🧪 **node:test & SuperTest** — testes automatizados de API.
+- 🖥️ **Electron (opcional)** — empacotamento desktop do front-end para operação local.
+
+---
+
+## 🖥️ Pré-requisitos
+
+Certifique-se de possuir os seguintes itens antes de iniciar:
+
+- [Node.js](https://nodejs.org/) **18.0.0 ou superior**
+- npm (instalado com o Node.js)
+- Python 3.x (opcional, para scripts auxiliares em `scripts/`)
+- Sistema operacional macOS, Linux ou Windows
+
+---
+
+## ⚙️ Instalação
+
+```bash
+# 1. Clonar o repositório
+git clone https://github.com/Diego99025310/Teste.git
+cd Teste
+
+# 2. Instalar dependências
+npm install
+
+# 3. Configurar variáveis de ambiente
+cp .env.example .env            # se disponível; caso contrário, crie um novo arquivo .env
 ```
 
-## Dependências e execução
-- **Runtime**: Node.js 18+.
-- **Backend**: [Express 5](https://expressjs.com/) para rotas HTTP, [better-sqlite3](https://github.com/WiseLibs/better-sqlite3) para persistência, [bcryptjs](https://github.com/dcodeIO/bcrypt.js) e [jsonwebtoken](https://github.com/auth0/node-jsonwebtoken) para segurança.
-- **Ferramentas**: `supertest` para testes end-to-end.
-- **Scripts npm**:
-  - `npm install` – instala dependências (compilando `better-sqlite3` se necessário).
-  - `npm start` – inicia `src/server.js` com hot reload manual.
-  - `npm test` – executa a suíte `node --test` com banco isolado.
-- **Configuração**: as variáveis de ambiente são carregadas automaticamente de `.env` por `src/config/env.js`, permitindo definir `DATABASE_PATH`, credenciais do usuário master (`MASTER_EMAIL`, `MASTER_PASSWORD`) e parâmetros de token (`JWT_SECRET`, `JWT_EXPIRATION`). O banco padrão (`database.sqlite`) é criado/migrado no primeiro start.
+Configurações importantes (arquivo `.env`):
 
-## Fluxo de autenticação e autorização
-1. **Login** – `POST /login` aceita e-mail ou telefone + senha. O serviço localiza o usuário (`findUserByIdentifier`), valida a senha com `bcrypt.compare` e gera um JWT com `userId` e `role` usando o segredo configurado.
-2. **Proteção de rotas** – o middleware `authenticate` verifica o token Bearer, carrega o usuário e injeta `req.auth`. Rotas master reutilizam `authorizeMaster` para restringir operações administrativas.
-3. **Aceite contratual** – após autenticar, o middleware `verificarAceite` bloqueia influenciadoras sem aceite ativo, respondendo com HTTP 428 ou redirecionando para `/aceite-termos`. A rota modular `routes/aceite.js` registra hash do termo, IP, canal de autenticação e data na tabela `aceite_termos`, bem como o código de assinatura ou dispensa concedidos pelo master.
-4. **Sessões no frontend** – as páginas públicas salvam o JWT em `sessionStorage` e anexam o header `Authorization: Bearer` em cada chamada XHR.
+| Variável             | Descrição                                                                 |
+|----------------------|---------------------------------------------------------------------------|
+| `DATABASE_PATH`      | Caminho para o arquivo SQLite (padrão `./database.sqlite`).               |
+| `MASTER_EMAIL`       | Email do usuário master inicial.                                          |
+| `MASTER_PASSWORD`    | Senha do usuário master inicial.                                          |
+| `JWT_SECRET`         | Chave de assinatura dos tokens JWT.                                       |
+| `JWT_EXPIRATION`     | Tempo de expiração (ex.: `1d`, `12h`).                                    |
 
-## Banco de dados SQLite
-`src/database.js` inicializa o arquivo SQLite (modo WAL, foreign keys) e garante migrações idempotentes. O esquema principal cobre:
-- **`users`** – credenciais master/influenciadora, telefone normalizado, flag `must_change_password` e índices exclusivos por e-mail/telefone.
-- **`influenciadoras`** – dados pessoais, endereço, CPF, cupom, comissão, vínculo com `users`, hash/código de assinatura e dispensas contratuais. Índices garantem unicidade de Instagram, CPF, e-mail, telefone e cupom.
-- **`sales`**, **`sale_sku_points`** e **`sku_points`** – registro de pedidos, itens por SKU e catálogo de pontuação com chaves estrangeiras e checagens de valor.
-- **`aceite_termos`** – histórico de aceite com hash SHA-256 do contrato.
-- **`content_scripts`**, **`influencer_plans`**, **`story_submissions`** e **`monthly_commissions`** – sustentam o planner mensal, validações (manuais ou automatizadas) e fechamento com multiplicadores, preservando rastreabilidade por ciclo.
-Durante a inicialização, as funções `ensure*` migram colunas legadas, recalculam campos derivados (ex.: pontos a partir da comissão) e criam índices compostos para integridade transacional.
+---
 
-## Validação de CPF
-A normalização de influenciadoras sanitiza CPF com `normalizeDigits`, exige 11 dígitos e rejeita sequências repetidas. O backend calcula os dois dígitos verificadores (método módulo 11) e retorna erro “CPF invalido” em caso de divergência. O campo é persistido formatado (`000.000.000-00`) e protegido tanto por validação de payload quanto por índice único (`idx_influenciadoras_cpf`).
+## ▶️ Execução e Uso
 
-## Integração com APIs externas
-### Shopify
-- O endpoint de importação aceita CSV bruto (`orders_export.csv`) ou colagens tabulares. `tryParseShopifySalesImport` detecta cabeçalhos do Shopify, converte SKUs em pontos consultando `sku_points`, agrupa linhas por pedido e calcula a pontuação total por cupom.
-- O relatório prévio marca erros (pedido duplicado, cupom desconhecido, data ausente) e só permite confirmação após todas as linhas válidas. `insertImportedSales` persiste pedidos e itens em transação, evitando duplicidades por `uniq_sales_order_number`.
-- Para uso offline/CI, `scripts/filter_orders.py` consome o mesmo CSV, reutiliza `data/valid_coupons.json` e emite um arquivo filtrado apenas com pedidos aprovados.
+```bash
+# Executar em modo desenvolvimento
+npm start
 
-### Instagram
-- O cadastro exige handle único (`@perfil`), gera links clicáveis para `https://www.instagram.com/<handle>` nas interfaces e armazena o contato normalizado para reuso em convites.
-- A modelagem de `story_submissions` prepara campos como `proof_url`, `validation_type` e `auto_detected` para conciliar evidências vindas do Instagram (por exemplo, webhooks da Graph API) com validações manuais do master.
-- As validações consolidam dados no planner (`influencer_plans`) e no histórico mensal (`monthly_commissions`), permitindo associar cada story à postagem real da influenciadora e acompanhar o status em dashboards.
+# Rodar testes automatizados
+npm test
+```
 
-## Fluxo de gerenciamento de influenciadores
-1. **Onboarding** – `POST /influenciadora` normaliza payload (nomes, CEP, telefone, comissão), valida CPF, e-mail, cupom e telefone, gera senha provisória e código de assinatura (quando a dispensa não foi concedida) e cria usuário + influenciadora dentro de uma transação. A resposta devolve login, senha temporária e eventual código de assinatura.
-2. **Atualização** – `PUT /influenciadora/:id` repete as validações, sincroniza alterações de contato e e-mail com o usuário vinculado, recalcula dispensas contratuais e, se necessário, emite novo código de assinatura. Atualizações honram permissões: masters editam qualquer registro; influenciadoras só alteram a si mesmas.
-3. **Remoção** – `DELETE /influenciadora/:id` executa transação que exclui a influenciadora e o usuário relacionado para evitar órfãos.
-4. **Importação em massa** – uploads CSV criam registros com senhas automáticas, vinculação opcional de login e geração em lote de códigos de assinatura, garantindo unicidade durante todo o processo.
-5. **Planejamento e validação** – endpoints `/influencer/plan`, `/influencer/dashboard` e `/master/*` orquestram agendas mensais, cálculo de multiplicadores (`utils/multiplier.js`) e fechamento com persistência em `monthly_commissions`. Alerts e estatísticas alimentam painéis de master e influenciadora.
+Durante o primeiro `npm start`, o servidor Express:
 
-## Conexão entre componentes
-- **Frontend ↔ Backend**: páginas HTML consomem JSON das rotas Express e atualizam a UI (cadastros, planner, dashboards) mantendo o token na sessão.
-- **Autenticação ↔ Aceite**: o middleware de aceite lê `aceite_termos`/`influenciadoras` para redirecionar influenciadoras até validarem contrato ou registrarem dispensa.
-- **Banco ↔ Importações**: as rotinas de importação e cadastros usam transações SQLite e índices únicos para garantir consistência (sem duplicar pedidos, CPFs, cupons ou logins).
-- **Pontuação ↔ Comissões**: `utils/points.js` e `utils/multiplier.js` centralizam regras de conversão e multiplicador, evitando divergências entre cálculos exibidos na interface e valores gravados ao fechar ciclos.
+1. Inicializa/migra o banco SQLite, incluindo índices e dados padrão.
+2. Garante a existência do usuário master com as credenciais definidas.
+3. Publica o front-end estático em `http://localhost:3000`.
 
-Com essa arquitetura, o sistema HidraPink oferece um pipeline completo: cadastro seguro de influenciadoras, aceite contratual, planejamento e validação de stories, importação de vendas com origem Shopify e preparação para automações vindas do Instagram, culminando em comissões calculadas de forma consistente.
+### Acesso rápido
+
+1. Abra `http://localhost:3000` no navegador.
+2. Realize login como **master** utilizando as credenciais do `.env`.
+3. Cadastre influenciadoras manualmente ou importe um CSV.
+4. Compartilhe o acesso com as influenciadoras para que planejem roteiros e submetam entregas.
+
+### Exemplos de uso
+
+- **Agendamento de roteiros**: masters criam roteiros reutilizáveis e disponibilizam para o ciclo corrente; influenciadoras selecionam datas e enviam para aprovação.
+- **Importação de vendas**: painel master permite upload de relatórios Shopify (`orders_export.csv`) para cálculo de comissões em tempo real.
+- **Dashboard pessoal**: cada influenciadora acompanha pontos, entregas validadas e histórico financeiro.
+
+> ![Interface da dashboard (placeholder)](docs/img/dashboard-placeholder.png)
+
+> ![Planner de roteiros (placeholder)](docs/img/planner-placeholder.png)
+
+Para empacotar via Electron, utilize os arquivos em `public/` como front-end e configure um processo principal que consuma a API local (ex.: `http://localhost:3000`).
+
+---
+
+## 🗂️ Estrutura de Pastas
+
+```text
+├── public/                # Front-end responsivo (HTML, CSS e JS)
+│   └── main.js            # Consumo da API e interações de UI
+├── src/
+│   ├── server.js          # Servidor Express, rotas REST e regras de negócio
+│   ├── database.js        # Setup SQLite, migrações e transações
+│   ├── config/
+│   │   └── env.js         # Carregamento de variáveis de ambiente
+│   ├── middlewares/       # Autenticação, autorização e aceite contratual
+│   ├── routes/            # Fluxo de aceite e rotas segmentadas
+│   └── utils/             # Funções utilitárias (hash, pontuação, multiplicadores)
+├── scripts/               # Scripts auxiliares para CSVs e auditoria
+├── docs/                  # Documentação operacional detalhada
+├── tests/                 # Testes automatizados com node:test + SuperTest
+├── data/                  # Artefatos de apoio (cupons válidos, templates)
+├── package.json           # Dependências e scripts npm
+└── README.md              # Guia técnico principal
+```
+
+---
+
+## 📊 Fluxos Principais
+
+### Master (Admin)
+
+1. **Onboarding** — cadastra influenciadoras via formulário ou importação em massa (CSV) com validações de CPF, e-mail e cupom.
+2. **Gestão contratual** — monitora termos de aceite e gera códigos de assinatura únicos por influenciadora.
+3. **Curadoria de roteiros** — publica roteiros ativos por ciclo, configurando descrições, links e metas de entrega.
+4. **Validação de stories** — avalia submissões, solicita ajustes e aprova entregas para liberar pontuação.
+5. **Importação de vendas** — importa relatórios Shopify, associa SKUs a pontos e calcula comissões automaticamente.
+6. **Fechamento mensal** — consolida multiplicadores, bônus e exporta relatórios financeiros por influenciadora.
+
+### Influenciadora
+
+1. **Primeiro acesso** — recebe credenciais, troca senha e aceita termos antes de acessar dashboards.
+2. **Planner de roteiros** — agenda entregas nas datas sugeridas, atualiza agendamentos e acompanha status.
+3. **Submissão de stories** — envia evidências (links, imagens) para aprovação do master.
+4. **Painel de desempenho** — consulta pontos acumulados, vendas atribuídas ao cupom e histórico de comissões.
+5. **Notificações e suporte** — visualiza pendências, solicita revisões e mantém comunicação com a equipe master.
+
+---
+
+## 🗺️ Roadmap
+
+- [ ] Empacotamento oficial em Electron com auto-atualização.
+- [ ] Integração com serviços de armazenamento de mídia (S3, Cloudinary).
+- [ ] Notificações push via Firebase/OneSignal.
+- [ ] Dashboard analítico com gráficos e exportação para BI.
+- [ ] Integração nativa com plataformas de e-commerce além de Shopify.
+
+---
+
+## 🤝 Contribuição
+
+1. Faça um fork deste repositório.
+2. Crie uma branch de feature: `git checkout -b feature/minha-feature`.
+3. Commit suas alterações: `git commit -m "feat: minha feature"`.
+4. Faça push para a branch: `git push origin feature/minha-feature`.
+5. Abra um Pull Request descrevendo as alterações e cenários de teste.
+
+Siga o padrão de commits semânticos e garanta que os testes passem antes de enviar seu PR.
+
+---
+
+## 📄 Licença
+
+Este projeto é distribuído sob a licença MIT. Você é livre para usar, clonar e adaptar conforme as condições descritas.
+
+---
+
+## 📎 Recursos Complementares
+
+- [Guia de agendamento de roteiros](docs/INSTRUCOES_AGENDAMENTO_ROTEIROS.md.md)
+- [Estrutura visual e estilos](estrutura-estilos.md)
+- [Exemplo de exportação Shopify](orders_export.csv)
+- [Dataset de pedidos validados](orders_valid.csv)
+- [Scripts de apoio para CSV](scripts/)
+
+Para dúvidas adicionais, abra uma issue ou entre em contato com o mantenedor.
