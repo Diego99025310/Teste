@@ -3626,19 +3626,19 @@
 
         body.appendChild(bodyInner);
         item.appendChild(body);
+        fragment.appendChild(item);
 
         const storedExpanded = scriptExpansionState.get(script.id);
         const expanded = editingScriptId === script.id || storedExpanded === true;
         scriptExpansionState.set(script.id, expanded);
         applyScriptExpansionToItem(item, script, expanded);
-
-        fragment.appendChild(item);
       });
 
       listContainer.appendChild(fragment);
     };
 
     const loadScriptsList = async ({ showStatus = true } = {}) => {
+      if (!listContainer) return;
       if (showStatus) {
         setMessage(listMessageEl, 'Carregando roteiros...', 'info');
       }
@@ -3651,8 +3651,7 @@
         scriptExpansionState.clear();
         cachedScripts = normalized;
         cachedScripts.forEach((script) => {
-          const wasExpanded =
-            editingScriptId === script.id || previousExpansion.get(script.id) === true;
+          const wasExpanded = editingScriptId === script.id || previousExpansion.get(script.id) === true;
           scriptExpansionState.set(script.id, wasExpanded);
         });
         renderScriptManagementList();
