@@ -10,7 +10,6 @@
     <div class="container">
       <header class="page-header">
         <div class="page-header__left">
-          <a class="back-link" href="influencer-plan.html">Voltar</a>
           <div class="page-header__titles">
             <p class="page-header__subtitle">Visualização de roteiro</p>
             <h1 id="script-title">Carregando roteiro...</h1>
@@ -32,8 +31,23 @@
 
       <main class="script-main" aria-live="polite">
         <div id="status-message" class="status-message" hidden></div>
-        <div id="schedule-status" class="schedule-status" hidden aria-live="polite"></div>
-        <div id="schedule-feedback" class="schedule-feedback" hidden aria-live="polite"></div>
+
+        <section
+          class="schedule-card"
+          aria-labelledby="schedule-card-title"
+          aria-describedby="schedule-card-description"
+        >
+          <h2 id="schedule-card-title" class="schedule-card__title">Agendar roteiro</h2>
+          <p id="schedule-card-description" class="schedule-card__description">
+            Escolha a data ideal para executar este roteiro e confirme o agendamento.
+          </p>
+
+          <label class="schedule-card__label" for="schedule-date-input">Data do agendamento</label>
+          <input type="date" id="schedule-date-input" class="schedule-date-input" />
+
+          <div id="schedule-status" class="schedule-status" hidden aria-live="polite"></div>
+          <div id="schedule-feedback" class="schedule-feedback" hidden aria-live="polite"></div>
+        </section>
         <article id="script-article" class="script-article" hidden>
           <section class="script-section" data-section="duration">
             <h2 class="script-section__title">Duração</h2>
@@ -60,16 +74,20 @@
             <div id="script-notes" class="script-section__content rich-text"></div>
           </section>
         </article>
+        <div class="script-view__actions">
+          <a class="back-link" href="influencer-plan.html">Voltar</a>
+          <button
+            type="button"
+            class="schedule-script-btn"
+            id="schedule-script-btn"
+            aria-label="Agendar este roteiro"
+          >
+            <span class="schedule-btn__icon" aria-hidden="true">📅</span>
+            <span class="schedule-btn__label">Agendar Roteiro</span>
+          </button>
+        </div>
       </main>
     </div>
-
-    <input
-      type="date"
-      id="schedule-date-input"
-      class="schedule-date-input"
-      aria-hidden="true"
-      tabindex="-1"
-    />
 
     <script type="module" src="/scripts/script-view.js"></script>
   </body>
