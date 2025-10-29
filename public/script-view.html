@@ -17,13 +17,26 @@
             <p id="script-meta" class="script-meta" hidden aria-live="polite"></p>
           </div>
         </div>
-        <button type="button" class="logout-btn" id="logout-btn" aria-label="Sair">
-          <span aria-hidden="true">Sair</span>
-        </button>
+        <div class="page-header__actions">
+          <button
+            type="button"
+            class="schedule-script-btn"
+            id="schedule-script-btn"
+            aria-label="Agendar este roteiro"
+          >
+            <span class="schedule-btn__icon" aria-hidden="true">📅</span>
+            <span class="schedule-btn__label">Agendar Roteiro</span>
+          </button>
+          <button type="button" class="logout-btn" id="logout-btn" aria-label="Sair">
+            <span aria-hidden="true">Sair</span>
+          </button>
+        </div>
       </header>
 
       <main class="script-main" aria-live="polite">
         <div id="status-message" class="status-message" hidden></div>
+        <div id="schedule-status" class="schedule-status" hidden aria-live="polite"></div>
+        <div id="schedule-feedback" class="schedule-feedback" hidden aria-live="polite"></div>
         <article id="script-article" class="script-article" hidden>
           <section class="script-section" data-section="duration">
             <h2 class="script-section__title">Duração</h2>
@@ -52,6 +65,14 @@
         </article>
       </main>
     </div>
+
+    <input
+      type="date"
+      id="schedule-date-input"
+      class="schedule-date-input"
+      aria-hidden="true"
+      tabindex="-1"
+    />
 
     <script type="module" src="/scripts/script-view.js"></script>
   </body>
