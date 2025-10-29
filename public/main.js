@@ -358,258 +358,78 @@
     element.innerHTML = html;
   };
 
-  const ensureUrlHasProtocol = (value = '') => {
-    if (typeof value !== 'string') return '';
-    const trimmed = value.trim();
-    if (!trimmed) return '';
-    return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
-  };
-
-  const extractYouTubeId = (url) => {
-    if (!(url instanceof URL)) return null;
-    const host = url.hostname.replace(/^www\./i, '').toLowerCase();
-    const pathSegments = url.pathname.split('/').filter(Boolean);
-
-    if (host === 'youtu.be') {
-      return pathSegments[0] && /^[A-Za-z0-9_-]{11}$/.test(pathSegments[0]) ? pathSegments[0] : null;
-    }
-
-    if (host.endsWith('youtube.com')) {
-      const searchId = url.searchParams.get('v');
-      if (searchId && /^[A-Za-z0-9_-]{11}$/.test(searchId.trim())) {
-        return searchId.trim();
-      }
-
-      if (pathSegments.length >= 2 && ['embed', 'shorts', 'live'].includes(pathSegments[0])) {
-        const candidate = pathSegments[1];
-        if (candidate && /^[A-Za-z0-9_-]{11}$/.test(candidate.trim())) {
-          return candidate.trim();
-        }
-      }
-    }
-
-    return null;
-  };
-
-  const buildInstagramEmbedUrl = (url) => {
-    if (!(url instanceof URL)) return '';
-    const host = url.hostname.replace(/^www\./i, '').toLowerCase();
-    if (host !== 'instagram.com' && !host.endsWith('.instagram.com')) {
+  const htmlToPlainText = (value = '', { preserveLineBreaks = false } = {}) => {
+    if (value == null || value === '') {
       return '';
     }
 
-    const segments = url.pathname.split('/').filter(Boolean);
-    if (segments.length < 2) {
-      return '';
+    let text = String(value).replace(/\\r\\n/g, '\\n').replace(/\\u00a0/g, ' ');
+
+    if (preserveLineBreaks) {
+      text = text
+        .replace(/<br\\s*\\/?>/gi, '\\n')
+        .replace(/<\\/p>/gi, '\\n\\n')
+        .replace(/<\\/div>/gi, '\\n')
+        .replace(/<\\/h[1-6]>/gi, '\\n')
+        .replace(/<\\/li>/gi, '\\n')
+        .replace(/<li[^>]*>/gi, '• ')
+        .replace(/<p[^>]*>/gi, '')
+        .replace(/<div[^>]*>/gi, '')
+        .replace(/<h[1-6][^>]*>/gi, '')
+        .replace(/<ul[^>]*>/gi, '')
+        .replace(/<ol[^>]*>/gi, '');
+    } else {
+      text = text.replace(/<br\\s*\\/?>/gi, ' ');
     }
 
-    const prefix = segments[0].toLowerCase();
-    const code = segments[1];
-    if (!['p', 'reel', 'tv'].includes(prefix)) {
-      return '';
+    text = text.replace(/<[^>]+>/g, preserveLineBreaks ? '\\n' : ' ');
+
+    if (preserveLineBreaks) {
+      return text.replace(/\\n{3,}/g, '\\n\\n').replace(/[ \\t]+\\n/g, '\\n').trim();
     }
 
-    if (!/^[A-Za-z0-9_-]+$/.test(code)) {
-      return '';
-    }
-
-    return `https://www.instagram.com/${prefix}/${code}/embed/`;
+    return text.replace(/\\s+/g, ' ').trim();
   };
 
-  const normalizeProvider = (provider, fallbackUrl = '') => {
-    const normalized = (provider || '').toLowerCase();
-    if (normalized.includes('youtube')) return 'youtube';
-    if (normalized.includes('instagram')) return 'instagram';
+  const htmlToTextareaValue = (value = '') => htmlToPlainText(value, { preserveLineBreaks: true });
 
-    const direct = ensureUrlHasProtocol(fallbackUrl);
-    if (!direct) return normalized || '';
+  const buildScriptPreview = (sections = [], maxLength = 200) => {
+    const source = Array.isArray(sections) ? sections : [sections];
+    const plainText = source
+      .filter((section) => section)
+      .map((section) => htmlToPlainText(section))
+      .filter((section) => section && section.trim().length > 0)
+      .join(' ')
+      .trim();
 
-    try {
-      const parsed = new URL(direct);
-      const host = parsed.hostname.replace(/^www\./i, '').toLowerCase();
-      if (host.includes('youtube')) return 'youtube';
-      if (host.includes('instagram')) return 'instagram';
-    } catch (error) {
-      // Ignore parsing errors
+    if (!plainText) return '';
+    if (plainText.length <= maxLength) {
+      return plainText;
     }
-
-    return normalized || '';
+    return `${plainText.slice(0, maxLength - 1).trim()}…`;
   };
 
-  const deriveEmbeddedVideoUrl = ({ embedUrl, provider, url }) => {
-    const existing = toTrimmedString(embedUrl);
-    if (existing) {
-      return existing;
+  const createSectionElement = (label, html, { optional = false } = {}) => {
+    const section = document.createElement('section');
+    section.className = 'script-section';
+
+    const titleEl = document.createElement('h4');
+    titleEl.className = 'script-section__title';
+    titleEl.textContent = label;
+    section.appendChild(titleEl);
+
+    const contentEl = document.createElement('div');
+    contentEl.className = 'script-section__content rich-text';
+    if (html) {
+      setRichTextContent(contentEl, html);
+    } else if (!optional) {
+      const emptyParagraph = document.createElement('p');
+      emptyParagraph.textContent = 'Sem conteúdo informado.';
+      contentEl.appendChild(emptyParagraph);
     }
+    section.appendChild(contentEl);
 
-    const direct = ensureUrlHasProtocol(url);
-    if (!direct) {
-      return '';
-    }
-
-    let parsed;
-    try {
-      parsed = new URL(direct);
-    } catch (error) {
-      return '';
-    }
-
-    const normalizedProvider = normalizeProvider(provider, direct);
-    if (normalizedProvider === 'youtube') {
-      const videoId = extractYouTubeId(parsed);
-      return videoId ? `https://www.youtube.com/embed/${videoId}` : '';
-    }
-
-    if (normalizedProvider === 'instagram') {
-      return buildInstagramEmbedUrl(parsed);
-    }
-
-    return '';
-  };
-
-  const decorateEmbedUrl = (src, provider) => {
-    try {
-      const parsed = new URL(src);
-      if (provider === 'youtube') {
-        parsed.searchParams.set('rel', '0');
-        parsed.searchParams.set('modestbranding', '1');
-        parsed.searchParams.set('playsinline', '1');
-      } else if (provider === 'instagram') {
-        parsed.searchParams.set('utm_source', 'ig_embed');
-        parsed.searchParams.set('enable_video', '1');
-        parsed.searchParams.set('hidecaption', '1');
-      }
-      return parsed.toString();
-    } catch (error) {
-      return src;
-    }
-  };
-
-  const buildAutoplayUrl = (src, provider) => {
-    const decorated = decorateEmbedUrl(src, provider);
-    try {
-      const parsed = new URL(decorated);
-      if (provider === 'youtube') {
-        parsed.searchParams.set('autoplay', '1');
-        parsed.searchParams.set('mute', '1');
-      } else if (provider === 'instagram') {
-        parsed.searchParams.set('autoplay', '1');
-        parsed.searchParams.set('mute', '1');
-      }
-      return parsed.toString();
-    } catch (error) {
-      return decorated;
-    }
-  };
-
-  const extractYouTubeIdFromEmbed = (src) => {
-    try {
-      const parsed = new URL(src);
-      const segments = parsed.pathname.split('/').filter(Boolean);
-      const candidate = segments[segments.length - 1];
-      if (candidate && /^[A-Za-z0-9_-]{11}$/.test(candidate)) {
-        return candidate;
-      }
-      const searchId = parsed.searchParams.get('v');
-      return searchId && /^[A-Za-z0-9_-]{11}$/.test(searchId) ? searchId : null;
-    } catch (error) {
-      return null;
-    }
-  };
-
-  const createOverlayButton = () => {
-    const overlay = document.createElement('button');
-    overlay.type = 'button';
-    overlay.className = 'embedded-video__overlay';
-
-    const icon = document.createElement('span');
-    icon.className = 'embedded-video__overlay-icon';
-    icon.setAttribute('aria-hidden', 'true');
-
-    const label = document.createElement('span');
-    label.className = 'embedded-video__overlay-label';
-    label.textContent = 'Reproduzir vídeo';
-
-    overlay.append(icon, label);
-    return overlay;
-  };
-
-  const createEmbeddedVideo = ({ embedUrl, format, provider, url } = {}) => {
-    const src = deriveEmbeddedVideoUrl({ embedUrl, provider, url });
-    if (!src) return null;
-
-    const normalizedProvider = normalizeProvider(provider, embedUrl || url);
-    const decoratedSrc = decorateEmbedUrl(src, normalizedProvider);
-    const playbackSrc = buildAutoplayUrl(decoratedSrc, normalizedProvider);
-
-    const wrapper = document.createElement('div');
-    wrapper.className = 'embedded-video';
-    const orientation = typeof format === 'string' && format.toLowerCase() === 'vertical' ? 'vertical' : 'landscape';
-    wrapper.classList.add(`embedded-video--${orientation}`);
-    wrapper.dataset.orientation = orientation;
-    if (normalizedProvider) {
-      wrapper.dataset.provider = normalizedProvider;
-      wrapper.classList.add(`embedded-video--provider-${normalizedProvider}`);
-    }
-
-    if (normalizedProvider === 'youtube') {
-      const videoId = extractYouTubeIdFromEmbed(decoratedSrc) || extractYouTubeIdFromEmbed(playbackSrc);
-      if (videoId) {
-        wrapper.style.setProperty('--embedded-video-thumbnail', `url("https://i.ytimg.com/vi/${videoId}/hqdefault.jpg")`);
-        wrapper.classList.add('embedded-video--has-thumbnail');
-      }
-    }
-
-    const iframe = document.createElement('iframe');
-    iframe.allow =
-      'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
-    iframe.allowFullscreen = true;
-    iframe.setAttribute('allowfullscreen', '');
-    iframe.setAttribute('frameborder', '0');
-    iframe.setAttribute('loading', 'lazy');
-    iframe.referrerPolicy = 'strict-origin-when-cross-origin';
-    iframe.setAttribute('scrolling', 'no');
-    if (normalizedProvider === 'instagram') {
-      iframe.setAttribute('allowtransparency', 'true');
-    }
-    iframe.title = normalizedProvider === 'instagram' ? 'Vídeo do Instagram' : 'Vídeo do YouTube';
-    iframe.dataset.src = playbackSrc;
-
-    const overlay = createOverlayButton();
-    overlay.addEventListener('click', () => {
-      if (!iframe.src) {
-        iframe.src = iframe.dataset.src || decoratedSrc;
-      }
-      wrapper.classList.add('is-playing');
-      overlay.remove();
-    });
-
-    wrapper.append(iframe, overlay);
-    return wrapper;
-  };
-
-  const createVideoSection = (video, { className = 'script-management-video' } = {}) => {
-    if (!video || typeof video !== 'object') return null;
-    const url = toTrimmedString(video.url || video.href || '');
-    const embedUrl = toTrimmedString(video.embedUrl || '');
-
-    if (!url && !embedUrl) return null;
-
-    const container = document.createElement('div');
-    container.className = className;
-
-    const embed = createEmbeddedVideo({
-      embedUrl,
-      provider: video.provider,
-      url,
-      format: video.format ?? video.videoFormat ?? null
-    });
-    if (!embed) {
-      return null;
-    }
-
-    container.appendChild(embed);
-    return container;
+    return section;
   };
 
   const stripDiacritics = (value = '') => {
@@ -1529,17 +1349,53 @@
     return Array.isArray(data) ? data : [];
   };
 
-  const createScript = async ({ title, description, videoUrl }) =>
-    apiFetch('/scripts', { method: 'POST', body: { title, description, videoUrl } });
+  const createScript = async ({
+    title,
+    duration,
+    context,
+    task,
+    importantPoints,
+    closing,
+    additionalNotes
+  }) =>
+    apiFetch('/scripts', {
+      method: 'POST',
+      body: {
+        title,
+        duration,
+        context,
+        task,
+        importantPoints,
+        closing,
+        additionalNotes
+      }
+    });
 
-  const updateScript = async ({ id, title, description, videoUrl }) => {
+  const updateScript = async ({
+    id,
+    title,
+    duration,
+    context,
+    task,
+    importantPoints,
+    closing,
+    additionalNotes
+  }) => {
     const scriptId = Number(id);
     if (!Number.isInteger(scriptId) || scriptId <= 0) {
       throw new Error('Identificador de roteiro invalido.');
     }
     return apiFetch(`/scripts/${scriptId}`, {
       method: 'PUT',
-      body: { title, description, videoUrl }
+      body: {
+        title,
+        duration,
+        context,
+        task,
+        importantPoints,
+        closing,
+        additionalNotes
+      }
     });
   };
 
@@ -3583,86 +3439,62 @@
     const listContainer = document.getElementById('scriptList');
     const cancelEditButton = document.getElementById('cancelScriptEditButton');
     const newScriptShortcutButton = document.getElementById('newScriptShortcutButton');
-
-    const titleInput = form?.elements.title || form?.elements.titulo;
-    const videoInput = form?.elements.videoUrl || form?.elements.video || form?.elements.link || null;
-    const descriptionInput = form?.elements.description || form?.elements.descricao;
     const submitButton = form?.querySelector('button[type="submit"]');
 
-    const convertScriptHtmlToEditorValue = (value = '') => {
-      const html = prepareScriptHtml(value);
-      if (!html) return '';
-      const temp = document.createElement('div');
-      temp.innerHTML = html;
-      const text =
-        typeof temp.innerText === 'string' ? temp.innerText : temp.textContent || '';
-      return text.replace(/\r\n/g, '\n').replace(/\u00a0/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
-    };
+    const titleInput = form?.elements.title || form?.elements.titulo || null;
+    const durationInput = form?.elements.duration || form?.elements.duracao || null;
+    const contextInput = form?.elements.context || form?.elements.contexto || null;
+    const taskInput = form?.elements.task || form?.elements.tarefa || null;
+    const importantPointsInput =
+      form?.elements.importantPoints || form?.elements.pontos_importantes || null;
+    const closingInput = form?.elements.closing || form?.elements.finalizacao || null;
+    const notesInput = form?.elements.additionalNotes || form?.elements.notas_adicionais || null;
+
+    addRealtimeValidation(form);
+
+    let cachedScripts = [];
+    let editingScriptId = null;
+    const scriptExpansionState = new Map();
 
     const normalizeScriptRecord = (script) => {
       const id = Number(script?.id ?? script?.script_id ?? script?.scriptId);
       if (!Number.isInteger(id) || id <= 0) return null;
 
       const rawTitle = toTrimmedString(script?.titulo ?? script?.title ?? '');
-      const rawDescription =
-        typeof script?.descricao === 'string'
-          ? script.descricao
-          : typeof script?.description === 'string'
-            ? script.description
-            : '';
+      const durationHtml = script?.duracao ?? script?.duration ?? '';
+      const contextHtml = script?.contexto ?? script?.context ?? '';
+      const taskHtml = script?.tarefa ?? script?.task ?? '';
+      const importantPointsHtml =
+        script?.pontos_importantes ?? script?.importantPoints ?? script?.important_points ?? '';
+      const closingHtml = script?.finalizacao ?? script?.closing ?? '';
+      const notesHtml =
+        script?.notas_adicionais ?? script?.additionalNotes ?? script?.notes ?? '';
 
-      const resolveVideo = () => {
-        if (script?.video && typeof script.video === 'object') {
-          const directUrl = toTrimmedString(script.video.url ?? script.video.href ?? '');
-          const embedUrl = toTrimmedString(script.video.embedUrl ?? '');
-          const provider = toTrimmedString(script.video.provider ?? '');
-          const format = toTrimmedString(script.video.format ?? script.video.videoFormat ?? '');
-          if (directUrl || embedUrl) {
-            return {
-              url: directUrl || null,
-              embedUrl: embedUrl || null,
-              provider: provider || null,
-              format: format || null
-            };
-          }
-        }
-
-        const fallbackUrl = toTrimmedString(script?.video_url ?? script?.videoUrl ?? '');
-        const fallbackEmbed = toTrimmedString(script?.video_embed_url ?? script?.videoEmbedUrl ?? '');
-        const fallbackProvider = toTrimmedString(script?.video_provider ?? script?.videoProvider ?? '');
-        const fallbackFormat = toTrimmedString(script?.video_format ?? script?.videoFormat ?? '');
-
-        if (fallbackUrl || fallbackEmbed) {
-          return {
-            url: fallbackUrl || null,
-            embedUrl: fallbackEmbed || null,
-            provider: fallbackProvider || null,
-            format: fallbackFormat || null
-          };
-        }
-
-        return null;
-      };
-
-      const video = resolveVideo();
+      const preview =
+        toTrimmedString(script?.preview ?? '') ||
+        buildScriptPreview([contextHtml, taskHtml, importantPointsHtml, closingHtml]);
 
       return {
         id,
         title: rawTitle || 'Roteiro sem título',
         rawTitle,
-        description: rawDescription,
-        editorValue: convertScriptHtmlToEditorValue(rawDescription),
-        video,
-        videoUrl: video?.url || '',
-        videoFormat: video?.format || null,
+        duration: durationHtml,
+        context: contextHtml,
+        task: taskHtml,
+        importantPoints: importantPointsHtml,
+        closing: closingHtml,
+        additionalNotes: notesHtml,
+        durationText: htmlToPlainText(durationHtml) || '',
+        contextText: htmlToTextareaValue(contextHtml),
+        taskText: htmlToTextareaValue(taskHtml),
+        importantPointsText: htmlToTextareaValue(importantPointsHtml),
+        closingText: htmlToTextareaValue(closingHtml),
+        additionalNotesText: htmlToTextareaValue(notesHtml),
+        preview,
         createdAt: script?.created_at ?? script?.createdAt ?? null,
         updatedAt: script?.updated_at ?? script?.updatedAt ?? null
       };
     };
-
-    let cachedScripts = [];
-    let editingScriptId = null;
-    const scriptExpansionState = new Map();
 
     const applyScriptExpansionToItem = (item, script, expanded) => {
       if (!item || !script) return;
@@ -3721,6 +3553,21 @@
         const titleEl = document.createElement('h3');
         titleEl.textContent = script.title;
         summary.appendChild(titleEl);
+
+        if (script.durationText) {
+          const durationBadge = document.createElement('span');
+          durationBadge.className = 'script-management-duration';
+          durationBadge.textContent = script.durationText;
+          summary.appendChild(durationBadge);
+        }
+
+        if (script.preview) {
+          const previewEl = document.createElement('p');
+          previewEl.className = 'script-management-preview';
+          previewEl.textContent = script.preview;
+          summary.appendChild(previewEl);
+        }
+
         header.appendChild(summary);
 
         const actionsEl = document.createElement('div');
@@ -3748,37 +3595,36 @@
 
         const bodyInner = document.createElement('div');
         bodyInner.className = 'script-management-item__body-inner';
-        body.appendChild(bodyInner);
 
-        const descriptionEl = document.createElement('div');
-        descriptionEl.className = 'script-management-description rich-text';
-        if (script.description) {
-          setRichTextContent(descriptionEl, script.description);
-        } else {
-          descriptionEl.textContent = 'Nenhuma descrição informada.';
-        }
-        bodyInner.appendChild(descriptionEl);
-
-        const videoSection = createVideoSection(script.video, {
-          className: 'script-management-video'
-        });
-        if (videoSection) {
-          bodyInner.appendChild(videoSection);
+        bodyInner.appendChild(createSectionElement('Contexto', script.context));
+        bodyInner.appendChild(createSectionElement('Tarefa', script.task));
+        bodyInner.appendChild(createSectionElement('Pontos importantes', script.importantPoints));
+        bodyInner.appendChild(createSectionElement('Finalização', script.closing));
+        if (script.additionalNotes) {
+          bodyInner.appendChild(
+            createSectionElement('Notas adicionais', script.additionalNotes, { optional: true })
+          );
         }
 
-        const createdAt = script.createdAt;
-        const updatedAt = script.updatedAt;
-        const hasDifferentDates = createdAt && updatedAt && createdAt !== updatedAt;
-        const referenceDate = hasDifferentDates ? updatedAt : updatedAt || createdAt;
-
-        if (referenceDate) {
+        if (script.createdAt || script.updatedAt) {
           const meta = document.createElement('span');
           meta.className = 'script-meta';
-          const label = hasDifferentDates ? 'Atualizado em' : 'Criado em';
-          meta.textContent = `${label} ${formatDateTimeDetailed(referenceDate)}`;
-          bodyInner.appendChild(meta);
+          const createdAt = script.createdAt ? formatDateTimeDetailed(script.createdAt) : null;
+          const updatedAt =
+            script.updatedAt && script.updatedAt !== script.createdAt
+              ? formatDateTimeDetailed(script.updatedAt)
+              : null;
+          meta.textContent = updatedAt
+            ? `Atualizado em ${updatedAt}`
+            : createdAt
+            ? `Criado em ${createdAt}`
+            : '';
+          if (meta.textContent) {
+            bodyInner.appendChild(meta);
+          }
         }
 
+        body.appendChild(bodyInner);
         item.appendChild(body);
 
         const storedExpanded = scriptExpansionState.get(script.id);
@@ -3829,16 +3675,15 @@
         form.dataset.mode = 'create';
         delete form.dataset.editingId;
       }
-      if (titleInput) {
-        titleInput.removeAttribute('aria-invalid');
-      }
-      if (videoInput) {
-        videoInput.value = '';
-        videoInput.removeAttribute('aria-invalid');
-      }
-      if (descriptionInput) {
-        descriptionInput.removeAttribute('aria-invalid');
-      }
+      [
+        titleInput,
+        durationInput,
+        contextInput,
+        taskInput,
+        importantPointsInput,
+        closingInput,
+        notesInput
+      ].forEach((input) => input?.removeAttribute('aria-invalid'));
       if (submitButton) {
         submitButton.textContent = 'Salvar roteiro';
         submitButton.disabled = false;
@@ -3863,14 +3708,29 @@
         titleInput.value = script.rawTitle || script.title || '';
         titleInput.removeAttribute('aria-invalid');
       }
-      if (videoInput) {
-        videoInput.value = script.video?.url || script.videoUrl || '';
-        videoInput.removeAttribute('aria-invalid');
+      if (durationInput) {
+        durationInput.value = script.durationText || '';
+        durationInput.removeAttribute('aria-invalid');
       }
-      if (descriptionInput) {
-        const editorValue = script.editorValue || script.description || '';
-        descriptionInput.value = editorValue;
-        descriptionInput.removeAttribute('aria-invalid');
+      if (contextInput) {
+        contextInput.value = script.contextText || '';
+        contextInput.removeAttribute('aria-invalid');
+      }
+      if (taskInput) {
+        taskInput.value = script.taskText || '';
+        taskInput.removeAttribute('aria-invalid');
+      }
+      if (importantPointsInput) {
+        importantPointsInput.value = script.importantPointsText || '';
+        importantPointsInput.removeAttribute('aria-invalid');
+      }
+      if (closingInput) {
+        closingInput.value = script.closingText || '';
+        closingInput.removeAttribute('aria-invalid');
+      }
+      if (notesInput) {
+        notesInput.value = script.additionalNotesText || '';
+        notesInput.removeAttribute('aria-invalid');
       }
       if (submitButton) {
         submitButton.textContent = 'Salvar alterações';
@@ -3996,35 +3856,66 @@
       if (!form) return;
 
       const title = toTrimmedString(titleInput?.value || '');
-      const description = toTrimmedString(descriptionInput?.value || '');
-      const videoUrlValue = toTrimmedString(videoInput?.value || '');
+      const duration = toTrimmedString(durationInput?.value || '');
+      const context = toTrimmedString(contextInput?.value || '');
+      const task = toTrimmedString(taskInput?.value || '');
+      const importantPoints = toTrimmedString(importantPointsInput?.value || '');
+      const closing = toTrimmedString(closingInput?.value || '');
+      const additionalNotes = toTrimmedString(notesInput?.value || '');
 
-      const isValidTitle = Boolean(title) && title.length >= 3;
-      const isValidDescription = Boolean(description) && description.length >= 10;
+      const validations = [
+        {
+          input: titleInput,
+          valid: Boolean(title) && title.length >= 3,
+          message: 'Informe um título com pelo menos 3 caracteres.'
+        },
+        {
+          input: durationInput,
+          valid: Boolean(duration),
+          message: 'Informe a duração prevista do conteúdo.'
+        },
+        {
+          input: contextInput,
+          valid: Boolean(context) && context.length >= 10,
+          message: 'Informe o contexto com pelo menos 10 caracteres.'
+        },
+        {
+          input: taskInput,
+          valid: Boolean(task) && task.length >= 10,
+          message: 'Descreva a tarefa com pelo menos 10 caracteres.'
+        },
+        {
+          input: importantPointsInput,
+          valid: Boolean(importantPoints) && importantPoints.length >= 10,
+          message: 'Liste os pontos importantes com pelo menos 10 caracteres.'
+        },
+        {
+          input: closingInput,
+          valid: Boolean(closing) && closing.length >= 5,
+          message: 'Descreva a finalização com pelo menos 5 caracteres.'
+        }
+      ];
 
-      flagInvalidField(titleInput, isValidTitle);
-      flagInvalidField(videoInput, true);
-      flagInvalidField(descriptionInput, isValidDescription);
-
-      if (!isValidTitle) {
-        setMessage(formMessageEl, 'Informe um título com pelo menos 3 caracteres.', 'error');
-        focusFirstInvalidField(form);
-        return;
+      let firstError = null;
+      validations.forEach((rule) => {
+        flagInvalidField(rule.input, rule.valid);
+        if (!rule.valid && !firstError) {
+          firstError = rule;
+        }
+      });
+      if (notesInput) {
+        flagInvalidField(notesInput, true);
       }
 
-      if (!isValidDescription) {
-        setMessage(formMessageEl, 'Informe uma descrição com pelo menos 10 caracteres.', 'error');
+      if (firstError) {
+        setMessage(formMessageEl, firstError.message, 'error');
         focusFirstInvalidField(form);
         return;
       }
 
       const isEditing = Number.isInteger(editingScriptId) && editingScriptId > 0;
 
-      setMessage(
-        formMessageEl,
-        isEditing ? 'Atualizando roteiro...' : 'Salvando roteiro...',
-        'info'
-      );
+      setMessage(formMessageEl, isEditing ? 'Atualizando roteiro...' : 'Salvando roteiro...', 'info');
 
       if (submitButton) {
         submitButton.disabled = true;
@@ -4034,16 +3925,20 @@
       }
 
       try {
+        const payload = {
+          title,
+          duration,
+          context,
+          task,
+          importantPoints,
+          closing,
+          additionalNotes
+        };
         if (isEditing) {
-          await updateScript({
-            id: editingScriptId,
-            title,
-            description,
-            videoUrl: videoUrlValue || null
-          });
+          await updateScript({ id: editingScriptId, ...payload });
           setMessage(formMessageEl, 'Roteiro atualizado com sucesso!', 'success');
         } else {
-          await createScript({ title, description, videoUrl: videoUrlValue || null });
+          await createScript(payload);
           setMessage(formMessageEl, 'Roteiro cadastrado com sucesso!', 'success');
         }
 
@@ -4054,14 +3949,9 @@
         setMessage(
           formMessageEl,
           error.message ||
-            (isEditing
-              ? 'Nao foi possivel atualizar o roteiro.'
-              : 'Nao foi possivel cadastrar o roteiro.'),
+            (isEditing ? 'Nao foi possivel atualizar o roteiro.' : 'Nao foi possivel cadastrar o roteiro.'),
           'error'
         );
-        if (videoInput && error.message && /vídeo|video/i.test(error.message)) {
-          flagInvalidField(videoInput, false);
-        }
       } finally {
         if (submitButton) {
           submitButton.disabled = false;
@@ -4075,7 +3965,6 @@
     resetForm({ keepMessage: true });
     loadScriptsList();
   };
-
 
   const renderInfluencerDetails = (container, data) => {
     if (!container) return;
