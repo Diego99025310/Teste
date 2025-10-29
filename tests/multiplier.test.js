@@ -1,7 +1,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 
-const { calculateCommissionMultiplier, summarizePoints, getMultiplier } = require('../src/utils/multiplier');
+const { calculateCommissionMultiplier, summarizePoints, getMultiplier } = require('../backend/utils/multiplier');
 
 test('calculateCommissionMultiplier returns correct multiplier per activation band', () => {
   assert.deepStrictEqual(calculateCommissionMultiplier(0).multiplier, 0);

@@ -5,7 +5,7 @@
 ![Node.js CI](https://img.shields.io/badge/tests-node--test-blueviolet?style=for-the-badge)
 ![License: MIT](https://img.shields.io/badge/license-MIT-green?style=for-the-badge)
 
-Plataforma full-stack desenvolvida em **Node.js + Express + SQLite**, com front-end web responsivo pronto para empacotamento em Electron. O sistema foi projetado para **gestão operacional de influenciadoras**: cadastro completo, agendamento de roteiros, acompanhamento de stories e cálculo de comissões. O público-alvo são equipes de marketing e operações que precisam de um fluxo auditável, colaborativo e centralizado para suas campanhas recorrentes.
+Plataforma full-stack desenvolvida em **Node.js + Express + SQLite** com uma interface moderna em **React + TailwindCSS** pronta para empacotamento em Electron. O sistema foi projetado para **gestão operacional de influenciadoras**: cadastro completo, agendamento de roteiros, acompanhamento de stories e cálculo de comissões. O público-alvo são equipes de marketing e operações que precisam de um fluxo auditável, colaborativo e centralizado para suas campanhas recorrentes.
 
 ---
 
@@ -47,7 +47,9 @@ A aplicação pode ser executada como servidor web (Express) ou embalada em um w
 - ⚡ **Express 5** — camada HTTP, rotas REST e middlewares.
 - 🗄️ **SQLite + better-sqlite3** — banco relacional embutido com WAL habilitado.
 - 🔐 **jsonwebtoken & bcryptjs** — autenticação baseada em JWT e hashing seguro.
-- 🎨 **HTML5, CSS3 e JavaScript** — front-end responsivo servido por arquivos estáticos.
+- ⚛️ **React 18** — interface componentizada com React Router e hooks.
+- 🎨 **TailwindCSS 3** — design system HidraPink com utilitários personalizáveis.
+- ⚡ **Vite 5** — bundler moderno com hot reload para o front-end.
 - 🧪 **node:test & SuperTest** — testes automatizados de API.
 - 🖥️ **Electron (opcional)** — empacotamento desktop do front-end para operação local.
 
@@ -88,30 +90,53 @@ Configurações importantes (arquivo `.env`):
 | `JWT_SECRET`         | Chave de assinatura dos tokens JWT.                                       |
 | `JWT_EXPIRATION`     | Tempo de expiração (ex.: `1d`, `12h`).                                    |
 
+No diretório `frontend/`, utilize o `.env.example` para configurar a variável `VITE_API_BASE_URL`, mantendo `/api` como padrão em desenvolvimento.
+
 ---
 
 ## ▶️ Execução e Uso
 
 ```bash
-# Executar em modo desenvolvimento
-npm start
+# Instalar dependências (backend e frontend)
+npm install
 
-# Rodar testes automatizados
+# Subir backend + frontend em modo desenvolvimento
+npm run dev
+
+# Rodar testes automatizados do backend
 npm test
 ```
 
-Durante o primeiro `npm start`, o servidor Express:
+O comando `npm run dev` executa **simultaneamente**:
+
+- `nodemon backend/server.js` — reiniciando a API Express/SQLite a cada alteração.
+- `vite` dentro de `frontend/` — disponibilizando o SPA React em `http://localhost:5173`.
+
+Durante o primeiro boot do backend, o servidor Express:
 
 1. Inicializa/migra o banco SQLite, incluindo índices e dados padrão.
 2. Garante a existência do usuário master com as credenciais definidas.
-3. Publica o front-end estático em `http://localhost:3000`.
+3. Disponibiliza a API REST em `http://localhost:3000`.
+
+Para o modo de produção:
+
+```bash
+# Gerar build otimizado do frontend
+npm run build
+
+# Testar localmente o bundle gerado (Vite preview + API)
+npm run preview
+
+# Servir o build com o Express (frontend + API na mesma porta)
+npm start
+```
 
 ### Acesso rápido
 
-1. Abra `http://localhost:3000` no navegador.
-2. Realize login como **master** utilizando as credenciais do `.env`.
-3. Cadastre influenciadoras manualmente ou importe um CSV.
-4. Compartilhe o acesso com as influenciadoras para que planejem roteiros e submetam entregas.
+1. Abra `http://localhost:5173` no navegador.
+2. Realize login com um dos atalhos da tela inicial ou informe suas credenciais.
+3. Utilize o menu lateral para alternar entre o painel Master e o painel da Influenciadora.
+4. Cadastre influenciadoras manualmente ou importe um CSV via API para alimentar a interface.
 
 ### Exemplos de uso
 
@@ -123,25 +148,29 @@ Durante o primeiro `npm start`, o servidor Express:
 
 > ![Planner de roteiros (placeholder)](docs/img/planner-placeholder.png)
 
-Para empacotar via Electron, utilize os arquivos em `public/` como front-end e configure um processo principal que consuma a API local (ex.: `http://localhost:3000`).
+Para empacotar via Electron, gere o build de produção com `npm run build` (saída em `dist/`) e configure o processo principal para consumir a API local (ex.: `http://localhost:3000`).
 
 ---
 
 ## 🗂️ Estrutura de Pastas
 
 ```text
-├── public/                # Front-end responsivo (HTML, CSS e JS)
-│   └── main.js            # Consumo da API e interações de UI
-├── src/
-│   ├── server.js          # Servidor Express, rotas REST e regras de negócio
+├── backend/               # API Express (Node.js + SQLite)
+│   ├── server.js          # Entrada principal da API
 │   ├── database.js        # Setup SQLite, migrações e transações
-│   ├── config/
-│   │   └── env.js         # Carregamento de variáveis de ambiente
+│   ├── config/            # Variáveis de ambiente e helpers
 │   ├── middlewares/       # Autenticação, autorização e aceite contratual
-│   ├── routes/            # Fluxo de aceite e rotas segmentadas
+│   ├── routes/            # Fluxos específicos da aplicação
 │   └── utils/             # Funções utilitárias (hash, pontuação, multiplicadores)
-├── scripts/               # Scripts auxiliares para CSVs e auditoria
+├── frontend/              # Interface React + TailwindCSS (Vite)
+│   ├── src/               # Componentes, layouts e páginas
+│   ├── public/            # Assets estáticos do SPA
+│   ├── index.html         # Entry point do Vite
+│   ├── tailwind.config.js # Configuração de tema HidraPink
+│   └── vite.config.js     # Dev server com proxy /api → backend
+├── public/                # Assets estáticos legados e termos
 ├── docs/                  # Documentação operacional detalhada
+├── scripts/               # Scripts auxiliares para CSVs e auditoria
 ├── tests/                 # Testes automatizados com node:test + SuperTest
 ├── data/                  # Artefatos de apoio (cupons válidos, templates)
 ├── package.json           # Dependências e scripts npm
