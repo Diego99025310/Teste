@@ -752,7 +752,15 @@ test('endpoints mobile-first de agendamento retornam dados completos', async () 
   const scriptResponse = await request(app)
     .post('/scripts')
     .set('Authorization', `Bearer ${masterToken}`)
-    .send({ title: 'Roteiro Mobile', description: 'Demonstre o uso do HidraPink em uma rotina diária.' });
+    .send({
+      title: 'Roteiro Mobile',
+      duration: '60 segundos de conteúdo.',
+      context: 'Apresente a influenciadora e o momento de uso do produto HidraPink.',
+      task: 'Demonstre o passo a passo da aplicação em uma rotina diária completa.',
+      importantPoints: 'Reforce os principais benefícios e resultados esperados com o produto.',
+      closing: 'Finalize convidando para usar o cupom especial e compartilhar o resultado.',
+      additionalNotes: 'Capriche na energia positiva e fale de forma leve.'
+    });
 
   assert.strictEqual(scriptResponse.status, 201);
   const scriptId = scriptResponse.body.id;

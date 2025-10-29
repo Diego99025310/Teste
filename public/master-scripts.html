@@ -20,8 +20,8 @@
       <section class="card">
         <h2>Cadastrar novo roteiro</h2>
         <p class="note">
-          Informe um título, opcionalmente um link de vídeo, e descreva o passo a passo ou dicas que deseja
-          compartilhar.
+          Estruture o roteiro informando duração estimada, contexto, tarefa principal, pontos importantes, forma de finalização
+          e observações adicionais para apoiar a influenciadora.
         </p>
         <form id="scriptForm">
           <label>
@@ -30,23 +30,66 @@
           </label>
 
           <label>
-            <span class="section-title">Link do vídeo (opcional)</span>
+            <span class="section-title">Duração</span>
             <input
-              type="url"
-              name="videoUrl"
-              inputmode="url"
-              maxlength="300"
-              placeholder="Cole um link do YouTube ou Instagram"
+              type="text"
+              name="duration"
+              maxlength="120"
+              placeholder="Ex.: 60 segundos | 3 stories"
+              required
             />
           </label>
 
           <label>
-            <span class="section-title">Descrição</span>
+            <span class="section-title">Contexto</span>
             <textarea
-              name="description"
-              rows="6"
-              placeholder="Explique o formato do conteúdo, orientações de gravação, legendas sugeridas e outros detalhes."
+              name="context"
+              rows="4"
+              placeholder="Explique o cenário, objetivo da comunicação e por que o conteúdo é relevante."
               required
+              maxlength="6000"
+            ></textarea>
+          </label>
+
+          <label>
+            <span class="section-title">Tarefa</span>
+            <textarea
+              name="task"
+              rows="4"
+              placeholder="Detalhe o passo a passo principal que a influenciadora deve seguir."
+              required
+              maxlength="6000"
+            ></textarea>
+          </label>
+
+          <label>
+            <span class="section-title">Pontos importantes</span>
+            <textarea
+              name="importantPoints"
+              rows="4"
+              placeholder="Liste tópicos essenciais, diferenciais do produto ou alertas de linguagem."
+              required
+              maxlength="6000"
+            ></textarea>
+          </label>
+
+          <label>
+            <span class="section-title">Finalização</span>
+            <textarea
+              name="closing"
+              rows="3"
+              placeholder="Oriente como encerrar o conteúdo, chamada para ação ou reforço de marca."
+              required
+              maxlength="4000"
+            ></textarea>
+          </label>
+
+          <label>
+            <span class="section-title">Notas adicionais (opcional)</span>
+            <textarea
+              name="additionalNotes"
+              rows="3"
+              placeholder="Compartilhe observações extras, avisos de produto ou referências."
               maxlength="6000"
             ></textarea>
           </label>

@@ -511,7 +511,13 @@ const createContentScriptsTable = (tableName = 'content_scripts') => `
   CREATE TABLE ${tableName} (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     titulo TEXT NOT NULL,
-    descricao TEXT NOT NULL,
+    duracao TEXT NOT NULL DEFAULT '',
+    contexto TEXT NOT NULL DEFAULT '',
+    tarefa TEXT NOT NULL DEFAULT '',
+    pontos_importantes TEXT NOT NULL DEFAULT '',
+    finalizacao TEXT NOT NULL DEFAULT '',
+    notas_adicionais TEXT NOT NULL DEFAULT '',
+    descricao TEXT NOT NULL DEFAULT '',
     video_url TEXT,
     video_format TEXT,
     created_by INTEGER,
@@ -537,13 +543,24 @@ const ensureContentScriptsTable = () => {
     }
   };
 
-  ensureColumn('titulo', 'titulo TEXT NOT NULL DEFAULT ""');
-  ensureColumn('descricao', 'descricao TEXT NOT NULL DEFAULT ""');
+  ensureColumn('titulo', "titulo TEXT NOT NULL DEFAULT ''");
+  ensureColumn('duracao', "duracao TEXT NOT NULL DEFAULT ''");
+  ensureColumn('contexto', "contexto TEXT NOT NULL DEFAULT ''");
+  ensureColumn('tarefa', "tarefa TEXT NOT NULL DEFAULT ''");
+  ensureColumn('pontos_importantes', "pontos_importantes TEXT NOT NULL DEFAULT ''");
+  ensureColumn('finalizacao', "finalizacao TEXT NOT NULL DEFAULT ''");
+  ensureColumn('notas_adicionais', "notas_adicionais TEXT NOT NULL DEFAULT ''");
+  ensureColumn('descricao', "descricao TEXT NOT NULL DEFAULT ''");
   ensureColumn('video_url', 'video_url TEXT');
   ensureColumn('video_format', 'video_format TEXT');
   ensureColumn('created_by', 'created_by INTEGER');
   ensureColumn('created_at', 'created_at DATETIME DEFAULT CURRENT_TIMESTAMP');
   ensureColumn('updated_at', 'updated_at DATETIME DEFAULT CURRENT_TIMESTAMP');
+
+  const legacyDescriptionToNotesStmt = db.prepare(
+    "UPDATE content_scripts SET notas_adicionais = descricao WHERE (notas_adicionais IS NULL OR notas_adicionais = '') AND descricao IS NOT NULL AND descricao <> ''"
+  );
+  legacyDescriptionToNotesStmt.run();
 
   db.exec('CREATE INDEX IF NOT EXISTS idx_content_scripts_created_at ON content_scripts(created_at DESC);');
 };
