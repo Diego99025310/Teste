@@ -25,8 +25,30 @@
       <main class="script-main" aria-live="polite">
         <div id="status-message" class="status-message" hidden></div>
         <article id="script-article" class="script-article" hidden>
-          <div id="script-description" class="script-description"></div>
-          <div id="script-video" class="script-video" hidden></div>
+          <section class="script-section" data-section="duration">
+            <h2 class="script-section__title">Duração</h2>
+            <div id="script-duration" class="script-section__content rich-text"></div>
+          </section>
+          <section class="script-section" data-section="context">
+            <h2 class="script-section__title">Contexto</h2>
+            <div id="script-context" class="script-section__content rich-text"></div>
+          </section>
+          <section class="script-section" data-section="task">
+            <h2 class="script-section__title">Tarefa</h2>
+            <div id="script-task" class="script-section__content rich-text"></div>
+          </section>
+          <section class="script-section" data-section="important-points">
+            <h2 class="script-section__title">Pontos importantes</h2>
+            <div id="script-important-points" class="script-section__content rich-text"></div>
+          </section>
+          <section class="script-section" data-section="closing">
+            <h2 class="script-section__title">Finalização</h2>
+            <div id="script-closing" class="script-section__content rich-text"></div>
+          </section>
+          <section id="script-notes-section" class="script-section" data-section="notes" hidden>
+            <h2 class="script-section__title">Notas adicionais</h2>
+            <div id="script-notes" class="script-section__content rich-text"></div>
+          </section>
         </article>
       </main>
     </div>

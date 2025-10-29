@@ -221,6 +221,57 @@ button {
   gap: 12px;
 }
 
+.roteiro-duration {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(76, 175, 80, 0.14);
+  color: var(--green-600);
+  font-size: 0.75rem;
+  font-weight: 600;
+  width: fit-content;
+}
+
+.roteiro-preview {
+  margin: 6px 0 0;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: var(--gray-600);
+}
+
+.roteiro-sections {
+  display: grid;
+  gap: 12px;
+}
+
+.roteiro-section {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--gray-200);
+  background: #fff;
+}
+
+.roteiro-section__title {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--pink-700);
+}
+
+.roteiro-section__content {
+  margin: 0;
+  color: var(--gray-700);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  white-space: pre-line;
+}
+
 .card-actions {
   display: flex;
   flex-wrap: wrap;

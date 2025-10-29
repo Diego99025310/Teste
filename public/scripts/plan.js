@@ -106,14 +106,38 @@ const logout = () => {
 
 elements.logoutBtn?.addEventListener('click', logout);
 
-const toPlainText = (html) => {
+const toPlainText = (html, { preserveBreaks = false } = {}) => {
   if (!html) return '';
-  const stripped = String(html)
-    .replace(/<br\s*\/?>/gi, '\n')
+  let value = String(html);
+
+  if (preserveBreaks) {
+    value = value
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/p>/gi, '\n\n')
+      .replace(/<\/div>/gi, '\n')
+      .replace(/<\/h[1-6]>/gi, '\n')
+      .replace(/<\/li>/gi, '\n')
+      .replace(/<li[^>]*>/gi, '• ')
+      .replace(/<p[^>]*>/gi, '')
+      .replace(/<div[^>]*>/gi, '')
+      .replace(/<h[1-6][^>]*>/gi, '')
+      .replace(/<ul[^>]*>/gi, '')
+      .replace(/<ol[^>]*>/gi, '');
+
+    value = value.replace(/<[^>]+>/g, '');
+
+    return value
+      .split('\n')
+      .map((line) => line.replace(/\s+/g, ' ').trim())
+      .filter((line) => line.length > 0)
+      .join('\n');
+  }
+
+  return value
+    .replace(/<br\s*\/?>/gi, ' ')
     .replace(/<[^>]+>/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
-  return stripped;
 };
 
 const formatDateLabel = (isoDate) => {
@@ -223,13 +247,49 @@ const setLoading = (loading) => {
 
 const normalizeScript = (script) => {
   if (!script) return null;
-  const plain = toPlainText(script.preview ?? script.descricao ?? script.description);
-  const preview = plain.length > 180 ? `${plain.slice(0, 177).trim()}…` : plain;
+
+  const id = script.id ?? null;
+  const title = script.title ?? script.titulo ?? (id ? `Roteiro #${id}` : 'Roteiro');
+
+  const duration = script.duration ?? script.duracao ?? '';
+  const context = script.context ?? script.contexto ?? '';
+  const task = script.task ?? script.tarefa ?? '';
+  const importantPoints =
+    script.importantPoints ?? script.important_points ?? script.pontos_importantes ?? '';
+  const closing = script.closing ?? script.finalization ?? script.finalizacao ?? '';
+  const additionalNotes = script.additionalNotes ?? script.notas_adicionais ?? script.notes ?? '';
+
+  const durationText = toPlainText(duration);
+  const contextText = toPlainText(context, { preserveBreaks: true });
+  const taskText = toPlainText(task, { preserveBreaks: true });
+  const importantPointsText = toPlainText(importantPoints, { preserveBreaks: true });
+  const closingText = toPlainText(closing, { preserveBreaks: true });
+  const additionalNotesText = toPlainText(additionalNotes, { preserveBreaks: true });
+
+  const previewFromApi = toPlainText(script.preview ?? '', { preserveBreaks: false });
+  const fallbackPreviewSegments = [contextText, taskText, importantPointsText, closingText]
+    .map((segment) => segment.replace(/\s+/g, ' ').trim())
+    .filter((segment) => segment.length > 0);
+  const fallbackPreview = fallbackPreviewSegments.join(' ');
+  const previewSource = (previewFromApi || fallbackPreview).trim();
+  const preview = previewSource.length > 180 ? `${previewSource.slice(0, 177).trim()}…` : previewSource;
+
   return {
-    id: script.id,
-    title: script.title ?? script.titulo ?? `Roteiro #${script.id}`,
+    id,
+    title,
     preview,
-    description: script.description ?? script.descricao ?? '',
+    duration,
+    durationText,
+    context,
+    contextText,
+    task,
+    taskText,
+    importantPoints,
+    importantPointsText,
+    closing,
+    closingText,
+    additionalNotes,
+    additionalNotesText,
     product: script.product ?? null,
     updatedAt: script.updatedAt ?? script.updated_at ?? null,
     createdAt: script.createdAt ?? script.created_at ?? null
@@ -269,7 +329,6 @@ const normalizePlan = (plan) => {
     notes: plan.notes ?? null,
     content_script_id: scriptId,
     script_title: plan.scriptTitle ?? plan.script_title ?? null,
-    script_description: plan.scriptDescription ?? plan.script_description ?? null,
     created_at: plan.createdAt ?? plan.created_at ?? null,
     updated_at: plan.updatedAt ?? plan.updated_at ?? null,
     _removed: false,
@@ -513,6 +572,28 @@ const clearList = () => {
   }
 };
 
+const createSectionSummary = (label, content, { optional = false, fallback = '' } = {}) => {
+  const normalized = typeof content === 'string' ? content.trim() : '';
+  if (!normalized && optional) {
+    return null;
+  }
+
+  const section = document.createElement('div');
+  section.className = 'roteiro-section';
+
+  const title = document.createElement('h4');
+  title.className = 'roteiro-section__title';
+  title.textContent = label;
+  section.appendChild(title);
+
+  const body = document.createElement('p');
+  body.className = 'roteiro-section__content';
+  body.textContent = normalized || fallback || '';
+  section.appendChild(body);
+
+  return section;
+};
+
 const renderRoteiros = () => {
   if (!elements.roteirosList) return;
   clearList();
@@ -549,6 +630,13 @@ const renderRoteiros = () => {
     title.textContent = script.title;
     headerInfo.appendChild(title);
 
+    if (script.durationText) {
+      const duration = document.createElement('span');
+      duration.className = 'roteiro-duration';
+      duration.textContent = script.durationText;
+      headerInfo.appendChild(duration);
+    }
+
     if (script.product) {
       const badge = document.createElement('span');
       badge.className = 'roteiro-badge';
@@ -556,10 +644,39 @@ const renderRoteiros = () => {
       headerInfo.appendChild(badge);
     }
 
+    if (script.preview) {
+      const preview = document.createElement('p');
+      preview.className = 'roteiro-preview';
+      preview.textContent = script.preview;
+      headerInfo.appendChild(preview);
+    }
+
     header.appendChild(headerInfo);
 
     const details = document.createElement('div');
     details.className = 'roteiro-details';
+
+    const sectionsContainer = document.createElement('div');
+    sectionsContainer.className = 'roteiro-sections';
+
+    const sections = [
+      createSectionSummary('Duração', script.durationText, { fallback: 'Duração não informada.' }),
+      createSectionSummary('Contexto', script.contextText, { fallback: 'Contexto não informado.' }),
+      createSectionSummary('Tarefa', script.taskText, { fallback: 'Tarefa não informada.' }),
+      createSectionSummary('Pontos importantes', script.importantPointsText, {
+        fallback: 'Pontos importantes não informados.'
+      }),
+      createSectionSummary('Finalização', script.closingText, { fallback: 'Finalização não informada.' }),
+      createSectionSummary('Notas adicionais', script.additionalNotesText, { optional: true })
+    ];
+
+    sections
+      .filter(Boolean)
+      .forEach((section) => sectionsContainer.appendChild(section));
+
+    if (sectionsContainer.childElementCount > 0) {
+      details.appendChild(sectionsContainer);
+    }
 
     const actions = document.createElement('div');
     actions.className = 'card-actions';
