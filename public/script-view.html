@@ -45,41 +45,27 @@
           </section>
         </article>
 
-        <section class="script-schedule" aria-labelledby="script-schedule-title">
-          <div
-            id="schedule-card"
-            class="script-schedule__card"
-            aria-live="polite"
-            hidden
-          >
-            <h2 id="script-schedule-title" class="script-schedule__title">
-              Agendar este roteiro
-            </h2>
-            <p class="script-schedule__description">
-              Escolha uma data dentro do ciclo vigente para enviar o agendamento para aprovação.
-            </p>
-            <label class="script-schedule__label" for="schedule-date-input">Data do agendamento</label>
-            <input
-              type="date"
-              id="schedule-date-input"
-              class="schedule-date-input"
-              name="schedule-date"
-              autocomplete="off"
-            />
-          </div>
-
+        <section id="script-schedule" class="script-schedule" aria-labelledby="script-schedule-title">
+          <h2 id="script-schedule-title" class="visually-hidden">Agendar este roteiro</h2>
           <div class="script-schedule__actions">
             <button
               type="button"
               class="schedule-script-btn"
               id="schedule-script-btn"
               aria-label="Agendar este roteiro"
+              aria-haspopup="dialog"
+              aria-expanded="false"
             >
               <span class="schedule-btn__icon" aria-hidden="true">📅</span>
               <span class="schedule-btn__label">Agendar Roteiro</span>
             </button>
             <a class="script-schedule__back" href="influencer-plan.html">Voltar</a>
           </div>
+          <div
+            id="script-schedule-popover-host"
+            class="script-schedule__popover-host"
+            aria-live="polite"
+          ></div>
         </section>
       </main>
     </div>

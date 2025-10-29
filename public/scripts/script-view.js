@@ -25,11 +25,15 @@ const elements = {
   scheduleButtonLabel: document.querySelector('#schedule-script-btn .schedule-btn__label'),
   scheduleStatus: document.getElementById('schedule-status'),
   scheduleFeedback: document.getElementById('schedule-feedback'),
-  scheduleCard: document.getElementById('schedule-card'),
-  scheduleDateInput: document.getElementById('schedule-date-input')
+  scheduleSection: document.getElementById('script-schedule'),
+  schedulePopoverHost: document.getElementById('script-schedule-popover-host')
 };
 
 const DEFAULT_SCHEDULE_LABEL = elements.scheduleButtonLabel?.textContent?.trim() || 'Agendar Roteiro';
+
+const SCHEDULE_POPOVER_ID = 'script-schedule-popover';
+
+let schedulePopover = null;
 
 const STATUS_LABELS = {
   scheduled: 'Agendado',
@@ -129,11 +133,6 @@ const logout = () => {
 };
 
 elements.scheduleButton?.addEventListener('click', handleScheduleButtonClick);
-elements.scheduleDateInput?.addEventListener('change', (event) => {
-  const value = event?.target?.value ?? '';
-  scheduleScript(value);
-  event?.target?.blur?.();
-});
 
 const ensureAuth = () => {
   const token = getToken();
@@ -183,37 +182,206 @@ const setScheduleButtonLabel = (label) => {
   elements.scheduleButtonLabel.textContent = label;
 };
 
-const revealScheduleCard = () => {
-  if (!elements.scheduleCard) return;
-  if (!elements.scheduleCard.hasAttribute('hidden')) return;
-  elements.scheduleCard.removeAttribute('hidden');
+const getSchedulePopoverHost = () => {
+  return elements.schedulePopoverHost || elements.scheduleSection || document.body;
 };
 
-const setScheduleDateInputDisabled = (disabled) => {
-  if (!elements.scheduleDateInput) return;
-  if (disabled) {
-    elements.scheduleDateInput.setAttribute('disabled', '');
-    elements.scheduleDateInput.setAttribute('aria-disabled', 'true');
-  } else {
-    elements.scheduleDateInput.removeAttribute('disabled');
-    elements.scheduleDateInput.removeAttribute('aria-disabled');
+const buildCycleHelperMessage = () => {
+  if (state.cycle?.startDate && state.cycle?.endDate) {
+    return `Ciclo vigente: ${formatDateLabel(state.cycle.startDate)} até ${formatDateLabel(state.cycle.endDate)}.`;
   }
-};
-
-const applyScheduleDateConstraints = () => {
-  if (!elements.scheduleDateInput) return;
 
   if (state.cycle?.startDate) {
-    elements.scheduleDateInput.min = state.cycle.startDate;
-  } else {
-    elements.scheduleDateInput.removeAttribute('min');
+    return `Ciclo vigente a partir de ${formatDateLabel(state.cycle.startDate)}.`;
   }
 
   if (state.cycle?.endDate) {
-    elements.scheduleDateInput.max = state.cycle.endDate;
-  } else {
-    elements.scheduleDateInput.removeAttribute('max');
+    return `Ciclo vigente até ${formatDateLabel(state.cycle.endDate)}.`;
   }
+
+  return 'Selecione um dia disponível para a publicação.';
+};
+
+const updateSchedulePopoverDetails = () => {
+  if (!schedulePopover) return;
+
+  const { input, helper } = schedulePopover;
+
+  if (input) {
+    if (state.cycle?.startDate) {
+      input.min = state.cycle.startDate;
+    } else {
+      input.removeAttribute('min');
+    }
+
+    if (state.cycle?.endDate) {
+      input.max = state.cycle.endDate;
+    } else {
+      input.removeAttribute('max');
+    }
+  }
+
+  if (helper) {
+    const baseMessage = buildCycleHelperMessage();
+    if (state.scheduleOccurrences.length) {
+      const suffix = state.scheduleOccurrences.length === 1 ? 'data agendada' : 'datas agendadas';
+      helper.textContent = `${baseMessage} Você já possui ${state.scheduleOccurrences.length} ${suffix} para este roteiro.`;
+    } else {
+      helper.textContent = baseMessage;
+    }
+  }
+};
+
+const closeSchedulePopover = ({ focusTrigger = false } = {}) => {
+  if (!schedulePopover) return;
+  schedulePopover.removeListeners?.();
+  schedulePopover.container?.remove?.();
+  schedulePopover = null;
+
+  if (elements.scheduleButton) {
+    elements.scheduleButton.setAttribute('aria-expanded', 'false');
+    elements.scheduleButton.removeAttribute('aria-controls');
+    if (focusTrigger) {
+      elements.scheduleButton.focus();
+    }
+  }
+};
+
+const openSchedulePopover = () => {
+  if (!elements.scheduleButton || state.scheduleLoading || state.scheduling) return;
+
+  if (schedulePopover) {
+    schedulePopover.input?.focus?.();
+    if (schedulePopover.input && typeof schedulePopover.input.showPicker === 'function') {
+      schedulePopover.input.showPicker();
+    } else {
+      schedulePopover.input?.click?.();
+    }
+    return;
+  }
+
+  const host = getSchedulePopoverHost();
+  if (!host) return;
+
+  const popover = document.createElement('div');
+  popover.className = 'script-schedule__popover';
+  popover.id = SCHEDULE_POPOVER_ID;
+  popover.setAttribute('role', 'dialog');
+  popover.setAttribute('aria-modal', 'false');
+  popover.setAttribute('aria-label', 'Adicionar novo agendamento');
+
+  const title = document.createElement('p');
+  title.className = 'script-schedule__popover-title';
+  title.textContent = 'Adicionar novo agendamento';
+
+  const label = document.createElement('label');
+  label.className = 'script-schedule__popover-label';
+  label.setAttribute('for', `${SCHEDULE_POPOVER_ID}-input`);
+  label.textContent = 'Escolha a data';
+
+  const input = document.createElement('input');
+  input.type = 'date';
+  input.id = `${SCHEDULE_POPOVER_ID}-input`;
+  input.className = 'script-schedule__popover-input';
+  input.autocomplete = 'off';
+
+  label.appendChild(input);
+
+  const helper = document.createElement('p');
+  helper.className = 'script-schedule__popover-helper';
+
+  const actions = document.createElement('div');
+  actions.className = 'script-schedule__popover-actions';
+
+  const confirmBtn = document.createElement('button');
+  confirmBtn.type = 'button';
+  confirmBtn.className = 'script-schedule__popover-button script-schedule__popover-button--primary';
+  confirmBtn.textContent = 'Adicionar';
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.type = 'button';
+  cancelBtn.className = 'script-schedule__popover-button script-schedule__popover-button--secondary';
+  cancelBtn.textContent = 'Cancelar';
+
+  actions.append(confirmBtn, cancelBtn);
+  popover.append(title, label, helper, actions);
+  host.appendChild(popover);
+
+  const popoverData = {
+    container: popover,
+    input,
+    helper,
+    confirmBtn,
+    cancelBtn,
+    removeListeners: null
+  };
+
+  const handleEscape = (event) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      closeSchedulePopover({ focusTrigger: true });
+    }
+  };
+
+  const handleCancel = () => {
+    closeSchedulePopover({ focusTrigger: true });
+  };
+
+  const handleConfirm = async () => {
+    const value = input.value?.trim();
+    if (!value) {
+      setScheduleFeedback('Escolha uma data para agendar.', 'error');
+      input.focus();
+      return;
+    }
+
+    const previousLabel = confirmBtn.textContent;
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = 'Adicionando...';
+
+    try {
+      const success = await scheduleScript(value);
+      if (success) {
+        closeSchedulePopover();
+        return;
+      }
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = previousLabel;
+      input.focus();
+    } finally {
+      if (schedulePopover && schedulePopover.confirmBtn === confirmBtn) {
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = previousLabel;
+      }
+    }
+  };
+
+  popoverData.removeListeners = () => {
+    input.removeEventListener('keydown', handleEscape);
+    cancelBtn.removeEventListener('click', handleCancel);
+    confirmBtn.removeEventListener('click', handleConfirm);
+  };
+
+  schedulePopover = popoverData;
+
+  input.addEventListener('keydown', handleEscape);
+  cancelBtn.addEventListener('click', handleCancel);
+  confirmBtn.addEventListener('click', handleConfirm);
+
+  elements.scheduleButton.setAttribute('aria-expanded', 'true');
+  elements.scheduleButton.setAttribute('aria-controls', SCHEDULE_POPOVER_ID);
+
+  input.value = '';
+  updateSchedulePopoverDetails();
+
+  window.requestAnimationFrame(() => {
+    input.focus();
+    if (typeof input.showPicker === 'function') {
+      input.showPicker();
+    } else {
+      input.click();
+    }
+  });
 };
 
 const setScheduleButtonLoading = (loading, label) => {
@@ -234,11 +402,13 @@ const setScheduleButtonDisabled = (disabled) => {
   if (disabled) {
     elements.scheduleButton.setAttribute('disabled', '');
     elements.scheduleButton.setAttribute('aria-disabled', 'true');
+    if (!state.scheduling) {
+      closeSchedulePopover();
+    }
   } else {
     elements.scheduleButton.removeAttribute('disabled');
     elements.scheduleButton.removeAttribute('aria-disabled');
   }
-  setScheduleDateInputDisabled(disabled);
 };
 
 const setLoading = (loading) => {
@@ -257,7 +427,6 @@ const updateScheduleButtonAvailability = () => {
     state.scheduling ||
     (!state.cycle && Boolean(state.scheduleError));
   setScheduleButtonDisabled(disabled);
-  applyScheduleDateConstraints();
 };
 
 const renderScheduleStatus = () => {
@@ -519,45 +688,38 @@ const loadScheduleContext = async ({ silent = false } = {}) => {
     }
     renderScheduleStatus();
     updateScheduleButtonAvailability();
+    updateSchedulePopoverDetails();
   }
 };
 
 function handleScheduleButtonClick() {
-  if (!elements.scheduleDateInput || state.scheduleLoading || state.scheduling) return;
+  if (state.scheduleLoading || state.scheduling) return;
   if (!ensureAuth()) return;
 
-  revealScheduleCard();
+  if (schedulePopover) {
+    closeSchedulePopover();
+    return;
+  }
 
-  elements.scheduleDateInput.value = '';
-  applyScheduleDateConstraints();
-  setScheduleDateInputDisabled(false);
-
-  window.requestAnimationFrame(() => {
-    if (typeof elements.scheduleDateInput.showPicker === 'function') {
-      elements.scheduleDateInput.showPicker();
-    } else {
-      elements.scheduleDateInput.focus();
-      elements.scheduleDateInput.click();
-    }
-  });
+  openSchedulePopover();
 }
 
 const scheduleScript = async (isoDate) => {
-  if (!isoDate || state.scheduling) return;
+  if (!isoDate || state.scheduling) return false;
   const normalizedDate = typeof isoDate === 'string' ? isoDate.slice(0, 10) : null;
-  if (!normalizedDate) return;
+  if (!normalizedDate) return false;
 
   if (!isDateWithinCycle(normalizedDate)) {
     setScheduleFeedback('Escolha uma data dentro do ciclo vigente.', 'error');
-    return;
+    return false;
   }
 
   if (state.scheduleOccurrences.some((occurrence) => occurrence.date === normalizedDate)) {
     setScheduleFeedback('Esse roteiro já está agendado para essa data.', 'error');
-    return;
+    return false;
   }
 
-  if (!ensureAuth()) return;
+  if (!ensureAuth()) return false;
 
   state.scheduling = true;
   setScheduleButtonLoading(true, 'Agendando...');
@@ -578,9 +740,11 @@ const scheduleScript = async (isoDate) => {
     });
     setScheduleFeedback('Agendamento enviado para aprovação 💗', 'success');
     await loadScheduleContext({ silent: true });
+    return true;
   } catch (error) {
     const message = error?.message || 'Não foi possível agendar o roteiro.';
     setScheduleFeedback(message, 'error');
+    return false;
   } finally {
     state.scheduling = false;
     setScheduleButtonLoading(false);
