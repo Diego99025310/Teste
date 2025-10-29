@@ -149,76 +149,6 @@ a:focus-visible {
   box-shadow: 0 10px 22px rgba(255, 105, 180, 0.28);
 }
 
-.schedule-card {
-  max-width: 420px;
-  margin: 0 auto;
-  padding: clamp(1.75rem, 4vw, 2.5rem);
-  background: linear-gradient(135deg, rgba(255, 105, 180, 0.18), rgba(255, 20, 147, 0.24));
-  border-radius: 24px;
-  box-shadow: var(--shadow-lg);
-  text-align: center;
-  display: grid;
-  gap: 20px;
-  border: 1px solid rgba(255, 105, 180, 0.25);
-}
-
-.schedule-card__title {
-  margin: 0;
-  font-size: clamp(1.25rem, 3vw, 1.6rem);
-  color: #fff;
-  text-shadow: 0 6px 18px rgba(208, 18, 120, 0.28);
-}
-
-.schedule-card__description {
-  margin: 0;
-  font-size: 0.95rem;
-  color: rgba(255, 255, 255, 0.9);
-}
-
-.schedule-card__label {
-  display: block;
-  margin: 0;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.95);
-}
-
-.schedule-card__label,
-.schedule-date-input {
-  text-align: left;
-}
-
-.schedule-date-input {
-  appearance: none;
-  width: 100%;
-  padding: 14px 16px;
-  font-size: 1.05rem;
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.65);
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.75));
-  color: var(--pink-700);
-  box-shadow: 0 10px 22px rgba(255, 105, 180, 0.2);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
-}
-
-.schedule-date-input:focus-visible,
-.schedule-date-input:hover {
-  border-color: rgba(255, 255, 255, 0.85);
-  box-shadow: 0 12px 28px rgba(255, 105, 180, 0.28);
-  outline: none;
-}
-
-.schedule-date-input::-webkit-calendar-picker-indicator {
-  filter: invert(22%) sepia(48%) saturate(3755%) hue-rotate(308deg) brightness(97%) contrast(100%);
-  cursor: pointer;
-}
-
-.schedule-card .schedule-status,
-.schedule-card .schedule-feedback {
-  text-align: left;
-  margin: 0;
-  width: 100%;
-}
-
 .schedule-script-btn:focus-visible {
   outline: 3px solid rgba(255, 255, 255, 0.6);
   outline-offset: 2px;
@@ -367,6 +297,19 @@ a:focus-visible {
   border-color: rgba(208, 18, 120, 0.45);
   background: rgba(208, 18, 120, 0.16);
   color: #8b174e;
+}
+
+.schedule-date-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  border: 0;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 .script-section__content ul,
