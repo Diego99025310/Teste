@@ -363,15 +363,15 @@
       return '';
     }
 
-    let text = String(value).replace(/\\r\\n/g, '\\n').replace(/\\u00a0/g, ' ');
+    let text = String(value).replace(/\r\n/g, '\n').replace(/\u00a0/g, ' ');
 
     if (preserveLineBreaks) {
       text = text
-        .replace(/<br\\s*\\/?>/gi, '\\n')
-        .replace(/<\\/p>/gi, '\\n\\n')
-        .replace(/<\\/div>/gi, '\\n')
-        .replace(/<\\/h[1-6]>/gi, '\\n')
-        .replace(/<\\/li>/gi, '\\n')
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<\/p>/gi, '\n\n')
+        .replace(/<\/div>/gi, '\n')
+        .replace(/<\/h[1-6]>/gi, '\n')
+        .replace(/<\/li>/gi, '\n')
         .replace(/<li[^>]*>/gi, '• ')
         .replace(/<p[^>]*>/gi, '')
         .replace(/<div[^>]*>/gi, '')
@@ -379,10 +379,10 @@
         .replace(/<ul[^>]*>/gi, '')
         .replace(/<ol[^>]*>/gi, '');
     } else {
-      text = text.replace(/<br\\s*\\/?>/gi, ' ');
+      text = text.replace(/<br\s*\/?>/gi, ' ');
     }
 
-    text = text.replace(/<[^>]+>/g, preserveLineBreaks ? '\\n' : ' ');
+    text = text.replace(/<[^>]+>/g, preserveLineBreaks ? '\n' : ' ');
 
     if (preserveLineBreaks) {
       return text.replace(/\\n{3,}/g, '\\n\\n').replace(/[ \\t]+\\n/g, '\\n').trim();
