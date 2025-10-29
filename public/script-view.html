@@ -31,23 +31,8 @@
 
       <main class="script-main" aria-live="polite">
         <div id="status-message" class="status-message" hidden></div>
-
-        <section
-          class="schedule-card"
-          aria-labelledby="schedule-card-title"
-          aria-describedby="schedule-card-description"
-        >
-          <h2 id="schedule-card-title" class="schedule-card__title">Agendar roteiro</h2>
-          <p id="schedule-card-description" class="schedule-card__description">
-            Escolha a data ideal para executar este roteiro e confirme o agendamento.
-          </p>
-
-          <label class="schedule-card__label" for="schedule-date-input">Data do agendamento</label>
-          <input type="date" id="schedule-date-input" class="schedule-date-input" />
-
-          <div id="schedule-status" class="schedule-status" hidden aria-live="polite"></div>
-          <div id="schedule-feedback" class="schedule-feedback" hidden aria-live="polite"></div>
-        </section>
+        <div id="schedule-status" class="schedule-status" hidden aria-live="polite"></div>
+        <div id="schedule-feedback" class="schedule-feedback" hidden aria-live="polite"></div>
         <article id="script-article" class="script-article" hidden>
           <section class="script-section" data-section="duration">
             <h2 class="script-section__title">Duração</h2>
@@ -88,6 +73,14 @@
         </div>
       </main>
     </div>
+
+    <input
+      type="date"
+      id="schedule-date-input"
+      class="schedule-date-input"
+      aria-hidden="true"
+      tabindex="-1"
+    />
 
     <script type="module" src="/scripts/script-view.js"></script>
   </body>
