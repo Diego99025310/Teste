@@ -1,5 +1,64 @@
 require('./config/env');
 const express = require('express');
+let cors;
+try {
+  cors = require('cors');
+} catch (error) {
+  console.warn('Pacote "cors" não encontrado, aplicando fallback interno simplificado.');
+  cors = (options = {}) => {
+    const { credentials } = options;
+    const originOption = options.origin;
+    return (req, res, next) => {
+      const origin = req.headers.origin;
+      let allowed = false;
+
+      if (!origin) {
+        allowed = true;
+      } else if (typeof originOption === 'function') {
+        let resolved = false;
+        originOption(origin, (err, result) => {
+          resolved = true;
+          allowed = !err && result !== false;
+        });
+        if (!resolved) {
+          allowed = false;
+        }
+      } else if (originOption === '*') {
+        allowed = true;
+      } else if (Array.isArray(originOption)) {
+        allowed = originOption.includes(origin);
+      } else if (typeof originOption === 'string') {
+        allowed = originOption === origin;
+      }
+
+      if (allowed) {
+        const headerOrigin =
+          origin ||
+          (Array.isArray(originOption)
+            ? originOption[0] || '*'
+            : typeof originOption === 'string'
+            ? originOption
+            : '*');
+        res.setHeader('Access-Control-Allow-Origin', headerOrigin);
+        res.setHeader('Vary', 'Origin');
+        if (credentials) {
+          res.setHeader('Access-Control-Allow-Credentials', 'true');
+        }
+      }
+
+      if (req.method === 'OPTIONS') {
+        res.setHeader('Access-Control-Allow-Methods', options.methods || 'GET,HEAD,PUT,PATCH,POST,DELETE');
+        res.setHeader(
+          'Access-Control-Allow-Headers',
+          options.allowedHeaders || req.headers['access-control-request-headers'] || 'Content-Type, Authorization'
+        );
+        return res.sendStatus(204);
+      }
+
+      return next();
+    };
+  };
+}
 const path = require('path');
 const fs = require('node:fs');
 const crypto = require('node:crypto');
@@ -12,9 +71,55 @@ const { calculateCommissionMultiplier, summarizePoints } = require('./utils/mult
 const { pointsToBrl, POINT_VALUE_BRL, roundCurrency, roundPoints } = require('./utils/points');
 
 const app = express();
+const apiRouter = express.Router();
 
-const candidateStaticDirs = ['frontend', 'public']
-  .map((dir) => path.join(__dirname, '..', dir))
+const trimApiPrefix = (pathPattern) => {
+  if (!pathPattern || !pathPattern.startsWith('/api')) {
+    return pathPattern;
+  }
+  const trimmed = pathPattern.slice(4);
+  if (!trimmed || trimmed === '') {
+    return '/';
+  }
+  return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+};
+
+const registerRoute = ['get', 'post', 'put', 'delete'].reduce((acc, method) => {
+  acc[method] = (pathPattern, ...handlers) => {
+    app[method](pathPattern, ...handlers);
+    apiRouter[method](trimApiPrefix(pathPattern), ...handlers);
+    return acc;
+  };
+  return acc;
+}, {});
+
+const publicDir = path.join(__dirname, '..', 'public');
+const frontendDistDir = path.join(__dirname, '..', 'frontend', 'dist');
+const frontendIndexPath = path.join(frontendDistDir, 'index.html');
+
+const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (!origin || allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      if (process.env.NODE_ENV === 'production') {
+        return callback(new Error(`Origin not allowed by CORS: ${origin}`));
+      }
+      return callback(null, false);
+    },
+    credentials: true
+  })
+);
+
+app.use(express.json());
+
+[frontendDistDir, publicDir]
   .filter((dir) => {
     try {
       return fs.existsSync(dir);
@@ -22,17 +127,25 @@ const candidateStaticDirs = ['frontend', 'public']
       console.warn('Nao foi possivel verificar o diretorio estatico ' + dir + ':', error);
       return false;
     }
+  })
+  .forEach((dir) => app.use(express.static(dir)));
+
+registerRoute.get('/aceite-termos', (req, res) => {
+  const candidatePaths = [
+    path.join(publicDir, 'aceite-termos.html'),
+    path.join(publicDir, 'termos', 'parceria-v1.html')
+  ];
+  const filePath = candidatePaths.find((candidate) => {
+    try {
+      return fs.existsSync(candidate);
+    } catch (error) {
+      console.warn('Nao foi possivel verificar o arquivo de aceite de termos em ' + candidate + ':', error);
+      return false;
+    }
   });
-
-const fallbackStaticDir = path.join(__dirname, '..', 'public');
-const staticDirs = candidateStaticDirs.length ? candidateStaticDirs : [fallbackStaticDir];
-const primaryStaticDir = staticDirs[0];
-
-app.use(express.json());
-staticDirs.forEach((dir) => app.use(express.static(dir)));
-
-app.get('/aceite-termos', (req, res) => {
-  const filePath = path.join(primaryStaticDir, 'aceite-termos.html');
+  if (!filePath) {
+    return res.status(404).end();
+  }
   res.sendFile(filePath, (err) => {
     if (err) {
       res.status(err.status || 500).end();
@@ -1151,7 +1264,7 @@ const authorizeMaster = (req, res, next) => {
 };
 
 const aceiteRouter = createAceiteRouter({ authenticate });
-app.use('/api', aceiteRouter);
+apiRouter.use('/', aceiteRouter);
 
 const truthyBooleanValues = new Set(['1', 'true', 'on', 'yes', 'sim', 'y', 's', 'dispensa', 'dispensado', 'dispensada']);
 const falsyBooleanValues = new Set(['0', 'false', 'off', 'no', 'nao', 'não', 'n']);
@@ -2640,6 +2753,8 @@ const buildCycleSummary = (cycle) => {
     id: cycle.id ?? null,
     year,
     month,
+    cycle_year: year,
+    cycle_month: month,
     status: cycle.status ?? 'open',
     label: `${monthLabel}/${year}`,
     startDate,
@@ -2896,7 +3011,7 @@ const normalizeSkuPointsPayload = (body) => {
   };
 };
 
-app.post('/register', authenticate, authorizeMaster, async (req, res) => {
+registerRoute.post('/register', authenticate, authorizeMaster, async (req, res) => {
   const { email, password, role = 'influencer' } = req.body || {};
   const rawPhone = req.body?.phone ?? req.body?.telefone ?? req.body?.phoneNumber;
   const phoneData = extractUserPhoneData(rawPhone);
@@ -2938,7 +3053,7 @@ app.post('/register', authenticate, authorizeMaster, async (req, res) => {
   });
 });
 
-app.post('/login', async (req, res) => {
+registerRoute.post('/login', async (req, res) => {
   const identifier = trimString(req.body?.identifier ?? req.body?.email);
   const password = req.body?.password;
 
@@ -2960,7 +3075,7 @@ app.post('/login', async (req, res) => {
   return res.status(200).json({ token, user: formatUserResponse(user) });
 });
 
-app.post('/influenciadora', authenticate, authorizeMaster, async (req, res) => {
+registerRoute.post('/influenciadora', authenticate, authorizeMaster, async (req, res) => {
   const { data, error } = normalizeInfluencerPayload(req.body || {});
 
   if (error) {
@@ -3069,7 +3184,7 @@ app.post('/influenciadora', authenticate, authorizeMaster, async (req, res) => {
     return res.status(500).json({ error: 'Nao foi possivel cadastrar a influenciadora.' });
   }
 });
-app.get('/influenciadora/:id', authenticate, verificarAceite, (req, res) => {
+registerRoute.get('/influenciadora/:id', authenticate, verificarAceite, (req, res) => {
   const { influencer, status, message } = ensureInfluencerAccess(req, req.params.id);
   if (!influencer) {
     return res.status(status).json({ error: message });
@@ -3079,7 +3194,7 @@ app.get('/influenciadora/:id', authenticate, verificarAceite, (req, res) => {
 
 
 
-app.put('/influenciadora/:id', authenticate, verificarAceite, async (req, res) => {
+registerRoute.put('/influenciadora/:id', authenticate, verificarAceite, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) {
     return res.status(400).json({ error: 'ID invalido.' });
@@ -3212,7 +3327,7 @@ app.put('/influenciadora/:id', authenticate, verificarAceite, async (req, res) =
   }
 });
 
-app.delete('/influenciadora/:id', authenticate, authorizeMaster, (req, res) => {
+registerRoute.delete('/influenciadora/:id', authenticate, authorizeMaster, (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) {
     return res.status(400).json({ error: 'ID invalido.' });
@@ -3238,7 +3353,7 @@ app.delete('/influenciadora/:id', authenticate, authorizeMaster, (req, res) => {
   }
 });
 
-app.post('/influenciadoras/import/preview', authenticate, authorizeMaster, (req, res) => {
+registerRoute.post('/influenciadoras/import/preview', authenticate, authorizeMaster, (req, res) => {
   const text = req.body?.text ?? req.body?.data ?? '';
   const analysis = analyzeInfluencerImport(text);
   if (analysis.error) {
@@ -3247,7 +3362,7 @@ app.post('/influenciadoras/import/preview', authenticate, authorizeMaster, (req,
   return res.status(200).json(analysis);
 });
 
-app.post('/influenciadoras/import/confirm', authenticate, authorizeMaster, async (req, res) => {
+registerRoute.post('/influenciadoras/import/confirm', authenticate, authorizeMaster, async (req, res) => {
   const text = req.body?.text ?? req.body?.data ?? '';
   const analysis = analyzeInfluencerImport(text);
   if (analysis.error) {
@@ -3333,7 +3448,7 @@ app.post('/influenciadoras/import/confirm', authenticate, authorizeMaster, async
   }
 });
 
-app.post('/sales/import/preview', authenticate, authorizeMaster, (req, res) => {
+registerRoute.post('/sales/import/preview', authenticate, authorizeMaster, (req, res) => {
   const text = req.body?.text ?? req.body?.data ?? '';
   const analysis = analyzeSalesImport(text);
   if (analysis.error) {
@@ -3342,7 +3457,7 @@ app.post('/sales/import/preview', authenticate, authorizeMaster, (req, res) => {
   return res.status(200).json(analysis);
 });
 
-app.post('/sales/import/confirm', authenticate, authorizeMaster, (req, res) => {
+registerRoute.post('/sales/import/confirm', authenticate, authorizeMaster, (req, res) => {
   const text = req.body?.text ?? req.body?.data ?? '';
   const analysis = analyzeSalesImport(text);
   if (analysis.error) {
@@ -3377,7 +3492,7 @@ app.post('/sales/import/confirm', authenticate, authorizeMaster, (req, res) => {
   }
 });
 
-app.get('/influencer/plan', authenticate, verificarAceite, (req, res) => {
+registerRoute.get('/influencer/plan', authenticate, verificarAceite, (req, res) => {
   const cycle = getCycleByIdOrCurrent(req.query?.cycleId ?? req.query?.cycle_id);
   const { influencer, status, message } = resolveInfluencerForRequest(
     req,
@@ -3398,7 +3513,7 @@ app.get('/influencer/plan', authenticate, verificarAceite, (req, res) => {
   });
 });
 
-app.post('/influencer/plan', authenticate, verificarAceite, (req, res) => {
+registerRoute.post('/influencer/plan', authenticate, verificarAceite, (req, res) => {
   const baseCycle = ensureMonthlyCycle();
   const { influencer, status, message } = resolveInfluencerForRequest(
     req,
@@ -3561,7 +3676,7 @@ app.post('/influencer/plan', authenticate, verificarAceite, (req, res) => {
   return res.status(201).json({ cycle, plans });
 });
 
-app.get('/api/influencer/plan', authenticate, verificarAceite, (req, res) => {
+registerRoute.get('/api/influencer/plan', authenticate, verificarAceite, (req, res) => {
   const cycle = getCycleByIdOrCurrent(req.query?.cycleId ?? req.query?.cycle_id);
   const { influencer, status, message } = resolveInfluencerForRequest(
     req,
@@ -3575,7 +3690,7 @@ app.get('/api/influencer/plan', authenticate, verificarAceite, (req, res) => {
   return res.status(200).json(payload);
 });
 
-app.post('/api/influencer/plan', authenticate, verificarAceite, (req, res) => {
+registerRoute.post('/api/influencer/plan', authenticate, verificarAceite, (req, res) => {
   const baseCycle = ensureMonthlyCycle();
   const { influencer, status, message } = resolveInfluencerForRequest(
     req,
@@ -3738,7 +3853,7 @@ app.post('/api/influencer/plan', authenticate, verificarAceite, (req, res) => {
   return res.status(201).json(payload);
 });
 
-app.put('/influencer/plan/:id', authenticate, verificarAceite, (req, res) => {
+registerRoute.put('/influencer/plan/:id', authenticate, verificarAceite, (req, res) => {
   const planId = Number(req.params.id);
   if (!Number.isInteger(planId) || planId <= 0) {
     return res.status(400).json({ error: 'ID invalido.' });
@@ -3812,7 +3927,7 @@ app.put('/influencer/plan/:id', authenticate, verificarAceite, (req, res) => {
   return res.status(200).json(updated);
 });
 
-app.get('/influencer/dashboard', authenticate, verificarAceite, (req, res) => {
+registerRoute.get('/influencer/dashboard', authenticate, verificarAceite, (req, res) => {
   const cycle = getCycleByIdOrCurrent(req.query?.cycleId ?? req.query?.cycle_id);
   const { influencer, status, message } = resolveInfluencerForRequest(
     req,
@@ -3876,7 +3991,7 @@ app.get('/influencer/dashboard', authenticate, verificarAceite, (req, res) => {
   });
 });
 
-app.get('/influencer/history', authenticate, verificarAceite, (req, res) => {
+registerRoute.get('/influencer/history', authenticate, verificarAceite, (req, res) => {
   const { influencer, status, message } = resolveInfluencerForRequest(
     req,
     req.query?.influencerId ?? req.query?.influencer_id
@@ -3889,13 +4004,13 @@ app.get('/influencer/history', authenticate, verificarAceite, (req, res) => {
   return res.status(200).json({ influencer: { id: influencer.id, nome: influencer.nome }, history });
 });
 
-app.get('/master/validations', authenticate, authorizeMaster, (req, res) => {
+registerRoute.get('/master/validations', authenticate, authorizeMaster, (req, res) => {
   const cycle = getCycleByIdOrCurrent(req.query?.cycleId ?? req.query?.cycle_id);
   const pending = listPendingPlanValidationsStmt.all(cycle.id);
   return res.status(200).json({ cycle, pending });
 });
 
-app.post('/master/validations/:id/approve', authenticate, authorizeMaster, (req, res) => {
+registerRoute.post('/master/validations/:id/approve', authenticate, authorizeMaster, (req, res) => {
   const planId = Number(req.params.id);
   if (!Number.isInteger(planId) || planId <= 0) {
     return res.status(400).json({ error: 'ID invalido.' });
@@ -3922,7 +4037,7 @@ app.post('/master/validations/:id/approve', authenticate, authorizeMaster, (req,
   return res.status(200).json(updated);
 });
 
-app.post('/master/validations/:id/reject', authenticate, authorizeMaster, (req, res) => {
+registerRoute.post('/master/validations/:id/reject', authenticate, authorizeMaster, (req, res) => {
   const planId = Number(req.params.id);
   if (!Number.isInteger(planId) || planId <= 0) {
     return res.status(400).json({ error: 'ID invalido.' });
@@ -3945,7 +4060,7 @@ app.post('/master/validations/:id/reject', authenticate, authorizeMaster, (req, 
   return res.status(200).json(updated);
 });
 
-app.get('/master/dashboard', authenticate, authorizeMaster, (req, res) => {
+registerRoute.get('/master/dashboard', authenticate, authorizeMaster, (req, res) => {
   const cycle = getCycleByIdOrCurrent(req.query?.cycleId ?? req.query?.cycle_id);
   const plans = listPlansForCycleStmt.all(cycle.id);
   const pending = listPendingPlanValidationsStmt.all(cycle.id);
@@ -3979,12 +4094,12 @@ app.get('/master/dashboard', authenticate, authorizeMaster, (req, res) => {
   return res.status(200).json({ cycle, plans, pendingValidations: pending, influencers: influencersSummary, stats });
 });
 
-app.get('/master/cycles', authenticate, authorizeMaster, (req, res) => {
+registerRoute.get('/master/cycles', authenticate, authorizeMaster, (req, res) => {
   const cycles = listCyclesStmt.all();
   return res.status(200).json({ cycles });
 });
 
-app.get('/master/ranking', authenticate, authorizeMaster, (req, res) => {
+registerRoute.get('/master/ranking', authenticate, authorizeMaster, (req, res) => {
   const cycleId = req.query?.cycleId ?? req.query?.cycle_id;
   const ranking = listMonthlyRankingStmt
     .all()
@@ -3992,7 +4107,7 @@ app.get('/master/ranking', authenticate, authorizeMaster, (req, res) => {
   return res.status(200).json({ ranking });
 });
 
-app.post('/master/cycles/:id/close', authenticate, authorizeMaster, (req, res) => {
+registerRoute.post('/master/cycles/:id/close', authenticate, authorizeMaster, (req, res) => {
   const cycle = getCycleByIdOrCurrent(req.params.id);
   if (!cycle) {
     return res.status(404).json({ error: 'Ciclo nao encontrado.' });
@@ -4062,7 +4177,7 @@ app.post('/master/cycles/:id/close', authenticate, authorizeMaster, (req, res) =
   return res.status(200).json({ cycle: updatedCycle, summaries });
 });
 
-app.get('/scripts', authenticate, verificarAceite, (req, res) => {
+registerRoute.get('/scripts', authenticate, verificarAceite, (req, res) => {
   try {
     const rows = listContentScriptsStmt
       .all()
@@ -4075,7 +4190,7 @@ app.get('/scripts', authenticate, verificarAceite, (req, res) => {
   }
 });
 
-app.get('/scripts/:id', authenticate, verificarAceite, (req, res) => {
+registerRoute.get('/scripts/:id', authenticate, verificarAceite, (req, res) => {
   const rawId = req.params.id;
   const parsedId = Number(rawId);
   if (!Number.isInteger(parsedId) || parsedId <= 0) {
@@ -4094,7 +4209,7 @@ app.get('/scripts/:id', authenticate, verificarAceite, (req, res) => {
   }
 });
 
-app.post('/scripts', authenticate, authorizeMaster, (req, res) => {
+registerRoute.post('/scripts', authenticate, authorizeMaster, (req, res) => {
   const rawTitle = trimString(req.body?.titulo ?? req.body?.title);
   if (!rawTitle || rawTitle.length < 3) {
     return res.status(400).json({ error: 'Informe um titulo com pelo menos 3 caracteres.' });
@@ -4129,7 +4244,7 @@ app.post('/scripts', authenticate, authorizeMaster, (req, res) => {
   }
 });
 
-app.put('/scripts/:id', authenticate, authorizeMaster, (req, res) => {
+registerRoute.put('/scripts/:id', authenticate, authorizeMaster, (req, res) => {
   const rawId = req.params.id;
   const scriptId = Number(rawId);
   if (!Number.isInteger(scriptId) || scriptId <= 0) {
@@ -4176,7 +4291,7 @@ app.put('/scripts/:id', authenticate, authorizeMaster, (req, res) => {
   }
 });
 
-app.delete('/scripts/:id', authenticate, authorizeMaster, (req, res) => {
+registerRoute.delete('/scripts/:id', authenticate, authorizeMaster, (req, res) => {
   const rawId = req.params.id;
   const scriptId = Number(rawId);
   if (!Number.isInteger(scriptId) || scriptId <= 0) {
@@ -4197,7 +4312,7 @@ app.delete('/scripts/:id', authenticate, authorizeMaster, (req, res) => {
   }
 });
 
-app.get('/sku-points', authenticate, authorizeMaster, (req, res) => {
+registerRoute.get('/sku-points', authenticate, authorizeMaster, (req, res) => {
   try {
     const rows = listSkuPointsStmt.all().map((row) => formatSkuPointRow(row)).filter(Boolean);
     return res.status(200).json(rows);
@@ -4207,7 +4322,7 @@ app.get('/sku-points', authenticate, authorizeMaster, (req, res) => {
   }
 });
 
-app.post('/sku-points', authenticate, authorizeMaster, (req, res) => {
+registerRoute.post('/sku-points', authenticate, authorizeMaster, (req, res) => {
   const { data, error } = normalizeSkuPointsPayload(req.body || {});
   if (error) {
     return res.status(400).json(error);
@@ -4233,7 +4348,7 @@ app.post('/sku-points', authenticate, authorizeMaster, (req, res) => {
   }
 });
 
-app.put('/sku-points/:id', authenticate, authorizeMaster, (req, res) => {
+registerRoute.put('/sku-points/:id', authenticate, authorizeMaster, (req, res) => {
   const skuId = Number(req.params.id);
   if (!Number.isInteger(skuId) || skuId <= 0) {
     return res.status(400).json({ error: 'ID invalido.' });
@@ -4270,7 +4385,7 @@ app.put('/sku-points/:id', authenticate, authorizeMaster, (req, res) => {
   }
 });
 
-app.delete('/sku-points/:id', authenticate, authorizeMaster, (req, res) => {
+registerRoute.delete('/sku-points/:id', authenticate, authorizeMaster, (req, res) => {
   const skuId = Number(req.params.id);
   if (!Number.isInteger(skuId) || skuId <= 0) {
     return res.status(400).json({ error: 'ID invalido.' });
@@ -4290,7 +4405,7 @@ app.delete('/sku-points/:id', authenticate, authorizeMaster, (req, res) => {
   }
 });
 
-app.post('/sales', authenticate, authorizeMaster, (req, res) => {
+registerRoute.post('/sales', authenticate, authorizeMaster, (req, res) => {
   const { data, error } = normalizeSaleBody(req.body || {});
   if (error) {
     return res.status(400).json(error);
@@ -4329,7 +4444,7 @@ app.post('/sales', authenticate, authorizeMaster, (req, res) => {
   }
 });
 
-app.put('/sales/:id', authenticate, authorizeMaster, (req, res) => {
+registerRoute.put('/sales/:id', authenticate, authorizeMaster, (req, res) => {
   const saleId = Number(req.params.id);
   if (!Number.isInteger(saleId) || saleId <= 0) {
     return res.status(400).json({ error: 'ID invalido.' });
@@ -4380,7 +4495,7 @@ app.put('/sales/:id', authenticate, authorizeMaster, (req, res) => {
   }
 });
 
-app.delete('/sales/:id', authenticate, authorizeMaster, (req, res) => {
+registerRoute.delete('/sales/:id', authenticate, authorizeMaster, (req, res) => {
   const saleId = Number(req.params.id);
   if (!Number.isInteger(saleId) || saleId <= 0) {
     return res.status(400).json({ error: 'ID invalido.' });
@@ -4400,7 +4515,7 @@ app.delete('/sales/:id', authenticate, authorizeMaster, (req, res) => {
   }
 });
 
-app.get('/sales/summary/:influencerId', authenticate, verificarAceite, (req, res) => {
+registerRoute.get('/sales/summary/:influencerId', authenticate, verificarAceite, (req, res) => {
   const { influencer, status, message } = ensureInfluencerAccess(req, req.params.influencerId);
   if (!influencer) {
     return res.status(status).json({ error: message });
@@ -4423,7 +4538,7 @@ app.get('/sales/summary/:influencerId', authenticate, verificarAceite, (req, res
   }
 });
 
-app.get('/sales/:influencerId', authenticate, verificarAceite, (req, res) => {
+registerRoute.get('/sales/:influencerId', authenticate, verificarAceite, (req, res) => {
   const { influencer, status, message } = ensureInfluencerAccess(req, req.params.influencerId);
   if (!influencer) {
     return res.status(status).json({ error: message });
@@ -4438,7 +4553,7 @@ app.get('/sales/:influencerId', authenticate, verificarAceite, (req, res) => {
   }
 });
 
-app.get('/influenciadoras/consulta', authenticate, authorizeMaster, (req, res) => {
+registerRoute.get('/influenciadoras/consulta', authenticate, authorizeMaster, (req, res) => {
   try {
     const rows = listInfluencerSummaryStmt.all();
     const formatted = rows.map((row) => ({
@@ -4458,7 +4573,7 @@ app.get('/influenciadoras/consulta', authenticate, authorizeMaster, (req, res) =
   }
 });
 
-app.get('/influenciadoras', authenticate, verificarAceite, (req, res) => {
+registerRoute.get('/influenciadoras', authenticate, verificarAceite, (req, res) => {
   try {
     if (req.auth.user.role === 'master') {
       return res.status(200).json(listInfluencersStmt.all());
@@ -4475,8 +4590,14 @@ app.get('/influenciadoras', authenticate, verificarAceite, (req, res) => {
   }
 });
 
-app.get('/', (req, res) => {
-  res.sendFile(path.join(primaryStaticDir, 'index.html'));
+
+app.use('/api', apiRouter);
+
+app.get(/^\/(?!api).*/, (req, res, next) => {
+  if (!frontendIndexPath || !fs.existsSync(frontendIndexPath)) {
+    return next();
+  }
+  return res.sendFile(frontendIndexPath);
 });
 
 const PORT = process.env.PORT || 3000;

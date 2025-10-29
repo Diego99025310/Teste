@@ -4,7 +4,13 @@
     "main": "index.js",
     "scripts": {
         "test": "node --test",
-        "start": "node src/server.js"
+        "start": "node backend/server.js",
+        "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+        "dev:backend": "nodemon backend/server.js",
+        "dev:frontend": "cd frontend && npm run dev",
+        "build": "cd frontend && npm run build",
+        "preview": "cd frontend && npm run preview",
+        "postinstall": "cd frontend && npm install"
     },
     "keywords": [],
     "author": "",
@@ -13,10 +19,13 @@
     "dependencies": {
         "bcryptjs": "^3.0.2",
         "better-sqlite3": "^12.4.1",
+        "cors": "^2.8.5",
         "express": "^5.1.0",
         "jsonwebtoken": "^9.0.2"
     },
     "devDependencies": {
+        "concurrently": "^8.2.2",
+        "nodemon": "^3.1.0",
         "supertest": "^7.1.4"
     }
 }

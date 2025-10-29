@@ -4,8 +4,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 const request = require('supertest');
 
-const { gerarHashTermo } = require('../src/utils/hash');
-const { pointsToBrl, POINT_VALUE_BRL } = require('../src/utils/points');
+const { gerarHashTermo } = require('../backend/utils/hash');
+const { pointsToBrl, POINT_VALUE_BRL } = require('../backend/utils/points');
 
 const tempDbPath = path.join(__dirname, '..', 'test.sqlite');
 
@@ -15,8 +15,8 @@ if (fs.existsSync(tempDbPath)) {
 process.env.DATABASE_PATH = tempDbPath;
 process.env.JWT_SECRET = 'test-secret';
 
-const app = require('../src/server');
-const db = require('../src/database');
+const app = require('../backend/server');
+const db = require('../backend/database');
 
 const selectSaleOrderNumberStmt = db.prepare('SELECT order_number FROM sales WHERE id = ?');
 
@@ -57,7 +57,7 @@ const registrarAceiteTeste = (userId) => {
 
 const login = (identifier, password) =>
   request(app)
-    .post('/login')
+    .post('/api/login')
     .send({ identifier, email: identifier, password });
 
 const authenticateMaster = async () => {
@@ -69,7 +69,7 @@ const authenticateMaster = async () => {
 
 const cadastrarSkuPoints = async (token, payload) =>
   request(app)
-    .post('/sku-points')
+    .post('/api/sku-points')
     .set('Authorization', `Bearer ${token}`)
     .send(payload);
 
@@ -321,7 +321,7 @@ test('master pode registrar novo usuario e realizar login', async () => {
   const masterToken = await authenticateMaster();
 
   const registerResponse = await request(app)
-    .post('/register')
+    .post('/api/register')
     .set('Authorization', `Bearer ${masterToken}`)
     .send({ email: 'novo.master@example.com', password: 'novaSenha123', role: 'master' });
 
@@ -359,7 +359,7 @@ test('fluxo simples de influenciadora com login e exclusao', async () => {
   const masterToken = await authenticateMaster();
 
   const createResponse = await request(app)
-    .post('/influenciadora')
+    .post('/api/influenciadora')
     .set('Authorization', `Bearer ${masterToken}`)
     .send(influencerPayload);
 
@@ -436,7 +436,7 @@ test('nao permite duplicar campos unicos no cadastro de influenciadoras', async 
   };
 
   const primeiraResponse = await request(app)
-    .post('/influenciadora')
+    .post('/api/influenciadora')
     .set('Authorization', `Bearer ${masterToken}`)
     .send(basePayload);
 
@@ -454,7 +454,7 @@ test('nao permite duplicar campos unicos no cadastro de influenciadoras', async 
   };
 
   const duplicateCpfResponse = await request(app)
-    .post('/influenciadora')
+    .post('/api/influenciadora')
     .set('Authorization', `Bearer ${masterToken}`)
     .send(duplicateCpfPayload);
 
@@ -473,7 +473,7 @@ test('nao permite duplicar campos unicos no cadastro de influenciadoras', async 
   };
 
   const duplicateEmailResponse = await request(app)
-    .post('/influenciadora')
+    .post('/api/influenciadora')
     .set('Authorization', `Bearer ${masterToken}`)
     .send(duplicateEmailPayload);
 
@@ -492,7 +492,7 @@ test('nao permite duplicar campos unicos no cadastro de influenciadoras', async 
   };
 
   const duplicatePhoneResponse = await request(app)
-    .post('/influenciadora')
+    .post('/api/influenciadora')
     .set('Authorization', `Bearer ${masterToken}`)
     .send(duplicatePhonePayload);
 
@@ -511,7 +511,7 @@ test('nao permite duplicar campos unicos no cadastro de influenciadoras', async 
   };
 
   const duplicateCupomResponse = await request(app)
-    .post('/influenciadora')
+    .post('/api/influenciadora')
     .set('Authorization', `Bearer ${masterToken}`)
     .send(duplicateCupomPayload);
 
@@ -530,7 +530,7 @@ test('nao permite duplicar campos unicos no cadastro de influenciadoras', async 
   };
 
   const uniqueResponse = await request(app)
-    .post('/influenciadora')
+    .post('/api/influenciadora')
     .set('Authorization', `Bearer ${masterToken}`)
     .send(uniquePayload);
 
@@ -543,7 +543,7 @@ test('dispensa de contrato permite acesso sem aceite', async () => {
   const masterToken = await authenticateMaster();
 
   const createResponse = await request(app)
-    .post('/influenciadora')
+    .post('/api/influenciadora')
     .set('Authorization', `Bearer ${masterToken}`)
     .send({ ...influencerPayload, contractSignatureWaived: true });
 
@@ -616,7 +616,7 @@ test('fluxo completo de ciclo mensal com agendamento, validacao e fechamento', a
   const masterToken = await authenticateMaster();
 
   const createResponse = await request(app)
-    .post('/influenciadora')
+    .post('/api/influenciadora')
     .set('Authorization', `Bearer ${masterToken}`)
     .send({
       ...influencerPayload,
@@ -640,7 +640,7 @@ test('fluxo completo de ciclo mensal com agendamento, validacao e fechamento', a
   registrarAceiteTeste(influencerUserId);
 
   const planOverview = await request(app)
-    .get('/influencer/plan')
+    .get('/api/influencer/plan')
     .set('Authorization', `Bearer ${influencerToken}`);
 
   assert.strictEqual(planOverview.status, 200);
@@ -652,14 +652,14 @@ test('fluxo completo de ciclo mensal com agendamento, validacao e fechamento', a
   );
 
   const planCreate = await request(app)
-    .post('/influencer/plan')
+    .post('/api/influencer/plan')
     .set('Authorization', `Bearer ${influencerToken}`)
     .send({ days: dates });
 
   assert.strictEqual(planCreate.status, 201);
   assert.strictEqual(planCreate.body.plans.length, dates.length);
   const pendingValidations = await request(app)
-    .get('/master/validations')
+    .get('/api/master/validations')
     .set('Authorization', `Bearer ${masterToken}`);
 
   assert.strictEqual(pendingValidations.status, 200);
@@ -674,14 +674,14 @@ test('fluxo completo de ciclo mensal com agendamento, validacao e fechamento', a
   }
 
   const remainingValidations = await request(app)
-    .get('/master/validations')
+    .get('/api/master/validations')
     .set('Authorization', `Bearer ${masterToken}`);
 
   assert.strictEqual(remainingValidations.status, 200);
   assert.strictEqual(remainingValidations.body.pending.length, 0);
 
   const dashboard = await request(app)
-    .get('/influencer/dashboard')
+    .get('/api/influencer/dashboard')
     .set('Authorization', `Bearer ${influencerToken}`);
 
   assert.strictEqual(dashboard.status, 200);
@@ -698,7 +698,7 @@ test('fluxo completo de ciclo mensal com agendamento, validacao e fechamento', a
   assert.strictEqual(skuCadastro.status, 201);
 
   const saleResponse = await request(app)
-    .post('/sales')
+    .post('/api/sales')
     .set('Authorization', `Bearer ${masterToken}`)
     .send({
       orderNumber: 'PINK-001',
@@ -729,13 +729,13 @@ test('fluxo completo de ciclo mensal com agendamento, validacao e fechamento', a
   assert.strictEqual(Number(summary.total_commission), pointsToBrl(125));
 
   const historyResponse = await request(app)
-    .get('/influencer/history')
+    .get('/api/influencer/history')
     .set('Authorization', `Bearer ${influencerToken}`);
   assert.strictEqual(historyResponse.status, 200);
   assert.ok(historyResponse.body.history.length >= 1);
 
   const rankingResponse = await request(app)
-    .get('/master/ranking')
+    .get('/api/master/ranking')
     .set('Authorization', `Bearer ${masterToken}`);
   assert.strictEqual(rankingResponse.status, 200);
   const rankingMatch = rankingResponse.body.ranking.find(
@@ -750,7 +750,7 @@ test('endpoints mobile-first de agendamento retornam dados completos', async () 
   const masterToken = await authenticateMaster();
 
   const scriptResponse = await request(app)
-    .post('/scripts')
+    .post('/api/scripts')
     .set('Authorization', `Bearer ${masterToken}`)
     .send({
       title: 'Roteiro Mobile',
@@ -767,7 +767,7 @@ test('endpoints mobile-first de agendamento retornam dados completos', async () 
   assert.ok(scriptId);
 
   const createResponse = await request(app)
-    .post('/influenciadora')
+    .post('/api/influenciadora')
     .set('Authorization', `Bearer ${masterToken}`)
     .send({
       ...influencerPayload,
@@ -964,7 +964,7 @@ test('gestao de vendas vinculada a influenciadora', async () => {
   const masterToken = await authenticateMaster();
 
   const createInfluencer = await request(app)
-    .post('/influenciadora')
+    .post('/api/influenciadora')
     .set('Authorization', `Bearer ${masterToken}`)
     .send(influencerPayload);
 
@@ -988,7 +988,7 @@ test('gestao de vendas vinculada a influenciadora', async () => {
   assert.strictEqual(skuBonus.status, 201);
 
   const saleResponse = await request(app)
-    .post('/sales')
+    .post('/api/sales')
     .set('Authorization', `Bearer ${masterToken}`)
     .send({
       orderNumber: 'PED-001',
@@ -1028,7 +1028,7 @@ test('gestao de vendas vinculada a influenciadora', async () => {
   assert.strictEqual(Number(summaryInitial.body.total_points_value), pointsToBrl(100));
 
   const consultResponse = await request(app)
-    .get('/influenciadoras/consulta')
+    .get('/api/influenciadoras/consulta')
     .set('Authorization', `Bearer ${masterToken}`);
   assert.strictEqual(consultResponse.status, 200);
   const consultRow = consultResponse.body.find((row) => row.id === influencerId);
@@ -1037,7 +1037,7 @@ test('gestao de vendas vinculada a influenciadora', async () => {
   assert.strictEqual(Number(consultRow.vendas_total_points), 100);
 
   const duplicateSale = await request(app)
-    .post('/sales')
+    .post('/api/sales')
     .set('Authorization', `Bearer ${masterToken}`)
     .send({
       orderNumber: 'PED-001',
@@ -1049,7 +1049,7 @@ test('gestao de vendas vinculada a influenciadora', async () => {
   assert.match(duplicateSale.body.error, /numero de pedido/i);
 
   const secondSaleResponse = await request(app)
-    .post('/sales')
+    .post('/api/sales')
     .set('Authorization', `Bearer ${masterToken}`)
     .send({
       orderNumber: 'PED-002',
@@ -1097,7 +1097,7 @@ test('gestao de vendas vinculada a influenciadora', async () => {
   assert.strictEqual(updatedSaleRecord.order_number, 'PED-001-ALT');
 
   const consultAfterUpdate = await request(app)
-    .get('/influenciadoras/consulta')
+    .get('/api/influenciadoras/consulta')
     .set('Authorization', `Bearer ${masterToken}`);
   assert.strictEqual(consultAfterUpdate.status, 200);
   const consultRowUpdated = consultAfterUpdate.body.find((row) => row.id === influencerId);
@@ -1114,12 +1114,12 @@ test('gestao de vendas vinculada a influenciadora', async () => {
   registrarAceiteTeste(influencerLogin.body.user?.id);
 
   const unauthorizedConsult = await request(app)
-    .get('/influenciadoras/consulta')
+    .get('/api/influenciadoras/consulta')
     .set('Authorization', `Bearer ${influencerToken}`);
   assert.strictEqual(unauthorizedConsult.status, 403);
 
   const unauthorizedSale = await request(app)
-    .post('/sales')
+    .post('/api/sales')
     .set('Authorization', `Bearer ${influencerToken}`)
     .send({
       cupom: influencerPayload.cupom,
@@ -1154,7 +1154,7 @@ test('gestao de vendas vinculada a influenciadora', async () => {
   assert.strictEqual(Number(summaryAfterDelete.body.total_points_value), pointsToBrl(50));
 
   const consultAfterDelete = await request(app)
-    .get('/influenciadoras/consulta')
+    .get('/api/influenciadoras/consulta')
     .set('Authorization', `Bearer ${masterToken}`);
   assert.strictEqual(consultAfterDelete.status, 200);
   const consultRowAfterDelete = consultAfterDelete.body.find((row) => row.id === influencerId);
@@ -1193,13 +1193,13 @@ test('importacao em massa de vendas com validacao', async () => {
   };
 
   const biaResponse = await request(app)
-    .post('/influenciadora')
+    .post('/api/influenciadora')
     .set('Authorization', `Bearer ${masterToken}`)
     .send(biaPayload);
   assert.strictEqual(biaResponse.status, 201);
 
   const ingridResponse = await request(app)
-    .post('/influenciadora')
+    .post('/api/influenciadora')
     .set('Authorization', `Bearer ${masterToken}`)
     .send(ingridPayload);
   assert.strictEqual(ingridResponse.status, 201);
@@ -1212,7 +1212,7 @@ test('importacao em massa de vendas com validacao', async () => {
   ].join('\n');
 
   const previewWithError = await request(app)
-    .post('/sales/import/preview')
+    .post('/api/sales/import/preview')
     .set('Authorization', `Bearer ${masterToken}`)
     .send({ text: textWithUnknownCoupon });
 
@@ -1226,7 +1226,7 @@ test('importacao em massa de vendas com validacao', async () => {
   );
 
   const confirmWithErrors = await request(app)
-    .post('/sales/import/confirm')
+    .post('/api/sales/import/confirm')
     .set('Authorization', `Bearer ${masterToken}`)
     .send({ text: textWithUnknownCoupon });
 
@@ -1243,7 +1243,7 @@ test('importacao em massa de vendas com validacao', async () => {
   ].join('\n');
 
   const validPreview = await request(app)
-    .post('/sales/import/preview')
+    .post('/api/sales/import/preview')
     .set('Authorization', `Bearer ${masterToken}`)
     .send({ text: validText });
 
@@ -1253,7 +1253,7 @@ test('importacao em massa de vendas com validacao', async () => {
   assert.strictEqual(Number(validPreview.body.summary.total_points), 200);
 
   const confirmImport = await request(app)
-    .post('/sales/import/confirm')
+    .post('/api/sales/import/confirm')
     .set('Authorization', `Bearer ${masterToken}`)
     .send({ text: validText });
 
@@ -1269,7 +1269,7 @@ test('importacao em massa de vendas com validacao', async () => {
   assert.strictEqual(biaSales.body.length, 1);
 
   const duplicatePreview = await request(app)
-    .post('/sales/import/preview')
+    .post('/api/sales/import/preview')
     .set('Authorization', `Bearer ${masterToken}`)
     .send({ text: validText });
 
@@ -1280,7 +1280,7 @@ test('importacao em massa de vendas com validacao', async () => {
   });
 
   const duplicateConfirm = await request(app)
-    .post('/sales/import/confirm')
+    .post('/api/sales/import/confirm')
     .set('Authorization', `Bearer ${masterToken}`)
     .send({ text: validText });
 
@@ -1317,13 +1317,13 @@ test('importacao de vendas a partir de csv do shopify', async () => {
   };
 
   const deboraResponse = await request(app)
-    .post('/influenciadora')
+    .post('/api/influenciadora')
     .set('Authorization', `Bearer ${masterToken}`)
     .send(deboraPayload);
   assert.strictEqual(deboraResponse.status, 201);
 
   const ingridResponse = await request(app)
-    .post('/influenciadora')
+    .post('/api/influenciadora')
     .set('Authorization', `Bearer ${masterToken}`)
     .send(ingridPayload);
   assert.strictEqual(ingridResponse.status, 201);
@@ -1352,7 +1352,7 @@ test('importacao de vendas a partir de csv do shopify', async () => {
   const csvContent = csvLines.join('\n');
 
   const preview = await request(app)
-    .post('/sales/import/preview')
+    .post('/api/sales/import/preview')
     .set('Authorization', `Bearer ${masterToken}`)
     .send({ text: csvContent });
 
@@ -1389,7 +1389,7 @@ test('importacao de vendas a partir de csv do shopify', async () => {
   );
 
   const confirm = await request(app)
-    .post('/sales/import/confirm')
+    .post('/api/sales/import/confirm')
     .set('Authorization', `Bearer ${masterToken}`)
     .send({ text: csvContent });
 
@@ -1468,7 +1468,7 @@ test('importacao de csv real da shopify com pontos por SKU', async () => {
     };
 
     const response = await request(app)
-      .post('/influenciadora')
+      .post('/api/influenciadora')
       .set('Authorization', `Bearer ${masterToken}`)
       .send(payload);
 
@@ -1477,7 +1477,7 @@ test('importacao de csv real da shopify com pontos por SKU', async () => {
   }
 
   const preview = await request(app)
-    .post('/sales/import/preview')
+    .post('/api/sales/import/preview')
     .set('Authorization', `Bearer ${masterToken}`)
     .send({ text: csvContent });
 
@@ -1528,7 +1528,7 @@ test('importacao de csv real da shopify com pontos por SKU', async () => {
   );
 
   const confirm = await request(app)
-    .post('/sales/import/confirm')
+    .post('/api/sales/import/confirm')
     .set('Authorization', `Bearer ${masterToken}`)
     .send({ text: csvContent });
 
