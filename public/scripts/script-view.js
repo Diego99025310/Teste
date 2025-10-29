@@ -21,6 +21,7 @@ const elements = {
   closing: document.getElementById('script-closing'),
   notes: document.getElementById('script-notes'),
   notesSection: document.getElementById('script-notes-section'),
+  logoutBtn: document.getElementById('logout-btn'),
   scheduleButton: document.getElementById('schedule-script-btn'),
   scheduleButtonLabel: document.querySelector('#schedule-script-btn .schedule-btn__label'),
   scheduleStatus: document.getElementById('schedule-status'),
@@ -127,6 +128,7 @@ const logout = () => {
   }
 };
 
+elements.logoutBtn?.addEventListener('click', logout);
 elements.scheduleButton?.addEventListener('click', handleScheduleButtonClick);
 elements.scheduleDateInput?.addEventListener('change', (event) => {
   const value = event?.target?.value ?? '';
