@@ -50,7 +50,12 @@ const determineLevel = (progress) => {
   return LEVELS.reduce((current, level) => (capped >= level.threshold ? level : current), LEVELS[0]);
 };
 
-export default function CycleProgress({ validatedDays: initialValidatedDays = 0, totalTarget: initialTotalTarget = 16 }) {
+export default function CycleProgress({
+  validatedDays: initialValidatedDays = 0,
+  totalTarget: initialTotalTarget = 16,
+  cycleId,
+  influencerId
+}) {
   const [cycleData, setCycleData] = useState({
     validatedDays: ensureNonNegativeNumber(initialValidatedDays),
     totalTarget: ensurePositiveNumber(initialTotalTarget, 16),
@@ -61,12 +66,32 @@ export default function CycleProgress({ validatedDays: initialValidatedDays = 0,
   const [status, setStatus] = useState({ loading: true, error: null });
 
   useEffect(() => {
+    setCycleData((previous) => ({
+      ...previous,
+      validatedDays: ensureNonNegativeNumber(initialValidatedDays, previous.validatedDays),
+      totalTarget: ensurePositiveNumber(initialTotalTarget, previous.totalTarget)
+    }));
+  }, [initialValidatedDays, initialTotalTarget]);
+
+  const queryString = useMemo(() => {
+    const params = new URLSearchParams();
+    if (cycleId != null && cycleId !== '') {
+      params.set('cycleId', String(cycleId));
+    }
+    if (influencerId != null && influencerId !== '') {
+      params.set('influencerId', String(influencerId));
+    }
+    const query = params.toString();
+    return query ? `?${query}` : '';
+  }, [cycleId, influencerId]);
+
+  useEffect(() => {
     let cancelled = false;
 
     async function loadCycleProgress() {
       try {
         setStatus((previous) => ({ ...previous, loading: true }));
-        const response = await apiFetch('/dashboard/cycle');
+        const response = await apiFetch(`/dashboard/cycle${queryString}`);
         if (cancelled) return;
 
         const validatedFromResponse =
@@ -108,7 +133,7 @@ export default function CycleProgress({ validatedDays: initialValidatedDays = 0,
     return () => {
       cancelled = true;
     };
-  }, [initialValidatedDays, initialTotalTarget]);
+  }, [initialValidatedDays, initialTotalTarget, queryString]);
 
   const safeTarget = ensurePositiveNumber(cycleData.totalTarget, 1);
   const progress = safeTarget > 0 ? (cycleData.validatedDays / safeTarget) * 100 : 0;
@@ -173,6 +198,16 @@ export default function CycleProgress({ validatedDays: initialValidatedDays = 0,
               )}
             </motion.p>
             <p className="mt-2 text-xs uppercase tracking-[0.25em] text-pink-medium/60">{cycleLabel}</p>
+            {status.loading && (
+              <motion.span
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.3 }}
+                className="mt-4 inline-flex items-center gap-2 rounded-full bg-pink-soft/70 px-4 py-1 text-xs font-semibold text-pink-700 shadow-sm"
+              >
+                Atualizando progresso...
+              </motion.span>
+            )}
           </div>
 
           <motion.div
