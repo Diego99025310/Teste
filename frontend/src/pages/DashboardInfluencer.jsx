@@ -2,7 +2,6 @@ import React from 'react';
 import Header from '../components/Header.jsx';
 import Card from '../components/Card.jsx';
 import Button from '../components/Button.jsx';
-import CycleProgress from '../components/CycleProgress.jsx';
 import DashboardChart from '../components/DashboardChart.jsx';
 import DashboardLayout from '../layout/DashboardLayout.jsx';
 
@@ -59,8 +58,6 @@ export function DashboardInfluencer() {
           </Button>
         }
       />
-
-      <CycleProgress />
 
       <div className="grid gap-6 md:grid-cols-3">
         {performance.map((item) => (

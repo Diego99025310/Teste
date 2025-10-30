@@ -3927,40 +3927,6 @@ registerRoute.put('/influencer/plan/:id', authenticate, verificarAceite, (req, r
   return res.status(200).json(updated);
 });
 
-registerRoute.get('/dashboard/cycle', authenticate, verificarAceite, (req, res) => {
-  const cycle = getCycleByIdOrCurrent(req.query?.cycleId ?? req.query?.cycle_id);
-  const { influencer, status, message } = resolveInfluencerForRequest(
-    req,
-    req.query?.influencerId ?? req.query?.influencer_id
-  );
-
-  if (!influencer) {
-    return res.status(status).json({ error: message });
-  }
-
-  if (!cycle) {
-    return res.status(404).json({ error: 'Ciclo não encontrado.' });
-  }
-
-  const validatedRow = countValidatedPlansStmt.get(cycle.id, influencer.id) || { total: 0 };
-  const plannedRow = countPlansByInfluencerStmt.get(cycle.id, influencer.id) || { total: 0 };
-
-  const validatedDays = Number(validatedRow.total) || 0;
-  const plannedDays = Number(plannedRow.total) || 0;
-  const fallbackTarget = 16;
-  const totalTarget = plannedDays > 0 ? plannedDays : fallbackTarget;
-
-  const multiplierSummary = summarizePoints(0, validatedDays);
-
-  return res.status(200).json({
-    cycle: buildCycleSummary(cycle),
-    validatedDays,
-    totalTarget,
-    multiplier: multiplierSummary.multiplier,
-    multiplierLabel: multiplierSummary.label
-  });
-});
-
 registerRoute.get('/influencer/dashboard', authenticate, verificarAceite, (req, res) => {
   const cycle = getCycleByIdOrCurrent(req.query?.cycleId ?? req.query?.cycle_id);
   const { influencer, status, message } = resolveInfluencerForRequest(
