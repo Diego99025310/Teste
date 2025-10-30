@@ -150,6 +150,39 @@ npm start
 
 Para empacotar via Electron, gere o build de produção com `npm run build` (saída em `dist/`) e configure o processo principal para consumir a API local (ex.: `http://localhost:3000`).
 
+## 🌐 Frontend React + Tailwind
+
+A nova camada visual foi migrada para **React + Vite + TailwindCSS**, mantendo os mesmos IDs, estrutura e classes utilizados no HTML legado. Os principais arquivos ficam em `frontend/src/`:
+
+- `App.jsx` — roteamento com proteção de rotas (`/dashboard/master` e `/dashboard/influencer`).
+- `pages/` — componentes que espelham cada HTML original (`Login`, `DashboardMaster`, `DashboardInfluencer`).
+- `services/api.js` — helper centralizado para chamadas `fetch` contra o backend Express (`/api`).
+- `index.css` — base Tailwind + estilos herdados de `public/style.css` enquanto os utilitários são aplicados gradualmente.
+
+### Scripts úteis
+
+```bash
+# Executar somente o frontend com Vite (porta 5173 por padrão)
+cd frontend && npm run dev
+
+# Gerar build otimizado do SPA
+cd frontend && npm run build
+
+# Pré-visualizar o build (útil antes de rodar `npm start`)
+cd frontend && npm run preview
+```
+
+O arquivo `frontend/vite.config.js` já aplica proxy automático de `/api` → `http://localhost:3000`, permitindo que o SPA consuma o backend sem configurações extras de CORS em desenvolvimento.
+
+### Fluxo de autenticação
+
+- As credenciais são enviadas para `POST /api/login`.
+- O token JWT retornado é salvo em `sessionStorage` e reaproveitado em todas as requisições via header `Authorization`.
+- `DashboardMaster` e `DashboardInfluencer` carregam dados reais usando `GET /api/master/dashboard` e `GET /api/influencer/dashboard`, exibindo resumos e métricas conforme a API original.
+- O botão “Sair” apenas limpa a sessão (`sessionStorage`) e redireciona para `/login`.
+
+Com isso o comando `npm run dev` da raiz sobe backend + frontend sincronizados, enquanto `npm run build && npm start` serve o bundle React diretamente pelo Express em produção.
+
 ---
 
 ## 🗂️ Estrutura de Pastas
