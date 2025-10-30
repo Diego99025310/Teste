@@ -2,7 +2,7 @@
 const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
-const request = require('supertest');
+const request = require('./helpers/request');
 
 const { gerarHashTermo } = require('../backend/utils/hash');
 const { pointsToBrl, POINT_VALUE_BRL } = require('../backend/utils/points');
@@ -1569,7 +1569,10 @@ test('importacao de csv real da shopify com pontos por SKU', async () => {
   assert.strictEqual(totalPointsForCoupon, analysis.perCoupon[couponWithValidOrders].points);
 });
 
-after(() => {
+after(async () => {
+  if (typeof request.closeAll === 'function') {
+    await request.closeAll();
+  }
   db.close();
   if (fs.existsSync(tempDbPath)) {
     fs.unlinkSync(tempDbPath);
